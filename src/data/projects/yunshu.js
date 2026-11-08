@@ -24,8 +24,21 @@ export const yunshuDetail = {
       component: 'yunshu',
     },
     {
+      type: 'shots',
+      kicker: '03 / INTERFACE',
+      pending: true,
+      wanted: [
+        '排班模板列表页（分页 + 多机构切换）',
+        '周排班模板编辑页（乐观锁版本冲突提示）',
+        '日历例外 / 停诊设置界面',
+        'AI 排班助手对话界面',
+        'Swagger 接口文档总览（25 个接口）',
+      ],
+      note: '截图注意：打码或使用演示机构的样例数据，避免出现真实患者/医护个人信息。',
+    },
+    {
       type: 'impl',
-      kicker: '03 / 核心实现',
+      kicker: '04 / 核心实现',
       items: [
         {
           title: '缓存 — Cache-Aside（日排班选项）',
@@ -74,7 +87,7 @@ export const yunshuDetail = {
     },
     {
       type: 'metrics',
-      kicker: '04 / 性能数据（标注测试环境）',
+      kicker: '05 / 性能数据（标注测试环境）',
       items: [
         { label: 'P99', value: '1.468s → 0.148s', delta: '-90%' },
         { label: '吞吐', value: '496 → 2480 req/s', delta: '×5.0' },
@@ -85,7 +98,7 @@ export const yunshuDetail = {
     },
     {
       type: 'pits',
-      kicker: '05 / 问题与解决',
+      kicker: '06 / 问题与解决',
       items: [
         {
           title: '坑 1 · Redisson 锁时间单位 bug',
@@ -103,7 +116,7 @@ export const yunshuDetail = {
     },
     {
       type: 'text',
-      kicker: '06 / 收获',
+      kicker: '07 / 收获',
       body:
         '一是压测方法论：基线必须先定义清楚（稳态 vs 冷启动），阶梯压测 + Little\'s Law 可以把"吞吐上不去"定位到连接池排队这类结构性原因，而不是盲目加缓存；二是互斥重建的工程权衡：锁的价值是把回源并发压成常数，收益大小取决于回源成本，热态便宜的场景它几乎不改变吞吐，冷启动才是致命的；三是 AI 应用的边界设计：让模型负责理解和决策、执行与合规交给确定性代码，既保住了业务正确性，也让每个环节可测试、可降级。',
     },

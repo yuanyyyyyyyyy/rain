@@ -24,8 +24,21 @@ export const intelnexusDetail = {
       component: 'intelnexus',
     },
     {
+      type: 'shots',
+      kicker: '03 / INTERFACE',
+      pending: true,
+      wanted: [
+        '多源采集 / 源管理界面（15 类源）',
+        '情报条目可信度评分详情（M-SCORE 四因子）',
+        '冲突检测结果页（CIDAR 三类冲突标注）',
+        '证据链 / 快照追溯视图',
+        '知识图谱可视化（pyvis 关系网络）',
+        '定时简报 / 导出报告样例',
+      ],
+    },
+    {
       type: 'impl',
-      kicker: '03 / 分析内核',
+      kicker: '04 / 分析内核',
       items: [
         {
           title: 'M-SCORE · 四因子可信度评分',
@@ -67,7 +80,7 @@ export const intelnexusDetail = {
     },
     {
       type: 'impl',
-      kicker: '04 / 关键设计决策',
+      kicker: '05 / 关键设计决策',
       labels: ['动机', '方案', '效果'],
       items: [
         {
@@ -90,7 +103,7 @@ export const intelnexusDetail = {
     },
     {
       type: 'metrics',
-      kicker: '05 / 工程质量',
+      kicker: '06 / 工程质量',
       items: [
         { label: '测试文件', value: '95 个' },
         { label: '测试函数', value: '1101 个' },
@@ -101,7 +114,7 @@ export const intelnexusDetail = {
     },
     {
       type: 'text',
-      kicker: '06 / 收获',
+      kicker: '07 / 收获',
       body:
         '这个项目最大的产出是"分析型产品"的方法论：评分体系要各管各的语义——风险只认客观威胁证据，证据不足就是结论缺失而不是"中等"；每一次修复都以审计实锤标注留痕，用上千个测试函数和架构门禁守住设计约束。它也让我完整走了一遍独立交付闭环：定义问题 → 做设计决策并留下决策记录 → 用 AI 生成实现 → 以审查、测试与架构门禁保证质量——AI 时代个人开发者的工作方式，不是写每一行代码，而是对每一行代码负责。',
     },

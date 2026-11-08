@@ -21,6 +21,26 @@
             <component :is="archMap[sec.component]" />
           </section>
 
+          <!-- 界面实录：截图网格 + Lightbox（pending 时显示待办占位） -->
+          <section v-else-if="sec.type === 'shots'" class="block">
+            <div class="kicker">{{ sec.kicker }}</div>
+            <div v-if="sec.pending" class="shots-pending">
+              <div class="sp-title">PENDING — 界面截图收集中</div>
+              <ul>
+                <li v-for="w in sec.wanted" :key="w">{{ w }}</li>
+              </ul>
+            </div>
+            <template v-else>
+              <div class="shots">
+                <figure v-for="(s, i) in sec.items" :key="s.src" class="shot" @click="openShot(sec, i)">
+                  <img :src="s.src" :alt="s.cap" loading="lazy" />
+                  <figcaption>{{ s.fig }} — {{ s.cap }}</figcaption>
+                </figure>
+              </div>
+              <p v-if="sec.note" class="mnote">{{ sec.note }}</p>
+            </template>
+          </section>
+
           <!-- 实现 / 决策：问题→方案→效果 -->
           <section v-else-if="sec.type === 'impl'" class="block">
             <div class="kicker">{{ sec.kicker }}</div>
@@ -85,6 +105,18 @@
       <span v-else></span>
       <RouterLink v-if="next" :to="`/projects/${next.slug}`">PROJECT / {{ next.no }} {{ next.title }} →</RouterLink>
     </nav>
+    <!-- 界面截图 Lightbox -->
+    <Teleport to="body">
+      <div v-if="shot" class="shotbox" @click.self="closeShot">
+        <button class="lb-close" aria-label="关闭" @click="closeShot">×</button>
+        <button class="lb-arrow lb-prev" aria-label="上一张" @click.stop="stepShot(-1)">←</button>
+        <figure class="lb-body" @click.self="closeShot">
+          <img :src="shot.s.src" :alt="shot.s.cap" />
+          <figcaption>{{ shot.s.fig }} — {{ shot.s.cap }}</figcaption>
+        </figure>
+        <button class="lb-arrow lb-next" aria-label="下一张" @click.stop="stepShot(1)">→</button>
+      </div>
+    </Teleport>
   </article>
 
   <!-- 其余项目：占位骨架（素材到位后按同模式接入） -->
@@ -109,7 +141,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { projects } from '../data/site.js'
 import { yunshuDetail } from '../data/projects/yunshu.js'
@@ -127,6 +159,40 @@ const project = computed(() => projects.find((x) => x.slug === route.params.slug
 const idx = computed(() => projects.findIndex((x) => x.slug === route.params.slug))
 const prev = computed(() => projects[idx.value - 1] || null)
 const next = computed(() => projects[idx.value + 1] || null)
+
+// 界面截图 Lightbox
+const shotSec = ref(null)
+const shotIdx = ref(-1)
+const shot = computed(() => {
+  if (!shotSec.value || shotIdx.value < 0) return null
+  const items = shotSec.value.items
+  return { s: items[shotIdx.value], n: items.length }
+})
+const openShot = (sec, i) => {
+  shotSec.value = sec
+  shotIdx.value = i
+  document.body.style.overflow = 'hidden'
+}
+const closeShot = () => {
+  shotSec.value = null
+  shotIdx.value = -1
+  document.body.style.overflow = ''
+}
+const stepShot = (d) => {
+  const n = shotSec.value.items.length
+  shotIdx.value = (shotIdx.value + d + n) % n
+}
+const onKey = (e) => {
+  if (!shot.value) return
+  if (e.key === 'Escape') closeShot()
+  else if (e.key === 'ArrowLeft') stepShot(-1)
+  else if (e.key === 'ArrowRight') stepShot(1)
+}
+onMounted(() => window.addEventListener('keydown', onKey))
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKey)
+  document.body.style.overflow = ''
+})
 </script>
 
 <style lang="scss" scoped>
@@ -340,6 +406,128 @@ const next = computed(() => projects[idx.value + 1] || null)
   font: 10px var(--font-mono);
   letter-spacing: 0.1em;
   color: var(--c-blue);
+}
+// 界面实录
+.shots {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+.shot {
+  margin: 0;
+  cursor: pointer;
+
+  img {
+    width: 100%;
+    display: block;
+    border: 1px solid var(--c-line);
+    background: #f6f8fc;
+    transition: 0.22s;
+  }
+  &:hover img {
+    border-color: #8fa5dc;
+    box-shadow: 4px 4px 0 var(--c-blue-shadow);
+  }
+  figcaption {
+    margin-top: 8px;
+    font: 9px var(--font-mono);
+    letter-spacing: 0.12em;
+    color: var(--c-muted);
+  }
+}
+.shots-pending {
+  border: 1px dashed #a9b4cc;
+  padding: 18px 22px;
+  background: #fafbfe;
+
+  .sp-title {
+    font: 10px var(--font-mono);
+    letter-spacing: 0.15em;
+    color: var(--c-blue);
+    margin-bottom: 10px;
+  }
+  ul {
+    margin: 0;
+    padding-left: 18px;
+
+    li {
+      font-size: 12.5px;
+      line-height: 2;
+      color: var(--c-muted);
+    }
+  }
+}
+// 截图 Lightbox（与摄影页同款交互）
+.shotbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.96);
+  display: grid;
+  grid-template-columns: 70px 1fr 70px;
+  align-items: center;
+}
+.shotbox .lb-body img {
+  max-width: 92%;
+  max-height: 82vh;
+  border: 1px solid var(--c-line);
+}
+.shotbox .lb-body figcaption {
+  margin-top: 14px;
+  font: 10px var(--font-mono);
+  letter-spacing: 0.14em;
+  color: var(--c-blue);
+}
+.shotbox .lb-arrow {
+  font: 20px var(--font-mono);
+  color: var(--c-blue);
+  background: #fff;
+  border: 1px solid var(--c-line);
+  width: 46px;
+  height: 46px;
+  cursor: pointer;
+  justify-self: center;
+  transition: 0.2s;
+
+  &:hover {
+    border-color: var(--c-blue);
+    box-shadow: 3px 3px 0 var(--c-blue-shadow);
+  }
+}
+.shotbox .lb-close {
+  position: absolute;
+  top: 18px;
+  right: 26px;
+  width: 46px;
+  height: 46px;
+  font-size: 22px;
+  color: var(--c-muted);
+  background: #fff;
+  border: 1px solid var(--c-line);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--c-blue);
+    border-color: var(--c-blue);
+  }
+}
+@media (max-width: 760px) {
+  .shots {
+    grid-template-columns: 1fr;
+  }
+  .shotbox {
+    grid-template-columns: 1fr;
+  }
+  .shotbox .lb-arrow {
+    position: absolute;
+    bottom: 24px;
+  }
+  .shotbox .lb-prev {
+    left: 24px;
+  }
+  .shotbox .lb-next {
+    right: 24px;
+  }
 }
 @media (max-width: 760px) {
   .grid {
