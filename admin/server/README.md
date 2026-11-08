@@ -86,9 +86,14 @@ mvn -DskipTests package && java -Dserver.port=8081 -jar target/rain-admin-server
 | PUT | `/api/content/projects/{slug}` | Bearer | 全量更新；sections 逐节校验失败返回 400 并指明节与字段 |
 | GET | `/api/content/projects/{slug}/export` | Bearer | 生成 `<slug>.js` 全文（头注释原样带回）；管理台复制后整文件替换 `src/data/projects/<slug>.js` + `npm run build` 前台生效（M4 自动写回接管） |
 | GET | `/api/content/screenshots/{slug}` | Bearer | `public/screenshots/<slug>/` 文件名列表（shots 表单选择器，目录不存在返回空数组） |
-| POST | `/api/publish` | Bearer | 一键发布：写回 photos.js + 项目数据文件（tmp→原子替换）→ npm run build（300s 超时）→ publish_log；进行中重复触发 409 |
+| POST | `/api/publish` | Bearer | 一键发布：写回 photos.js + 项目数据文件（tmp→原子替换）→ npm run build（300s 超时）→ publish_log（含 git commit 短哈希）；进行中重复触发 409 |
 | GET | `/api/publish/logs` | Bearer | 发布历史（最近 20 条） |
 | GET | `/api/publish/status` | Bearer | 状态摘要（照片数/项目数/上次发布/是否进行中） |
+| POST | `/api/t` | 公开 | 前台 1px 埋点 {path, referrer}；IP 哈希脱敏、同 ip+path+分钟去重 |
+| GET | `/api/stats/summary` | Bearer | 统计概览（今日/累计 PV、UV、14 天趋势、热门页面 Top5） |
+| POST | `/api/messages` | 公开 | 联系表单提交（同 IP 60s 限频 429） |
+| GET | `/api/messages` · `/unread` | Bearer | 收件箱列表 / 未读数 |
+| PUT | `/api/messages/{id}/read` | Bearer | 标记已读 |
 
 > 数据文件自此为发布产物：`src/data/photos.js`、`src/data/projects/<slug>.js` 由发布链路生成（语义与手写版一致，头注释/出处经 headerNote 与固定模板保留）；手工改这些文件会在下次发布时被覆盖，改内容请走管理台。
 
