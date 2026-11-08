@@ -14,18 +14,42 @@ $c-blue-soft: #eaf0ff;
 $c-blue-mid: #4167c5;
 $c-blue-shadow: #cbd7f4;
 
+// 次级语义色（与前台 tokens.scss 同源同步，2026-11-08 审计收编）
+$c-ink-soft: #626970; // 正文次级灰
+$c-line-blue: #bfc8dc; // 蓝灰描边
+$c-blue-hover: #8fa5dc; // hover 高亮蓝
+$c-blue-shadow-soft: #e7ecf8; // 白底卡片的浅硬投影
+$c-blue-faint: #fbfcff; // 极淡蓝白底
+$c-bg-soft: #f6f8fc; // 占位/骨架底色
+$c-aux: #aab8d8; // 基准辅助线
+$c-dot: #536078; // 点阵肌理基色
+
+// 管理台专属
+$c-side-muted: #b5c7f2; // 蓝底侧栏浅字
+$c-danger: #a32d2d; // 错误红
+
 $font-sans: 'Manrope', 'Noto Sans SC', sans-serif;
 $font-mono: 'DM Mono', monospace;
 
 :root {
   --c-bg: #{$c-bg};
   --c-ink: #{$c-ink};
+  --c-ink-soft: #{$c-ink-soft};
   --c-muted: #{$c-muted};
   --c-line: #{$c-line};
+  --c-line-blue: #{$c-line-blue};
   --c-blue: #{$c-blue};
   --c-blue-soft: #{$c-blue-soft};
   --c-blue-mid: #{$c-blue-mid};
   --c-blue-shadow: #{$c-blue-shadow};
+  --c-blue-hover: #{$c-blue-hover};
+  --c-blue-shadow-soft: #{$c-blue-shadow-soft};
+  --c-blue-faint: #{$c-blue-faint};
+  --c-bg-soft: #{$c-bg-soft};
+  --c-aux: #{$c-aux};
+  --c-dot: #{$c-dot};
+  --c-side-muted: #{$c-side-muted};
+  --c-danger: #{$c-danger};
   --font-sans: #{$font-sans};
   --font-mono: #{$font-mono};
 }

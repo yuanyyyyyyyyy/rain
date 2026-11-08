@@ -21,7 +21,7 @@ body {
     pointer-events: none;
     z-index: 9;
     opacity: 0.12;
-    background-image: radial-gradient(#536078 0.6px, transparent 0.6px);
+    background-image: radial-gradient(var(--c-dot) 0.6px, transparent 0.6px);
     background-size: 12px 12px;
   }
 }
@@ -39,7 +39,7 @@ p {
 }
 
 .wrap {
-  width: min(var(--max-w), calc(100% - 88px));
+  width: min(var(--max-w), calc(100% - #{tokens.$gutter-x * 2}));
   margin: auto;
 }
 
@@ -92,7 +92,7 @@ p {
   font: 10px var(--font-mono);
   letter-spacing: 0.08em;
   color: var(--c-blue);
-  background: #fff;
+  background: var(--c-bg);
   transition: 0.2s;
   cursor: pointer;
 

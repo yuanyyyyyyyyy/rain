@@ -74,9 +74,13 @@ const galleryEl = ref(null)
 const galleryW = ref(1120)
 let ro = null
 
+// 行内间距须与下方 .gallery 样式的 CSS gap 同步（桌面 14px / 移动端 10px），改一处必改另一处
+const GAP_DESKTOP = 14
+const GAP_MOBILE = 10
+
 const rowsFor = (group) => {
   const w = galleryW.value || 1120
-  const gap = w < 640 ? 10 : 14
+  const gap = w < 640 ? GAP_MOBILE : GAP_DESKTOP
   const target = w < 640 ? 2.0 : 3.3
   const maxH = w < 640 ? 200 : 320
   const rows = []
@@ -169,15 +173,15 @@ h1 {
 .hero-ph {
   margin: 24px 0 0;
   position: relative;
-  border: 1px solid #bfc8dc;
+  border: 1px solid var(--c-line-blue);
   overflow: hidden;
   cursor: pointer;
   aspect-ratio: 16 / 9;
   transition: 0.22s;
 
   &:hover {
-    border-color: #8fa5dc;
-    box-shadow: 5px 5px 0 #e7ecf8;
+    border-color: var(--c-blue-hover);
+    box-shadow: 5px 5px 0 var(--c-blue-shadow-soft);
   }
   img {
     width: 100%;
@@ -232,6 +236,7 @@ h1 {
   }
 }
 // 对齐行：flex-basis 0 + flex-grow=宽高比 → 宽度精确按比例分配，行缘对齐
+// gap 与上方 rowsFor() 的 GAP_DESKTOP/GAP_MOBILE 常量同步
 .jrow {
   display: flex;
   gap: 14px;
@@ -245,7 +250,7 @@ h1 {
   .ph {
     border: 1px solid var(--c-line);
     overflow: hidden;
-    background: #f6f8fc;
+    background: var(--c-bg-soft);
 
     img {
       width: 100%;
@@ -259,7 +264,7 @@ h1 {
     transform: scale(1.025);
   }
   &:hover .ph {
-    border-color: #8fa5dc;
+    border-color: var(--c-blue-hover);
   }
   figcaption {
     margin-top: 8px;
@@ -307,7 +312,7 @@ h1 {
 .lb-arrow {
   font: 20px var(--font-mono);
   color: var(--c-blue);
-  background: #fff;
+  background: var(--c-bg);
   border: 1px solid var(--c-line);
   width: 46px;
   height: 46px;
@@ -328,7 +333,7 @@ h1 {
   height: 46px;
   font-size: 22px;
   color: var(--c-muted);
-  background: #fff;
+  background: var(--c-bg);
   border: 1px solid var(--c-line);
   cursor: pointer;
 

@@ -134,10 +134,10 @@ h1 {
 }
 .art {
   height: 390px;
-  border: 1px solid #bfc8dc;
+  border: 1px solid var(--c-line-blue);
   position: relative;
   overflow: hidden;
-  background: #fff;
+  background: var(--c-bg);
 
   &::before {
     content: '';

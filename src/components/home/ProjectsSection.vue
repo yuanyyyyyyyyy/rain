@@ -103,7 +103,7 @@ const regular = computed(() => projects.filter((p) => !p.flagship))
   border: 1px solid var(--c-line);
   padding: 24px;
   position: relative;
-  background: #fff;
+  background: var(--c-bg);
   transition: 0.22s;
   overflow: hidden;
   display: block;
@@ -117,9 +117,9 @@ const regular = computed(() => projects.filter((p) => !p.flagship))
     border-top: 2px solid var(--c-blue);
   }
   &:hover {
-    border-color: #8fa5dc;
+    border-color: var(--c-blue-hover);
     transform: translateY(-4px);
-    box-shadow: 5px 5px 0 #e7ecf8;
+    box-shadow: 5px 5px 0 var(--c-blue-shadow-soft);
   }
 
   h3 {
@@ -152,7 +152,7 @@ const regular = computed(() => projects.filter((p) => !p.flagship))
     color: #596985;
     border: 1px solid #d9e0ef;
     padding: 5px 8px;
-    background: #fbfcff;
+    background: var(--c-blue-faint);
   }
 }
 .arrow {

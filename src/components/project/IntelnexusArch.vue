@@ -1,4 +1,6 @@
 <template>
+  <!-- 工业图纸视觉资产：SVG 内 fill/stroke 色值为 tokens 同值字面量（属性不吃 var()），
+       改主题时需与本组件一并核查；CSS 域一律走 var() -->
   <figure class="arch">
     <div class="arch-label">FIG. 002 — ANALYSIS PIPELINE / IntelNexus</div>
     <svg viewBox="0 0 920 540" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="IntelNexus 分析管线图">
@@ -131,8 +133,8 @@
 <style lang="scss" scoped>
 .arch {
   margin: 0;
-  border: 1px solid #bfc8dc;
-  background: #fff;
+  border: 1px solid var(--c-line-blue);
+  background: var(--c-bg);
   position: relative;
   padding: 44px 18px 14px;
 

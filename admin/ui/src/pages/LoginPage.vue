@@ -103,7 +103,7 @@ button {
   }
 }
 .err {
-  color: #a32d2d;
+  color: var(--c-danger);
   font-size: 12px;
 }
 .hint {
