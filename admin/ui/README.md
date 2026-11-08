@@ -19,7 +19,7 @@ npm run build
 | `#/login` | 登录（admin / admin123） | ✅ |
 | `#/` | 01 概览 Dashboard | 占位 |
 | `#/photos` | 02 照片管理：上传（自动压缩）+ photos.js 片段复制 / 三组网格 / 组内拖拽排序 / 行内编辑 / 设头图 / 删除二次确认 | ✅ |
-| `#/content` | 03 内容编辑 | 占位，M3 实现 |
+| `#/content` | 03 内容编辑：项目切换 / 基本信息+头注释 / meta 行编辑 / sections 类型化表单（arch 只读，impl/metrics/pits 条目增删，shots pending 切换+截图选择器）/ 节增删移+编号自动重排 / 导出 JS 面板 | ✅ |
 | `#/publish` | 04 发布 | 占位，M4 实现 |
 
 ## 鉴权
@@ -32,7 +32,7 @@ npm run build
 
 ```
 src/
-├── api.js              # 统一 fetch 封装：token 注入 + 401 处理 + multipart postForm（无 axios 依赖）
+├── api.js              # 统一 fetch 封装：token 注入 + 401 处理 + multipart postForm + text 响应（无 axios 依赖）
 ├── router/index.js     # hash 模式路由 + 登录守卫
 ├── styles/tokens.scss  # Klein Blue v2 设计 Token（与前台同源）
 └── pages/
