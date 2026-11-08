@@ -29,6 +29,13 @@ src/main/java/rain/admin/
 │   ├── PhotoService.java       # 上传压缩（长边 1600/q80 只缩不放）、孤儿文件补偿、
 │   │                           # 头图全局唯一（实体清零+置一，避开 bulk update 一级缓存坑）
 │   └── PhotoController.java    # REST（见下方 API 表）
+├── content/                    # M3 内容编辑
+│   ├── ProjectDetail.java      # 实体（slug 唯一 / meta_json / sections_json 为 JSON 列）
+│   ├── ProjectDetailRepo.java
+│   ├── ProjectDetailSeeder.java# 表空时从 classpath content-seed/*.json 导入（node 从前台数据文件生成）
+│   ├── ContentService.java     # 核心：sections 逐节校验（与前台渲染器字段一一对应）+
+│   │                           # kicker 编号自动重排（01 由页面渲染，数据从 02 起）+ <slug>.js 导出
+│   └── ContentController.java
 └── config/
     ├── SecurityConfig.java     # 安全链 + CORS（管理台 dev 端口白名单）+ /photos/** permitAll
     └── WebConfig.java          # /photos/** 静态映射到前台 public/photos/（管理台 img 免代理）
@@ -67,6 +74,11 @@ mvn -DskipTests package && java -Dserver.port=8081 -jar target/rain-admin-server
 | PUT | `/api/photos/{id}` | Bearer | `{groupName, shotDate, sortNo}` 全字段更新 |
 | PUT | `/api/photos/{id}/hero` | Bearer | 设为头图（全局唯一，旧头图自动取消） |
 | DELETE | `/api/photos/{id}` | Bearer | 删记录（事务）+ 删文件（失败以 `warning` 提示人工清理） |
+| GET | `/api/content/projects` | Bearer | 项目列表（slug/headline/updatedAt） |
+| GET | `/api/content/projects/{slug}` | Bearer | 详情完整内容（meta/sections 解析为 JSON 结构） |
+| PUT | `/api/content/projects/{slug}` | Bearer | 全量更新；sections 逐节校验失败返回 400 并指明节与字段 |
+| GET | `/api/content/projects/{slug}/export` | Bearer | 生成 `<slug>.js` 全文（头注释原样带回）；管理台复制后整文件替换 `src/data/projects/<slug>.js` + `npm run build` 前台生效（M4 自动写回接管） |
+| GET | `/api/content/screenshots/{slug}` | Bearer | `public/screenshots/<slug>/` 文件名列表（shots 表单选择器，目录不存在返回空数组） |
 
 无 token / token 无效 → `401 {"error":"unauthorized"}`；`/error` 转发路径已 permitAll（否则 404 会被安全链拦成 401，掩盖真实错误码）。
 
@@ -88,6 +100,6 @@ mvn -DskipTests package && java -Dserver.port=8081 -jar target/rain-admin-server
 
 - [x] M1 脚手架 + JWT 登录闭环
 - [x] M2 照片管理（上传压缩 / photo 表 / 列表·更新·删除·设头图 / 静态映射 / 管理台照片页）
-- [ ] M3 项目内容编辑（sections 类型化表单）
+- [x] M3 项目内容编辑（project_detail 表 / sections 类型化表单与校验 / kicker 自动编号 / JS 导出半自动生效）
 - [ ] M4 发布链路（写回 `src/data/*.json` + 触发前台构建）
 - [ ] M5 测试收尾

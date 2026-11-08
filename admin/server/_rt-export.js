@@ -1,0 +1,140 @@
+// ============================================
+// 云枢智慧医院管理平台 — 详情页正文数据
+// 证据基线：zero-one-his2607/his-java j8 分支（76b48c6ed）+ Setroster-docs/压测报告.md
+// 所有数字均有出处；表述遵守诚实口径（MQ 链路止步于通知任务生成）
+// ============================================
+
+export const yunshuDetail = {
+  "slug" : "yunshu",
+  "headline" : "微服务架构下的排班预约服务",
+  "summary" : "基于 Spring Cloud Alibaba 微服务架构的智慧医院管理平台，团队 8 人。我独立负责排班预约服务 his-j8-setroster 的后端全部代码（该模块单人提交）：日/周排班模板、号源时段与放号策略、日历例外（停诊源头）、停诊通知任务与 AI 排班助手，共 24 个 REST 接口 + 1 个 AI 接口。",
+  "meta" : [
+    [
+      "角色",
+      "his-j8-setroster 后端全部代码（单人提交）"
+    ],
+    [
+      "周期",
+      "2026.06 — 至今（核心开发 06–08，缓存/MQ/AI 增强 09–10）"
+    ],
+    [
+      "性质",
+      "团队项目 · 8 人"
+    ],
+    [
+      "技术栈",
+      "Java · Spring Boot · Spring Cloud Alibaba · MyBatis-Plus · Redis/Redisson · RocketMQ · Spring AI"
+    ],
+    [
+      "接口",
+      "24 REST + 1 AI（5 个 Controller 核对）"
+    ]
+  ],
+  "sections" : [
+    {
+      "type" : "arch",
+      "kicker" : "02 / ARCHITECTURE",
+      "component" : "yunshu"
+    },
+    {
+      "note" : "截图注意：打码或使用演示机构的样例数据，避免出现真实患者/医护个人信息。",
+      "type" : "shots",
+      "kicker" : "03 / INTERFACE",
+      "wanted" : [
+        "排班模板列表页（分页 + 多机构切换）",
+        "周排班模板编辑页（乐观锁版本冲突提示）",
+        "日历例外 / 停诊设置界面",
+        "AI 排班助手对话界面",
+        "Swagger 接口文档总览（25 个接口）"
+      ],
+      "pending" : true
+    },
+    {
+      "type" : "impl",
+      "items" : [
+        {
+          "title" : "缓存 — Cache-Aside（日排班选项）",
+          "result" : "50 并发 × 2000 请求：平均 99.3ms → 19.7ms，吞吐 496 → 2480 req/s，P99 1.468s → 0.148s。",
+          "problem" : "日排班下拉接口每次回源查库，50 并发超过 Druid 连接池上限（max-active=20）后排队，P99 拉到 1.47s。",
+          "solution" : "StringRedisTemplate + JSON 序列化的旁路缓存，key 按机构/关键字/分页参数组合；空结果缓存 60s 防穿透，非空 TTL = 3600s 基础 + 0~300s 随机偏移防雪崩；一致性采用先更库后删缓存，SCAN 按前缀清理并以 TTL 兜底；另加启动预热与压测 A/B 总开关。"
+        },
+        {
+          "title" : "并发 — 乐观锁（周排班模板编辑）",
+          "result" : "三段验证通过：修改成功 → 同版本再提交被拦截 → 带新版本提交成功。",
+          "problem" : "两个用户同时编辑同一周排班模板，后提交者会静默覆盖前者的修改。",
+          "solution" : "MyBatis-Plus @Version + 全局 OptimisticLockerInnerInterceptor，DTO 透传 version，edit() 显式设置后更新，更新 0 行即返回失败。"
+        },
+        {
+          "title" : "击穿防护 — Redisson 互斥重建",
+          "result" : "热态 A/B 实测：未加锁并发回源 3~18 次，加锁后收敛为稳定 1 次（c=50 / c=100 各 5–6 轮）。",
+          "problem" : "热点 key 失效瞬间，大量并发同时未命中、同时回源查库（缓存击穿）。",
+          "solution" : "Redisson RLock 与缓存键一一对应（细粒度）；tryLock(0, leaseMs) 抢锁不排队，抢到后先二次检查缓存再回源，未抢到的线程 20ms 轮询等缓存回填；释放前 isHeldByCurrentThread 防误删。"
+        },
+        {
+          "title" : "查询优化 — N+1 → IN 批量 + 内存组装",
+          "result" : "详情固定 3 次 SQL；千级数据分页平均 35.8ms，EXPLAIN 确认命中 idx_bkg_week_sched_tpl_org 复合索引（实测记录见 git 提交 7e4a39918）。",
+          "problem" : "周模板详情先查明细列表、再循环单查日模板名称，明细多时 SQL 次数线性膨胀。",
+          "solution" : "收集去重后的 dayTemplateIds，一次 IN 查询取回并用 Collectors.toMap 内存组装，空明细短路跳过。"
+        },
+        {
+          "title" : "异步 — RocketMQ 停诊通知",
+          "result" : "链路已跑通\"事件 → 幂等落库 → 逐天任务生成\"。诚实口径：任务状态流转到实际向患者触达的下游发送未实现，本页表述止步于通知任务生成。",
+          "problem" : "停诊（日历例外 CLOSED）要通知已预约患者，逐天 × 逐模板展开同步做会拖慢主流程；MQ 至少一次投递要求消费幂等。",
+          "solution" : "生产者 syncSend + 本地重试 3 次、afterCommit 挂事务保证本地事务与发送一致；消费者按天 × 模板展开为通知任务（上限 90 天），任务表唯一键 (exception_id, notify_date, template_id) 幂等，消费时直接 insert、DuplicateKeyException 跳过；消费异常走 RocketMQ 默认重试，超限进死信。"
+        },
+        {
+          "title" : "AI 排班助手 — 意图识别 / Function Calling / RAG",
+          "result" : "方案、代码与学习文档逐条核对一致；\"模型理解 + 规则兜底\"的边界使所有写操作都经过确定性校验。",
+          "problem" : "排班操作与规则问答需求：模型负责理解和决策，服务端负责执行，不允许大模型直接写库或做合规判定。",
+          "solution" : "第一次 LLM 调用做意图分类（QUERY / PLAN / KNOWLEDGE / OTHER）；操作意图挂 Function Calling 工具（查日排班、停诊软删、调度冲突检查、替补推荐）；知识意图走 RAG——智谱 embedding-3 + 内存向量库，Top-3 检索排班规则文档，未配 API Key 时整链路降级不启用；合规判定由纯 Java 规则引擎 RosterRuleChecker 负责（连续工作超限 / 夜班恢复不足 / 专家资质 / 休假冲突四类规则），零 LLM 参与。"
+        }
+      ],
+      "kicker" : "04 / 核心实现"
+    },
+    {
+      "note" : "测试环境：hey -n 2000 -c 50（50 并发 × 2000 请求，全部 200）；对象为 GET listDailyScheduleOptions；服务本机启动，MySQL/Redis/Nacos 位于 dev 虚拟机，Druid max-active=20。\"优化前\"指关闭缓存的稳态基线（连接池热身后第 2 轮），非冷启动首跑。出处：Setroster-docs/压测报告.md。",
+      "type" : "metrics",
+      "items" : [
+        {
+          "delta" : "-90%",
+          "label" : "P99",
+          "value" : "1.468s → 0.148s"
+        },
+        {
+          "delta" : "×5.0",
+          "label" : "吞吐",
+          "value" : "496 → 2480 req/s"
+        },
+        {
+          "delta" : "-80%",
+          "label" : "平均响应",
+          "value" : "99.3 → 19.7ms"
+        }
+      ],
+      "kicker" : "05 / 性能数据（标注测试环境）"
+    },
+    {
+      "type" : "pits",
+      "items" : [
+        {
+          "body" : "压测 P99 飙到 10.3s、200 个请求只回来 151 个。日志显示线程全部卡在锁等待：tryLock 的租约字段是毫秒值却按秒传入，等价于\"愿意等 500 秒\"。统一改为 TimeUnit.MILLISECONDS 并把字段改名 lockLeaseMs，复压恢复正常。",
+          "title" : "坑 1 · Redisson 锁时间单位 bug"
+        },
+        {
+          "body" : "修复单位 bug 后 P99 仍达 10.3s。两个根因：49 个线程在锁上排队、逐个唤醒退化成串行交接；tryLock 与\"二次检查命中就 return\"在同一 try 里，return 跳过 finally 造成锁泄漏，等租约到期才释放。改为 tryLock(0, lease) 不排队、抢不到改 20ms 轮询等回填，并把\"抢锁\"与\"持锁\"拆成两段 try/finally。热态回源收敛为 1 次。",
+          "title" : "坑 2 · 锁排队退化 + 锁泄漏"
+        },
+        {
+          "body" : "关闭预热时 50 并发 200 请求：50 次回源、49 条\"等待缓存重建超时，降级直查库\"告警、最慢 7.42s。单请求实测冷启动首回源 3.40s，超过 2s 锁窗口，抢到锁的还没查完其余线程全部超时。没有加长窗口（治标），改为启动预热 OptionsCacheWarmUpRunner 捂热连接池/语句解析/JIT：回源 50 → 1 次，告警 49 → 0，总耗时 7.48s → 1.84s。",
+          "title" : "坑 3 · 冷启动击穿 — 锁窗口救不了冷池"
+        }
+      ],
+      "kicker" : "06 / 问题与解决"
+    },
+    {
+      "body" : "一是压测方法论：基线必须先定义清楚（稳态 vs 冷启动），阶梯压测 + Little's Law 可以把\"吞吐上不去\"定位到连接池排队这类结构性原因，而不是盲目加缓存；二是互斥重建的工程权衡：锁的价值是把回源并发压成常数，收益大小取决于回源成本，热态便宜的场景它几乎不改变吞吐，冷启动才是致命的；三是 AI 应用的边界设计：让模型负责理解和决策、执行与合规交给确定性代码，既保住了业务正确性，也让每个环节可测试、可降级。",
+      "type" : "text",
+      "kicker" : "07 / 收获"
+    }
+  ]
+}
