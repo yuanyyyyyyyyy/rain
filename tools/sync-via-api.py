@@ -41,33 +41,27 @@ def ls_tree(sha):
         cur[path] = (mode, bsha)
     return cur
 
-lines = git_text("log", "--reverse", "--format=%H%x01%T%x01%an%x01%ae%x01%aI%x01%s").strip().split("\n")
-# [sha, tree, an, ae, ad, msg]：tree sha 由文件内容决定，重放（内容等价）后保持一致
-commits = [l.split("\x01", 5) for l in lines]
+lines = git_text("log", "--reverse", "--format=%H%x01%an%x01%ae%x01%aI%x01%s").strip().split("\n")
+commits = [l.split("\x01", 4) for l in lines]
 
 br = api("GET", "/branches/main")
 parent_sha = br["commit"]["sha"]
 parent_tree = br["commit"]["commit"]["tree"]["sha"]
 head_msg = br["commit"]["commit"]["message"].strip()
-remote_tree = parent_tree
 
-# 断点：远端 HEAD 对应本地序列中的位置。必须「message + tree」双匹配：
-# publish commit 消息固定重复，而重放通道会使本地/远端 hash 分叉——只按消息匹配会把
-# 未推送的同名 publish commit 误判为已推送（2026-11-10 事故：任务 C/F 与截图静默丢失）。
+# 断点：远端 HEAD 对应本地序列中的位置（message 匹配），prev_files 用本地同内容 commit 的树
 start_idx = 0
-prev_files = {}
-for i in range(len(commits) - 1, -1, -1):  # 从最新往回：取最新一个真正等价的断点
-    if commits[i][5].strip() == head_msg and commits[i][1] == remote_tree:
+for i, (sha, an, ae, ad, msg) in enumerate(commits):
+    if msg.strip() == head_msg:
         start_idx = i + 1
-        prev_files = ls_tree(commits[i][0])
+        prev_files = ls_tree(sha)
         break
-if start_idx == 0 and head_msg:
-    # 无断点：检查远端 HEAD 是否本就是本地某 commit 的等价重放失败场景 → 全量重放（幂等安全）
-    print("WARN: no local commit matches remote HEAD (msg+tree); replaying everything", flush=True)
+else:
+    prev_files = {}
 print(f"remote HEAD: {head_msg[:40]!r} -> resume from #{start_idx + 1}/{len(commits)}", flush=True)
 
 for i in range(start_idx, len(commits)):
-    sha, ltree, an, ae, ad, msg = commits[i]
+    sha, an, ae, ad, msg = commits[i]
     cur = ls_tree(sha)
     changes = []
     uploaded = 0
@@ -95,8 +89,3 @@ for i in range(start_idx, len(commits)):
     print(f"[{i+1}/{len(commits)}] {msg[:40]}  (+{uploaded} blobs)", flush=True)
 
 print(f"DONE: main -> {parent_sha[:10]}")
-
-# API ref 更新不保证触发 push event：显式触发部署 workflow
-import subprocess as sp
-r = sp.run(["gh", "workflow", "run", "deploy.yml", "--repo", f"{OWNER}/{REPO}"], capture_output=True, text=True)
-print("deploy triggered" if r.returncode == 0 else f"deploy trigger failed: {r.stderr}")
