@@ -49,10 +49,30 @@ async function requestForm(method, url, formData) {
   return data
 }
 
+// text 响应（如导出 JS 全文）：401 处理一致，成功返回 text
+async function requestText(method, url) {
+  const headers = {}
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  const res = await fetch(url, { method, headers })
+  if (res.status === 401) {
+    clearToken()
+    location.hash = '#/login'
+    throw new Error('登录已过期')
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.error || `请求失败（${res.status}）`)
+  }
+  return res.text()
+}
+
 export const api = {
   get: (url) => request('GET', url),
   post: (url, body) => request('POST', url, body),
   put: (url, body) => request('PUT', url, body),
   delete: (url) => request('DELETE', url),
   postForm: (url, formData) => requestForm('POST', url, formData),
+  getText: (url) => requestText('GET', url),
 }
