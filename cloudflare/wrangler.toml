@@ -1,0 +1,12 @@
+name = "rain-collector"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+
+# D1 绑定：先创建并填入真实 database_id
+#   npx wrangler d1 create rain-collector
+#   npx wrangler d1 execute rain-collector --remote --file schema.sql
+#   npx wrangler secret put ADMIN_TOKEN   # 管理台读接口的 Bearer 密钥
+[[d1_databases]]
+binding = "DB"
+database_name = "rain-collector"
+database_id = "<在 d1 create 后填入>"

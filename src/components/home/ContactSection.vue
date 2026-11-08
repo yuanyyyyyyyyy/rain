@@ -33,7 +33,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { profile } from '../../data/site.js'
+import { profile, apiBase } from '../../data/site.js'
 
 const name = ref('')
 const email = ref('')
@@ -48,7 +48,7 @@ async function submit() {
   try {
     let res
     try {
-      res = await fetch('/api/messages', {
+      res = await fetch(`${apiBase}/api/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.value, email: email.value, body: body.value }),

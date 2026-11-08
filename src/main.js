@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
+import { apiBase } from './data/site.js'
 import './styles/base.scss'
 
 import HomePage from './pages/HomePage.vue'
@@ -29,7 +30,7 @@ const router = createRouter({
 // 静态托管上无后端接收时静默失败，后端公网化后自动生效。
 router.afterEach((to) => {
   try {
-    fetch('/api/t', {
+    fetch(`${apiBase}/api/t`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: to.path, referrer: document.referrer }),
