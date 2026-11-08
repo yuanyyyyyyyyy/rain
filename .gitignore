@@ -1,34 +1,4 @@
-# 依赖与构建产物
 node_modules/
 dist/
-target/
-
 *.local
-.env
-.env.*
-!.env.example
-application-local.yml
-
-# 日志
-*.log
-
-# IDE
-.idea/
-.vscode/
-*.iml
-
-# 操作系统
 .DS_Store
-Thumbs.db
-Desktop.ini
-
-# ZCode 会话工作目录
-.zcode/
-
-.dev.vars
-
-# wrangler 本地状态
-.wrangler/
-
-# 其他 agent 会话的工作目录
-.workbuddy/
