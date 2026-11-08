@@ -10,3 +10,6 @@ app:
   jwt:
     # 至少 32 字节随机串（例如 openssl rand -hex 32 生成）；泄露即轮换
     secret: "<至少32字节随机串>"
+  storage:
+    # 前台 public 目录绝对路径（照片上传后写入其 photos/ 子目录）
+    frontend-public-dir: "G:/Improve/MI/rain/public"
