@@ -3,7 +3,6 @@ package rain.admin.message;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import jakarta.validation.Valid;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
@@ -34,7 +33,7 @@ public class MessageController {
 
     /** 前台提交（公开）：同 IP 60 秒 1 条 */
     @PostMapping("/api/messages")
-    public ResponseEntity<?> submit(@Valid @RequestBody SubmitRequest req,
+    public ResponseEntity<?> submit(@RequestBody SubmitRequest req,
                                     @RequestHeader(value = "X-Forwarded-For", required = false) String xff) {
         String ipHash = sha256(xff != null && !xff.isBlank() ? xff.split(",")[0].trim() : "local");
         LocalDateTime last = lastSubmit.get(ipHash);
@@ -49,13 +48,6 @@ public class MessageController {
         repo.save(m);
         lastSubmit.put(ipHash, LocalDateTime.now());
         return ResponseEntity.ok(Map.of("ok", true));
-    }
-
-    /** 限频表回收：XFF 可伪造轮换导致 key 只增不减，5 分钟清一次过期项 */
-    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 300_000)
-    public void evictStaleSubmitters() {
-        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(5);
-        lastSubmit.values().removeIf(t -> t.isBefore(cutoff));
     }
 
     /** 收件箱列表（管理台） */
@@ -77,25 +69,6 @@ public class MessageController {
         if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "留言不存在"));
         Message m = opt.get();
         m.setRead(true);
-        repo.save(m);
-        return ResponseEntity.ok(Map.of("ok", true));
-    }
-
-    /** 全部标记已读 */
-    @PostMapping("/api/messages/read-all")
-    public Map<String, Boolean> readAll() {
-        repo.markAllRead();
-        return Map.of("ok", true);
-    }
-
-    /** 归档 / 取消归档（body {"archived": false} 取消；缺省归档） */
-    @PutMapping("/api/messages/{id}/archive")
-    public ResponseEntity<?> setArchived(@PathVariable Long id,
-                                         @RequestBody(required = false) Map<String, Object> body) {
-        var opt = repo.findById(id);
-        if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "留言不存在"));
-        Message m = opt.get();
-        m.setArchived(body == null || !Boolean.FALSE.equals(body.get("archived")));
         repo.save(m);
         return ResponseEntity.ok(Map.of("ok", true));
     }

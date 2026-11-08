@@ -33,10 +33,6 @@ public class Message {
     @Column(name = "is_read", nullable = false)
     private Boolean read = false;
 
-    /** 归档：从待处理列表移除但仍可检索 */
-    @Column(nullable = false)
-    private Boolean archived = false;
-
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -53,7 +49,5 @@ public class Message {
     public void setIpHash(String ipHash) { this.ipHash = ipHash; }
     public Boolean getRead() { return read; }
     public void setRead(Boolean read) { this.read = read; }
-    public Boolean getArchived() { return archived; }
-    public void setArchived(Boolean archived) { this.archived = archived; }
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

@@ -7,6 +7,7 @@
         <router-link to="/photos" active-class="on">02 / 照片管理</router-link>
         <router-link to="/content" active-class="on">03 / 项目内容</router-link>
         <router-link to="/publish" active-class="on">04 / 发布</router-link>
+        <router-link to="/inbox" active-class="on">05 / 收件箱</router-link>
       </nav>
       <button class="out" @click="logout">退出登录</button>
     </aside>

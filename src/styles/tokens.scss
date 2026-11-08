@@ -23,6 +23,7 @@ $c-blue-faint: #fbfcff; // 极淡蓝白底（标签底/图内块底）
 $c-bg-soft: #f6f8fc; // 占位/骨架底色
 $c-aux: #aab8d8; // 基准辅助线（浅蓝灰）
 $c-dot: #536078; // 全局点阵肌理基色
+$c-danger: #a32d2d; // 错误红（与管理台同源）
 
 // ---------- 字体 ----------
 $font-sans: 'Manrope', 'Noto Sans SC', sans-serif;
@@ -50,6 +51,7 @@ $gutter-x: 44px; // 桌面左右留白（原型实测值）
   --c-bg-soft: #{$c-bg-soft};
   --c-aux: #{$c-aux};
   --c-dot: #{$c-dot};
+  --c-danger: #{$c-danger};
   --font-sans: #{$font-sans};
   --font-mono: #{$font-mono};
   --max-w: #{$max-w};
