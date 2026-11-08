@@ -1,0 +1,38 @@
+// ============================================
+// YUAN Portfolio — Design Tokens
+// 唯一视觉基准：纯白 + 克莱因蓝（以交接文档第 3 节为准）
+// ============================================
+
+// ---------- 色彩 ----------
+$c-bg: #ffffff;
+$c-ink: #202327;
+$c-muted: #777d82;
+$c-line: #d9dce0;
+
+$c-blue: #002fa7; // 唯一品牌强调色
+$c-blue-soft: #eaf0ff; // 标签底/大面积安全色
+$c-blue-mid: #4167c5; // 次级蓝
+$c-blue-shadow: #cbd7f4; // 硬投影
+
+// ---------- 字体 ----------
+$font-sans: 'Manrope', 'Noto Sans SC', sans-serif;
+$font-mono: 'DM Mono', monospace;
+
+// ---------- 布局 ----------
+$max-w: 1160px;
+$gutter-x: 44px; // 桌面左右留白（原型实测值）
+
+// ---------- 导出为 CSS 变量（组件内可直接用 var()） ----------
+:root {
+  --c-bg: #{$c-bg};
+  --c-ink: #{$c-ink};
+  --c-muted: #{$c-muted};
+  --c-line: #{$c-line};
+  --c-blue: #{$c-blue};
+  --c-blue-soft: #{$c-blue-soft};
+  --c-blue-mid: #{$c-blue-mid};
+  --c-blue-shadow: #{$c-blue-shadow};
+  --font-sans: #{$font-sans};
+  --font-mono: #{$font-mono};
+  --max-w: #{$max-w};
+}
