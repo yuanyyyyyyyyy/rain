@@ -32,9 +32,27 @@ async function request(method, url, body) {
   return data
 }
 
+// multipart 上传：不设 Content-Type（浏览器自动带 boundary），401 处理与 request 一致
+async function requestForm(method, url, formData) {
+  const headers = {}
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  const res = await fetch(url, { method, headers, body: formData })
+  if (res.status === 401) {
+    clearToken()
+    location.hash = '#/login'
+    throw new Error('登录已过期')
+  }
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || `请求失败（${res.status}）`)
+  return data
+}
+
 export const api = {
   get: (url) => request('GET', url),
   post: (url, body) => request('POST', url, body),
   put: (url, body) => request('PUT', url, body),
   delete: (url) => request('DELETE', url),
+  postForm: (url, formData) => requestForm('POST', url, formData),
 }
