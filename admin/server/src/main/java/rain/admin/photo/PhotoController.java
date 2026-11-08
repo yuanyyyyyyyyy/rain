@@ -1,5 +1,6 @@
 package rain.admin.photo;
 
+import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -19,13 +20,15 @@ public class PhotoController {
         this.repo = repo;
     }
 
+    public record UploadParams(@NotBlank String groupName, LocalDate shotDate) {}
+
     /** 全量列表（按分组、组内排序号） */
     @GetMapping
     public List<Photo> list() {
         return repo.findAllByOrderByGroupNameAscSortNoAscIdAsc();
     }
 
-    /** 上传：multipart 字段 file + groupName（必填）+ shotDate（可空；缺省时自动提取 EXIF→mtime） */
+    /** 上传：multipart 字段 file + groupName（必填）+ shotDate（可空） */
     @PostMapping("/upload")
     public ResponseEntity<?> upload(@RequestParam("file") MultipartFile file,
                                     @RequestParam("groupName") String groupName,
@@ -33,63 +36,16 @@ public class PhotoController {
         try {
             PhotoService.UploadResult r = service.upload(file, shotDate, groupName);
             Photo p = r.photo();
-            Map<String, Object> body = new java.util.LinkedHashMap<>();
-            body.put("id", p.getId());
-            body.put("pid", p.getPid());
-            body.put("width", p.getWidth());
-            body.put("height", p.getHeight());
-            body.put("shotDate", p.getShotDate() == null ? "" : p.getShotDate().toString());
-            body.put("dateSource", r.dateSource());
-            return ResponseEntity.ok(body);
+            return ResponseEntity.ok(Map.of(
+                    "id", p.getId(),
+                    "pid", p.getPid(),
+                    "width", p.getWidth(),
+                    "height", p.getHeight(),
+                    "snippet", r.snippet()));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of("error", "上传失败：" + e.getMessage()));
-        }
-    }
-
-    /** 批量重排（拖拽排序一次请求写回；items 支持跨组：groupName 可选携带） */
-    @PutMapping("/reorder")
-    public ResponseEntity<?> reorder(@RequestBody List<PhotoService.ReorderItem> items) {
-        try {
-            return ResponseEntity.ok(Map.of("updated", service.reorder(items)));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    /** 更新分组/日期/排序号/图注（管理台表单全字段提交） */
-    @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody PhotoService.UpdateParams params) {
-        try {
-            return ResponseEntity.ok(service.update(id, params));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    /** 设为头图（全局唯一：旧头图清零 + 本张置一） */
-    @PutMapping("/{id}/hero")
-    public ResponseEntity<?> setHero(@PathVariable Long id) {
-        try {
-            service.setHero(id);
-            return ResponseEntity.ok(Map.of("ok", true));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    /** 删除：先删记录（事务），后删文件（失败以 warning 提示人工清理，不回滚记录删除） */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Long id) {
-        try {
-            Photo p = service.deleteRecord(id);
-            List<String> failedFiles = service.deleteFiles(p);
-            if (failedFiles.isEmpty()) return ResponseEntity.ok(Map.of("deleted", p.getPid()));
-            return ResponseEntity.ok(Map.of("deleted", p.getPid(),
-                    "warning", "记录已删除，但以下文件删除失败，请人工清理：" + String.join(", ", failedFiles)));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 }

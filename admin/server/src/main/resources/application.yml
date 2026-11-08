@@ -12,8 +12,17 @@ spring:
     open-in-view: false
   jackson:
     default-property-inclusion: non_null
+  servlet:
+    multipart:
+      max-file-size: 20MB    # Spring 默认 1MB，照片上传必须显式放大
+      max-request-size: 40MB
 
 # JWT 参数：secret 在 application-local.yml 覆盖
 app:
   jwt:
     expire-minutes: 120
+  storage:
+    # 前台 public 目录绝对路径（机器相关，在 application-local.yml 覆盖）
+    frontend-public-dir: ""
+    # 上传原始文件留档目录（相对启动目录，已 gitignore）
+    orig-dir: var/photos-orig
