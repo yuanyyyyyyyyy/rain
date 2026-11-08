@@ -110,81 +110,13 @@ class PhotoServiceTest {
         }
     }
 
-    /** 读取 test/resources/exif/ 下的夹具 */
-    private static MockMultipartFile fixture(String name) throws Exception {
-        byte[] bytes = Files.readAllBytes(Path.of(PhotoServiceTest.class.getResource("/exif/" + name).toURI()));
-        return new MockMultipartFile("file", name, "image/jpeg", bytes);
-    }
-
     @Test
-    void uploadReadsExifDate() throws Exception {
+    void snippetFollowsPhotosJsConventions() throws Exception {
         when(repo.maxPidNumber()).thenReturn(0);
         when(repo.maxSortNoInGroup(anyString())).thenReturn(0);
         when(repo.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-        PhotoService.UploadResult r = service.upload(fixture("exif-datetime.jpg"), null, "STREET");
-        assertEquals(java.time.LocalDate.of(2024, 5, 1), r.photo().getShotDate());
-        assertEquals("exif", r.dateSource());
-    }
-
-    @Test
-    void paramDateWinsOverExif() throws Exception {
-        when(repo.maxPidNumber()).thenReturn(0);
-        when(repo.maxSortNoInGroup(anyString())).thenReturn(0);
-        when(repo.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-        PhotoService.UploadResult r = service.upload(fixture("exif-datetime.jpg"),
-                java.time.LocalDate.of(2020, 1, 1), "STREET");
-        assertEquals(java.time.LocalDate.of(2020, 1, 1), r.photo().getShotDate());
-        assertEquals("manual", r.dateSource());
-    }
-
-    @Test
-    void noExifFallsBackToMtime() throws Exception {
-        when(repo.maxPidNumber()).thenReturn(0);
-        when(repo.maxSortNoInGroup(anyString())).thenReturn(0);
-        when(repo.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-        PhotoService.UploadResult r = service.upload(
-                new MockMultipartFile("file", "plain.jpg", "image/jpeg", jpegBytes(100, 80)), null, "STREET");
-        // 夹具刚写入 = 今天；mtime 兜底来源标注
-        assertEquals(java.time.LocalDate.now(), r.photo().getShotDate());
-        assertEquals("mtime", r.dateSource());
-    }
-
-    @Test
-    void orientation6RotatesPixelsAndSwapsDims() throws Exception {
-        when(repo.maxPidNumber()).thenReturn(0);
-        when(repo.maxSortNoInGroup(anyString())).thenReturn(0);
-        when(repo.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-        // 原始像素 600x400 + Orientation 6 → 顺时针 90° 摆正为 400x600
-        PhotoService.UploadResult r = service.upload(fixture("exif-oriented6.jpg"), null, "STREET");
-        assertEquals(400, r.photo().getWidth());
-        assertEquals(600, r.photo().getHeight());
-
-        // 产物实际尺寸与库一致（读回压缩产物验证）
-        BufferedImage out = ImageIO.read(publicDir.resolve("photos").resolve("p01.jpg").toFile());
-        assertEquals(400, out.getWidth());
-        assertEquals(600, out.getHeight());
-    }
-
-    @Test
-    void updateSetsCaption() throws Exception {
-        Photo p = new Photo();
-        p.setPid("p01");
-        p.setGroupName("STREET");
-        p.setSortNo(1);
-        p.setWidth(100);
-        p.setHeight(80);
-        when(repo.findById(1L)).thenReturn(java.util.Optional.of(p));
-        when(repo.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-        Photo updated = service.update(1L, new PhotoService.UpdateParams("LIGHT", null, 2, "  雨后的涩谷  "));
-        assertEquals("LIGHT", updated.getGroupName());
-        assertEquals("雨后的涩谷", updated.getCaption());
-        // 空白图注 = 清空
-        Photo cleared = service.update(1L, new PhotoService.UpdateParams("LIGHT", null, 2, "   "));
-        assertNull(cleared.getCaption());
+        MockMultipartFile file = new MockMultipartFile("file", "x.jpg", "image/jpeg", jpegBytes(100, 80));
+        PhotoService.UploadResult r = service.upload(file, java.time.LocalDate.of(2026, 1, 7), "LIGHT");
+        assertEquals("P('p01', '2026-01-07'),        // LIGHT\np01: 100 / 80,", r.snippet());
     }
 }

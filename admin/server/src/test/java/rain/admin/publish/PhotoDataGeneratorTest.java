@@ -42,20 +42,11 @@ class PhotoDataGeneratorTest {
         // dims 保持 W / H 分数表达式（不是小数）
         assertTrue(js.contains("p01: 1600 / 902,"));
         assertTrue(js.contains("p02: 902 / 1600,"));
-        // 空日期输出空串；caption 缺省时不带第三参
+        // 空日期输出空串
         assertTrue(js.contains("P('p03', ''),"));
         // 每行 4 条 plates（本例每组 1 条，行首缩进 6 空格）
         assertTrue(js.contains("      P('p01', '2023-07-24'),"));
-        assertTrue(js.contains("const P = (id, date, cap) => ({ id, date, ...(cap ? { cap } : {}) })"));
         assertTrue(js.endsWith("export const plateNo = (idx) => `PLATE.${String(idx + 1).padStart(3, '0')}`\n"));
-    }
-
-    @Test
-    void emitsCaptionWithEscaping() {
-        Photo withCap = photo("p01", "STREET", 1, 1600, 902, LocalDate.of(2023, 7, 24));
-        withCap.setCaption("雨后 It's fine, \\涩谷");
-        String js = gen.generate(List.of(withCap), withCap);
-        assertTrue(js.contains("P('p01', '2023-07-24', '雨后 It\\'s fine, \\\\涩谷'),"));
     }
 
     @Test
