@@ -1,0 +1,19 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: rain-admin-server
+  profiles:
+    active: local   # 数据源等敏感配置在 application-local.yml（不入 git）
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  jackson:
+    default-property-inclusion: non_null
+
+# JWT 参数：secret 在 application-local.yml 覆盖
+app:
+  jwt:
+    expire-minutes: 120

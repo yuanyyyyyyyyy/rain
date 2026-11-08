@@ -1,0 +1,31 @@
+// ============================================
+// rain admin UI — Design Tokens
+// 与前台 src/styles/tokens.scss 同源（Klein Blue 工业档案风）
+// 改主题两处同步
+// ============================================
+
+$c-bg: #ffffff;
+$c-ink: #202327;
+$c-muted: #777d82;
+$c-line: #d9dce0;
+
+$c-blue: #002fa7;
+$c-blue-soft: #eaf0ff;
+$c-blue-mid: #4167c5;
+$c-blue-shadow: #cbd7f4;
+
+$font-sans: 'Manrope', 'Noto Sans SC', sans-serif;
+$font-mono: 'DM Mono', monospace;
+
+:root {
+  --c-bg: #{$c-bg};
+  --c-ink: #{$c-ink};
+  --c-muted: #{$c-muted};
+  --c-line: #{$c-line};
+  --c-blue: #{$c-blue};
+  --c-blue-soft: #{$c-blue-soft};
+  --c-blue-mid: #{$c-blue-mid};
+  --c-blue-shadow: #{$c-blue-shadow};
+  --font-sans: #{$font-sans};
+  --font-mono: #{$font-mono};
+}
