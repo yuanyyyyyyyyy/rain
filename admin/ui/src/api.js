@@ -76,3 +76,29 @@ export const api = {
   postForm: (url, formData) => requestForm('POST', url, formData),
   getText: (url) => requestText('GET', url),
 }
+
+// ---- Worker 数据源（Cloudflare collector：公网统计/收件箱）----
+// 侧栏「数据源」配置 base + ADMIN_TOKEN 存 localStorage；未配置或请求失败时页面回退本地 Spring 后端
+const WORKER_BASE_KEY = 'rain_worker_base'
+const WORKER_TOKEN_KEY = 'rain_worker_token'
+
+export function getWorkerCfg() {
+  return {
+    base: localStorage.getItem(WORKER_BASE_KEY) || '',
+    token: localStorage.getItem(WORKER_TOKEN_KEY) || '',
+  }
+}
+
+export function setWorkerCfg(base, token) {
+  localStorage.setItem(WORKER_BASE_KEY, base.replace(/\/$/, ''))
+  localStorage.setItem(WORKER_TOKEN_KEY, token)
+}
+
+export async function workerGet(path) {
+  const { base, token } = getWorkerCfg()
+  const res = await fetch(`${base}${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error(`Worker ${res.status}`)
+  return res.json()
+}
