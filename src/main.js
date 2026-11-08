@@ -10,7 +10,8 @@ import PhotographyPage from './pages/PhotographyPage.vue'
 import NotFoundPage from './pages/NotFoundPage.vue'
 
 const router = createRouter({
-  history: createWebHistory(),
+  // BASE_URL 随 Vite base 切换：本地 '/'，GitHub Pages 构建时 '/rain/'
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', name: 'home', component: HomePage },
     { path: '/projects/:slug', name: 'project', component: ProjectDetailPage },
