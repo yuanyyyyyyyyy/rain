@@ -36,6 +36,13 @@ src/main/java/rain/admin/
 │   ├── ContentService.java     # 核心：sections 逐节校验（与前台渲染器字段一一对应）+
 │   │                           # kicker 编号自动重排（01 由页面渲染，数据从 02 起）+ <slug>.js 导出
 │   └── ContentController.java
+├── publish/                    # M4 发布链路
+│   ├── PublishLog.java         # 发布历史（status/output/duration/written_files）
+│   ├── PublishLogRepo.java
+│   ├── PhotoDataGenerator.java # photo 表 → photos.js 全文（GROUP_META 固定组名/描述，dims 保留 W/H 分数表达式）
+│   ├── PublishService.java     # 编排：生成全部数据文件（tmp→原子替换）→ ProcessBuilder npm run build
+│   │                           # （超时 300s，输出走临时文件）→ 落库；AtomicBoolean 防并发（409）
+│   └── PublishController.java
 └── config/
     ├── SecurityConfig.java     # 安全链 + CORS（管理台 dev 端口白名单）+ /photos/** permitAll
     └── WebConfig.java          # /photos/** 静态映射到前台 public/photos/（管理台 img 免代理）
@@ -79,6 +86,11 @@ mvn -DskipTests package && java -Dserver.port=8081 -jar target/rain-admin-server
 | PUT | `/api/content/projects/{slug}` | Bearer | 全量更新；sections 逐节校验失败返回 400 并指明节与字段 |
 | GET | `/api/content/projects/{slug}/export` | Bearer | 生成 `<slug>.js` 全文（头注释原样带回）；管理台复制后整文件替换 `src/data/projects/<slug>.js` + `npm run build` 前台生效（M4 自动写回接管） |
 | GET | `/api/content/screenshots/{slug}` | Bearer | `public/screenshots/<slug>/` 文件名列表（shots 表单选择器，目录不存在返回空数组） |
+| POST | `/api/publish` | Bearer | 一键发布：写回 photos.js + 项目数据文件（tmp→原子替换）→ npm run build（300s 超时）→ publish_log；进行中重复触发 409 |
+| GET | `/api/publish/logs` | Bearer | 发布历史（最近 20 条） |
+| GET | `/api/publish/status` | Bearer | 状态摘要（照片数/项目数/上次发布/是否进行中） |
+
+> 数据文件自此为发布产物：`src/data/photos.js`、`src/data/projects/<slug>.js` 由发布链路生成（语义与手写版一致，头注释/出处经 headerNote 与固定模板保留）；手工改这些文件会在下次发布时被覆盖，改内容请走管理台。
 
 无 token / token 无效 → `401 {"error":"unauthorized"}`；`/error` 转发路径已 permitAll（否则 404 会被安全链拦成 401，掩盖真实错误码）。
 
@@ -101,5 +113,5 @@ mvn -DskipTests package && java -Dserver.port=8081 -jar target/rain-admin-server
 - [x] M1 脚手架 + JWT 登录闭环
 - [x] M2 照片管理（上传压缩 / photo 表 / 列表·更新·删除·设头图 / 静态映射 / 管理台照片页）
 - [x] M3 项目内容编辑（project_detail 表 / sections 类型化表单与校验 / kicker 自动编号 / JS 导出半自动生效）
-- [ ] M4 发布链路（写回 `src/data/*.json` + 触发前台构建）
+- [x] M4 发布链路（数据文件原子写回 / ProcessBuilder 构建 / publish_log / 管理台发布页——半自动过渡全部自动接管）
 - [ ] M5 测试收尾
