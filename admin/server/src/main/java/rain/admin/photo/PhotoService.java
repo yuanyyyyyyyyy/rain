@@ -6,6 +6,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import javax.imageio.ImageIO;
 import net.coobird.thumbnailator.Thumbnails;
@@ -100,6 +102,66 @@ public class PhotoService {
         String date = p.getShotDate() == null ? "" : p.getShotDate().toString();
         return "P('" + p.getPid() + "', '" + date + "'),        // " + p.getGroupName()
                 + "\n" + p.getPid() + ": " + p.getWidth() + " / " + p.getHeight() + ",";
+    }
+
+    public record UpdateParams(String groupName, LocalDate shotDate, Integer sortNo) {}
+
+    /** 更新分组/日期/排序号（管理台表单总是提交全字段；shotDate 可空 = 清空日期） */
+    @Transactional
+    public Photo update(Long id, UpdateParams params) {
+        Photo p = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("照片不存在"));
+        if (params.groupName() == null || !GROUPS.contains(params.groupName())) {
+            throw new IllegalArgumentException("分组必须是 STREET / LIGHT / DAILY 之一");
+        }
+        if (params.sortNo() == null || params.sortNo() < 0) throw new IllegalArgumentException("排序号无效");
+        p.setGroupName(params.groupName());
+        p.setShotDate(params.shotDate());
+        p.setSortNo(params.sortNo());
+        return repo.save(p);
+    }
+
+    /** 设头图：旧头图清零 + 新头图置一（实体操作而非 bulk update，避免一级缓存不同步把旧 hero 写回） */
+    @Transactional
+    public void setHero(Long id) {
+        Photo target = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("照片不存在"));
+        for (Photo h : repo.findByIsHeroTrue()) {
+            h.setIsHero(false);
+            repo.save(h);
+        }
+        target.setIsHero(true);
+        repo.save(target);
+    }
+
+    /** 删除记录（事务内）；文件删除由调用方在事务提交后执行，失败不影响记录删除 */
+    @Transactional
+    public Photo deleteRecord(Long id) {
+        Photo p = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("照片不存在"));
+        repo.delete(p);
+        return p;
+    }
+
+    /** 删除压缩产物 + 原始副本（容忍缺失）；返回失败清单，空 = 全部成功 */
+    public List<String> deleteFiles(Photo p) {
+        List<String> failed = new ArrayList<>();
+        try {
+            Files.deleteIfExists(frontendPublicDir.resolve("photos").resolve(p.getPid() + ".jpg"));
+        } catch (IOException e) {
+            failed.add("photos/" + p.getPid() + ".jpg");
+        }
+        if (Files.isDirectory(origDir)) {
+            try (var stream = Files.list(origDir)) {
+                stream.filter(f -> f.getFileName().toString().startsWith(p.getPid() + "-")).forEach(f -> {
+                    try {
+                        Files.deleteIfExists(f);
+                    } catch (IOException e) {
+                        failed.add(f.getFileName().toString());
+                    }
+                });
+            } catch (IOException ignored) {
+                // 遍历失败按残留处理，由调用方提示人工清理
+            }
+        }
+        return failed;
     }
 
     private static String sanitize(String name) {
