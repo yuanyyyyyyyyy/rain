@@ -18,7 +18,7 @@ npm run build
 |---|---|---|
 | `#/login` | 登录（admin / admin123） | ✅ |
 | `#/` | 01 概览 Dashboard | 占位 |
-| `#/photos` | 02 照片管理 | 占位，M2 实现 |
+| `#/photos` | 02 照片管理：上传（自动压缩）+ photos.js 片段复制 / 三组网格 / 组内拖拽排序 / 行内编辑 / 设头图 / 删除二次确认 | ✅ |
 | `#/content` | 03 内容编辑 | 占位，M3 实现 |
 | `#/publish` | 04 发布 | 占位，M4 实现 |
 
@@ -32,7 +32,7 @@ npm run build
 
 ```
 src/
-├── api.js              # 统一 fetch 封装：token 注入 + 401 处理（无 axios 依赖）
+├── api.js              # 统一 fetch 封装：token 注入 + 401 处理 + multipart postForm（无 axios 依赖）
 ├── router/index.js     # hash 模式路由 + 登录守卫
 ├── styles/tokens.scss  # Klein Blue v2 设计 Token（与前台同源）
 └── pages/
@@ -40,3 +40,5 @@ src/
     ├── LayoutPage.vue  # 侧栏布局（01-04 菜单 + 退出）
     └── Dashboard/Photos/Content/PublishPage.vue
 ```
+
+照片缩略图经 Vite proxy `/photos` → 后端静态映射（后端 `/photos/**` 直指前台 `public/photos/`），dev 与生产同路径。
