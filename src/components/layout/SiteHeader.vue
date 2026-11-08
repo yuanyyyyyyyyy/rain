@@ -5,15 +5,15 @@
         <span class="mark">Y</span>
         <span>YUAN / PERSONAL ARCHIVE</span>
       </RouterLink>
-      <button class="menu-btn" :aria-expanded="open" :aria-label="open ? '关闭菜单' : '打开菜单'" @click="open = !open" @keydown.esc="open = false">
+      <button class="menu-btn" aria-label="打开菜单" @click="open = !open">
         <span></span><span></span>
       </button>
-      <nav :class="{ open }" @keydown.esc="open = false">
-        <RouterLink to="/#work" @click="open = false">WORK</RouterLink>
-        <RouterLink to="/#capabilities" @click="open = false">CAPABILITIES</RouterLink>
+      <nav :class="{ open }">
+        <a href="/#work" @click="open = false">WORK</a>
+        <a href="/#capabilities" @click="open = false">CAPABILITIES</a>
         <RouterLink to="/about" @click="open = false">ABOUT</RouterLink>
         <RouterLink to="/photography" @click="open = false">PHOTOGRAPHY</RouterLink>
-        <RouterLink class="contact" to="/#contact" @click="open = false">CONTACT ↗</RouterLink>
+        <a class="contact" href="/#contact" @click="open = false">CONTACT ↗</a>
       </nav>
     </div>
   </header>
@@ -28,7 +28,7 @@ const open = ref(false)
 .site-header {
   height: 76px;
   border-bottom: 1px solid var(--c-line);
-  background: var(--c-bg);
+  background: #fff;
   position: sticky;
   top: 0;
   z-index: 20;
@@ -126,7 +126,7 @@ nav {
     top: 65px;
     left: 0;
     right: 0;
-    background: var(--c-bg);
+    background: #fff;
     border-bottom: 1px solid var(--c-line);
     flex-direction: column;
     align-items: flex-start;
