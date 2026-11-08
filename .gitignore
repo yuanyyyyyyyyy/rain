@@ -1,4 +1,24 @@
+# 依赖与构建产物
 node_modules/
 dist/
+target/
+
+# 本地环境与凭据（application-local.yml 双保险，勿删）
 *.local
+.env
+.env.*
+!.env.example
+application-local.yml
+
+# 日志
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# 操作系统
 .DS_Store
+Thumbs.db
+Desktop.ini
