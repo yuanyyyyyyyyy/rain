@@ -44,18 +44,6 @@
       <artifactId>mysql-connector-j</artifactId>
       <scope>runtime</scope>
     </dependency>
-    <!-- 照片压缩：长边 1600 / q80，对齐前台现有管线参数 -->
-    <dependency>
-      <groupId>net.coobird</groupId>
-      <artifactId>thumbnailator</artifactId>
-      <version>0.4.20</version>
-    </dependency>
-    <!-- EXIF 读取：上传时自动提取拍摄日期 / 方向（纯 Java，零传递依赖） -->
-    <dependency>
-      <groupId>com.drewnoakes</groupId>
-      <artifactId>metadata-extractor</artifactId>
-      <version>2.19.0</version>
-    </dependency>
     <dependency>
       <groupId>io.jsonwebtoken</groupId>
       <artifactId>jjwt-api</artifactId>

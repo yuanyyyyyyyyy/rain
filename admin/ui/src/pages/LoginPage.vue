@@ -9,7 +9,7 @@
         <p v-if="err" class="err">{{ err }}</p>
         <button type="submit" :disabled="loading">{{ loading ? '验证中…' : '登录' }}</button>
       </form>
-      <p class="hint">首次启动时由服务端生成初始密码（见后端控制台输出）；登录后请在「设置」中修改</p>
+      <p class="hint">默认账号 admin / admin123（首次启动自动创建）</p>
     </div>
   </div>
 </template>
@@ -103,7 +103,7 @@ button {
   }
 }
 .err {
-  color: var(--c-danger);
+  color: #a32d2d;
   font-size: 12px;
 }
 .hint {

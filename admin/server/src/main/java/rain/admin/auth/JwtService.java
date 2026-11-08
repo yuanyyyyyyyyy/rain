@@ -11,8 +11,7 @@ import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-/** JWT 签发与校验（单管理员场景，subject = 用户名）。
- *  签名算法由密钥长度决定：jjwt hmacShaKeyFor 对 ≥48 字节密钥取 HS384（与 README 口径一致）。 */
+/** JWT 签发与校验（HS256，单管理员场景，subject = 用户名） */
 @Service
 public class JwtService {
 

@@ -1,5 +1,3 @@
 target/
 application-local.yml
 *.log
-var/
-.admin-password.local
