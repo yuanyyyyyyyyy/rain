@@ -34,6 +34,8 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login").permitAll()
+                        // 前台 1px 埋点上报（公开；统计查询走 /api/stats/** 仍需鉴权）
+                        .requestMatchers("/api/t").permitAll()
                         // 错误转发(/error)不带原请求的认证上下文，放行后 404 才能正常返回
                         .requestMatchers("/error").permitAll()
                         // 照片文件本身是公开资源（前台同源展示），管理台 img 直接经此读取
