@@ -1,0 +1,55 @@
+package rain.admin.content;
+
+import jakarta.persistence.*;
+import java.time.LocalDateTime;
+
+/** 项目详情正文（详情页 headline/summary/meta/sections）。前台数据文件由导出功能人工同步，M4 自动写回接管。 */
+@Entity
+@Table(name = "project_detail")
+public class ProjectDetail {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    /** 前台路由 slug（yunshu / intelnexus / 未来 shimmer） */
+    @Column(nullable = false, unique = true, length = 50)
+    private String slug;
+
+    @Column(nullable = false, length = 200)
+    private String headline;
+
+    @Column(nullable = false, columnDefinition = "text")
+    private String summary;
+
+    /** 数据文件头注释原文（证据基线/诚实口径说明），导出时原样带回 */
+    @Column(name = "header_note", columnDefinition = "text")
+    private String headerNote;
+
+    /** [[label, value], …] 二元数组，JSON 列存取 */
+    @Column(name = "meta_json", columnDefinition = "json")
+    private String metaJson;
+
+    /** sections 数组（异构类型），JSON 列存取 */
+    @Column(name = "sections_json", columnDefinition = "json")
+    private String sectionsJson;
+
+    @Column(nullable = false)
+    private LocalDateTime updatedAt = LocalDateTime.now();
+
+    public Long getId() { return id; }
+    public String getSlug() { return slug; }
+    public void setSlug(String slug) { this.slug = slug; }
+    public String getHeadline() { return headline; }
+    public void setHeadline(String headline) { this.headline = headline; }
+    public String getSummary() { return summary; }
+    public void setSummary(String summary) { this.summary = summary; }
+    public String getHeaderNote() { return headerNote; }
+    public void setHeaderNote(String headerNote) { this.headerNote = headerNote; }
+    public String getMetaJson() { return metaJson; }
+    public void setMetaJson(String metaJson) { this.metaJson = metaJson; }
+    public String getSectionsJson() { return sectionsJson; }
+    public void setSectionsJson(String sectionsJson) { this.sectionsJson = sectionsJson; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+}

@@ -1,0 +1,63 @@
+package rain.admin.content;
+
+import java.util.List;
+import java.util.Map;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/content")
+public class ContentController {
+
+    private final ContentService service;
+
+    public ContentController(ContentService service) {
+        this.service = service;
+    }
+
+    /** 项目列表（管理台切换用） */
+    @GetMapping("/projects")
+    public List<Map<String, Object>> list() {
+        return service.list().stream()
+                .map(d -> Map.<String, Object>of(
+                        "slug", d.getSlug(),
+                        "headline", d.getHeadline(),
+                        "updatedAt", d.getUpdatedAt().toString()))
+                .toList();
+    }
+
+    @GetMapping("/projects/{slug}")
+    public ResponseEntity<?> detail(@PathVariable String slug) {
+        try {
+            return ResponseEntity.ok(service.toResponse(service.bySlug(slug)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** 全量更新（先校验后落库） */
+    @PutMapping("/projects/{slug}")
+    public ResponseEntity<?> update(@PathVariable String slug, @RequestBody ContentService.UpdateRequest req) {
+        try {
+            return ResponseEntity.ok(service.toResponse(service.update(slug, req)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** 导出 <slug>.js 全文（text/plain，管理台显示 + 复制，人工替换数据文件后 build） */
+    @GetMapping(value = "/projects/{slug}/export", produces = "text/plain;charset=UTF-8")
+    public ResponseEntity<?> export(@PathVariable String slug) {
+        try {
+            return ResponseEntity.ok(service.export(service.bySlug(slug)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** shots 表单截图选择器：public/screenshots/<slug>/ 文件名列表 */
+    @GetMapping("/screenshots/{slug}")
+    public List<String> screenshots(@PathVariable String slug) {
+        return service.listScreenshots(slug);
+    }
+}
