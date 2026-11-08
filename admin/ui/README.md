@@ -17,11 +17,10 @@ npm run build
 | 路由（hash 模式） | 页面 | 状态 |
 |---|---|---|
 | `#/login` | 登录（admin / admin123） | ✅ |
-| `#/` | 01 概览：PV/UV 卡片、14 天趋势图、热门页面 Top5、照片/项目数 | ✅ |
-| `#/photos` | 02 照片管理：上传（自动压缩）+ photos.js 片段复制 / 三组网格 / 组内拖拽排序 / 行内编辑 / 设头图 / 删除二次确认 | ✅ |
-| `#/content` | 03 内容编辑：项目切换 / 基本信息+头注释 / meta 行编辑 / sections 类型化表单（arch 只读，impl/metrics/pits 条目增删，shots pending 切换+截图选择器）/ 节增删移+编号自动重排 / 导出 JS 面板 | ✅ |
-| `#/publish` | 04 发布：状态摘要卡 / 一键发布（确认→写回+构建）/ 历史列表（含 commit 短哈希，可展开构建日志） | ✅ |
-| `#/inbox` | 05 收件箱：前台联系表单留言列表、未读标记、点击标已读 | ✅ |
+| `#/` | 01 概览 Dashboard | 占位 |
+| `#/photos` | 02 照片管理 | 占位，M2 实现 |
+| `#/content` | 03 内容编辑 | 占位，M3 实现 |
+| `#/publish` | 04 发布 | 占位，M4 实现 |
 
 ## 鉴权
 
@@ -33,7 +32,7 @@ npm run build
 
 ```
 src/
-├── api.js              # 统一 fetch 封装：token 注入 + 401 处理 + multipart postForm + text 响应（无 axios 依赖）
+├── api.js              # 统一 fetch 封装：token 注入 + 401 处理（无 axios 依赖）
 ├── router/index.js     # hash 模式路由 + 登录守卫
 ├── styles/tokens.scss  # Klein Blue v2 设计 Token（与前台同源）
 └── pages/
@@ -41,5 +40,3 @@ src/
     ├── LayoutPage.vue  # 侧栏布局（01-04 菜单 + 退出）
     └── Dashboard/Photos/Content/PublishPage.vue
 ```
-
-照片缩略图经 Vite proxy `/photos` → 后端静态映射（后端 `/photos/**` 直指前台 `public/photos/`），dev 与生产同路径。
