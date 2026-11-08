@@ -98,6 +98,8 @@ export async function workerGet(path) {
   const { base, token } = getWorkerCfg()
   const res = await fetch(`${base}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
+    // workers.dev 国内直连可能受限：8 秒未响应即回退本地后端，不让页面干等
+    signal: AbortSignal.timeout(8000),
   })
   if (!res.ok) throw new Error(`Worker ${res.status}`)
   return res.json()
