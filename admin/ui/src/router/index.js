@@ -13,6 +13,7 @@ const router = createRouter({
         { path: 'photos', component: () => import('../pages/PhotosPage.vue') },
         { path: 'content', component: () => import('../pages/ContentPage.vue') },
         { path: 'publish', component: () => import('../pages/PublishPage.vue') },
+        { path: 'inbox', component: () => import('../pages/InboxPage.vue') },
       ],
     },
   ],
