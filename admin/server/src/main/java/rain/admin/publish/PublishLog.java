@@ -31,10 +31,6 @@ public class PublishLog {
     @Column(name = "written_files", columnDefinition = "text")
     private String writtenFiles;
 
-    /** 发布时仓库 HEAD 短哈希（数据版本追溯） */
-    @Column(name = "commit_hash", length = 12)
-    private String commitHash;
-
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -49,7 +45,5 @@ public class PublishLog {
     public void setDurationMs(Long durationMs) { this.durationMs = durationMs; }
     public String getWrittenFiles() { return writtenFiles; }
     public void setWrittenFiles(String writtenFiles) { this.writtenFiles = writtenFiles; }
-    public String getCommitHash() { return commitHash; }
-    public void setCommitHash(String commitHash) { this.commitHash = commitHash; }
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

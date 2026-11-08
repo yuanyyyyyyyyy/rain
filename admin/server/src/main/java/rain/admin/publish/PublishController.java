@@ -62,16 +62,4 @@ public class PublishController {
         }
         return m;
     }
-
-    /** 未发布变更检测（任务 C）：侧栏/照片页/内容页角标数据源 */
-    @GetMapping("/dirty")
-    public Map<String, Object> dirty() {
-        return service.dirty();
-    }
-
-    /** 公网部署进度（GitHub Actions 最新 run，后端代理查询） */
-    @GetMapping("/deploy-status")
-    public Map<String, Object> deployStatus() {
-        return service.deployStatus();
-    }
 }
