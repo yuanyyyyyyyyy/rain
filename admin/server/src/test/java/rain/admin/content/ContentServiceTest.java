@@ -1,0 +1,126 @@
+package rain.admin.content;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+
+/** 校验器是 M3 的核心卖点：非法数据必须在落库前被拦下，报错精确到节与字段 */
+class ContentServiceTest {
+
+    private ContentService service;
+    private ProjectDetailRepo repo;
+    private final ObjectMapper mapper = new ObjectMapper();
+    private ProjectDetail existing;
+
+    @BeforeEach
+    void setUp() {
+        repo = Mockito.mock(ProjectDetailRepo.class);
+        service = new ContentService(repo, mapper, "target/unused");
+        existing = new ProjectDetail();
+        existing.setSlug("yunshu");
+        existing.setHeadline("h");
+        existing.setSummary("s");
+        existing.setHeaderNote("note");
+        existing.setMetaJson("[[\"角色\",\"v\"]]");
+        existing.setSectionsJson("[]");
+        when(repo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(repo.findBySlug("yunshu")).thenReturn(Optional.of(existing));
+    }
+
+    private JsonNode sections(String json) throws Exception {
+        return mapper.readTree(json);
+    }
+
+    private ContentService.UpdateRequest req(String sectionsJson, String metaJson) throws Exception {
+        return new ContentService.UpdateRequest("h", "s", "note",
+                metaJson == null ? mapper.readTree("[]") : mapper.readTree(metaJson), sections(sectionsJson));
+    }
+
+    @Test
+    void updatePassesValidSectionsAndRenumbersKicker() throws Exception {
+        String secs = """
+                [
+                  {"type":"arch","kicker":"02 / ARCHITECTURE","component":"yunshu"},
+                  {"type":"text","kicker":"05 / 收获","body":"x"}
+                ]""";
+        ProjectDetail saved = service.update("yunshu", req(secs, null));
+        JsonNode out = mapper.readTree(saved.getSectionsJson());
+        // 编号按位置重排：位置 0 → 02，位置 1 → 03（标题保留）
+        assertEquals("02 / ARCHITECTURE", out.get(0).get("kicker").asText());
+        assertEquals("03 / 收获", out.get(1).get("kicker").asText());
+    }
+
+    @Test
+    void rejectsMissingRequiredFieldWithPreciseLocation() throws Exception {
+        String secs = """
+                [
+                  {"type":"arch","kicker":"02 / A","component":"yunshu"},
+                  {"type":"arch","kicker":"03 / B","component":"yunshu"},
+                  {"type":"impl","kicker":"04 / 实现","items":[{"problem":"p","solution":"s","result":"r"}]}
+                ]""";
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> service.update("yunshu", req(secs, null)));
+        assertEquals("第 3 节[impl] 第 1 条：字段 title 不能为空", e.getMessage());
+    }
+
+    @Test
+    void rejectsUnknownType() throws Exception {
+        String secs = "[{\"type\":\"magic\",\"kicker\":\"02 / X\"}]";
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> service.update("yunshu", req(secs, null)));
+        assertTrue(e.getMessage().contains("未知类型"));
+    }
+
+    @Test
+    void rejectsBadKickerFormat() throws Exception {
+        String secs = "[{\"type\":\"text\",\"kicker\":\"收获\",\"body\":\"x\"}]";
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> service.update("yunshu", req(secs, null)));
+        assertTrue(e.getMessage().contains("kicker"));
+    }
+
+    @Test
+    void rejectsInvalidMetaRow() throws Exception {
+        String secs = "[{\"type\":\"text\",\"kicker\":\"02 / 收获\",\"body\":\"x\"}]";
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> service.update("yunshu", req(secs, "[[\"角色\"]]" /* 一元组 */)));
+        assertTrue(e.getMessage().contains("meta 第 1 行"));
+    }
+
+    @Test
+    void shotsPendingTrueSkipsItemsButChecksWantedType() throws Exception {
+        String secs = """
+                [
+                  {"type":"shots","kicker":"03 / INTERFACE","pending":true,"wanted":["图1","图2"],"note":"打码"}
+                ]""";
+        assertDoesNotThrow(() -> service.update("yunshu", req(secs, null)));
+    }
+
+    @Test
+    void shotsWithoutPendingRequiresItemsWithSrcAndCaption() throws Exception {
+        String secs = """
+                [
+                  {"type":"shots","kicker":"03 / INTERFACE","pending":false,"items":[{"src":"a.png"}]}
+                ]""";
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> service.update("yunshu", req(secs, null)));
+        assertTrue(e.getMessage().contains("caption"));
+    }
+
+    @Test
+    void exportKeepsHeaderNoteAsCommentBlock() throws Exception {
+        existing.setSectionsJson("[{\"type\":\"text\",\"kicker\":\"02 / 收获\",\"body\":\"x\"}]");
+        String js = service.export(existing);
+        assertTrue(js.startsWith("// ============================================"));
+        assertTrue(js.contains("// note"));
+        assertTrue(js.contains("export const yunshuDetail ="));
+        assertTrue(js.contains("\"sections\""));
+    }
+}
