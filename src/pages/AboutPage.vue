@@ -47,7 +47,7 @@ h1 {
   margin-top: 40px;
 }
 .block {
-  background: #fff;
+  background: var(--c-bg);
   padding: 24px;
 
   .kicker2 {
@@ -59,7 +59,7 @@ h1 {
   p {
     font-size: 13px;
     line-height: 1.9;
-    color: #626970;
+    color: var(--c-ink-soft);
   }
   .todo {
     color: var(--c-muted);

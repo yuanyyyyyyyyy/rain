@@ -237,7 +237,7 @@ onUnmounted(() => {
   margin-top: 12px;
   font-size: 14px;
   line-height: 2;
-  color: #626970;
+  color: var(--c-ink-soft);
   max-width: 680px;
 }
 .grid {
@@ -255,7 +255,7 @@ onUnmounted(() => {
 .impl-item {
   border: 1px solid var(--c-line);
   padding: 18px 20px;
-  background: #fff;
+  background: var(--c-bg);
   position: relative;
 
   &::before {
@@ -287,7 +287,7 @@ onUnmounted(() => {
     margin: 0;
     font-size: 12.5px;
     line-height: 1.9;
-    color: #626970;
+    color: var(--c-ink-soft);
   }
 }
 
@@ -348,7 +348,7 @@ onUnmounted(() => {
     margin: 0;
     font-size: 12.5px;
     line-height: 1.95;
-    color: #626970;
+    color: var(--c-ink-soft);
   }
 }
 
@@ -357,7 +357,7 @@ onUnmounted(() => {
   margin: 0;
   font-size: 13px;
   line-height: 2.05;
-  color: #626970;
+  color: var(--c-ink-soft);
   max-width: 680px;
 }
 
@@ -421,11 +421,11 @@ onUnmounted(() => {
     width: 100%;
     display: block;
     border: 1px solid var(--c-line);
-    background: #f6f8fc;
+    background: var(--c-bg-soft);
     transition: 0.22s;
   }
   &:hover img {
-    border-color: #8fa5dc;
+    border-color: var(--c-blue-hover);
     box-shadow: 4px 4px 0 var(--c-blue-shadow);
   }
   figcaption {
@@ -481,7 +481,7 @@ onUnmounted(() => {
 .shotbox .lb-arrow {
   font: 20px var(--font-mono);
   color: var(--c-blue);
-  background: #fff;
+  background: var(--c-bg);
   border: 1px solid var(--c-line);
   width: 46px;
   height: 46px;
@@ -502,7 +502,7 @@ onUnmounted(() => {
   height: 46px;
   font-size: 22px;
   color: var(--c-muted);
-  background: #fff;
+  background: var(--c-bg);
   border: 1px solid var(--c-line);
   cursor: pointer;
 

@@ -53,7 +53,7 @@ const logout = () => {
   nav a {
     padding: 10px 18px;
     font-size: 12.5px;
-    color: #b5c7f2;
+    color: var(--c-side-muted);
     border-left: 2px solid transparent;
     transition: 0.15s;
 
@@ -72,7 +72,7 @@ const logout = () => {
     margin-left: 18px;
     background: none;
     border: none;
-    color: #b5c7f2;
+    color: var(--c-side-muted);
     font: 10px var(--font-mono);
     letter-spacing: 0.1em;
     cursor: pointer;

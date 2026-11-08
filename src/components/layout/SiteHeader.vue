@@ -28,7 +28,7 @@ const open = ref(false)
 .site-header {
   height: 76px;
   border-bottom: 1px solid var(--c-line);
-  background: #fff;
+  background: var(--c-bg);
   position: sticky;
   top: 0;
   z-index: 20;
@@ -126,7 +126,7 @@ nav {
     top: 65px;
     left: 0;
     right: 0;
-    background: #fff;
+    background: var(--c-bg);
     border-bottom: 1px solid var(--c-line);
     flex-direction: column;
     align-items: flex-start;
