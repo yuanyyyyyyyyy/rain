@@ -45,27 +45,6 @@ public class ContentController {
         }
     }
 
-    /** 新建项目（最小骨架，空 sections；发布时自动写入 site.js 卡片与前台数据文件） */
-    @PostMapping("/projects")
-    public ResponseEntity<?> create(@RequestBody ContentService.CreateRequest req) {
-        try {
-            return ResponseEntity.ok(service.toResponse(service.create(req)));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    /** 删除项目（详情数据删除；下次发布后前台卡片同步移除） */
-    @DeleteMapping("/projects/{slug}")
-    public ResponseEntity<?> delete(@PathVariable String slug) {
-        try {
-            service.delete(slug);
-            return ResponseEntity.ok(Map.of("ok", true));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
     /** 导出 <slug>.js 全文（text/plain，管理台显示 + 复制，人工替换数据文件后 build） */
     @GetMapping(value = "/projects/{slug}/export", produces = "text/plain;charset=UTF-8")
     public ResponseEntity<?> export(@PathVariable String slug) {

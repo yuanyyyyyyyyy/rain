@@ -34,13 +34,6 @@ public class ProjectDetail {
     @Column(name = "sections_json", columnDefinition = "json")
     private String sectionsJson;
 
-    /**
-     * 卡片排序号（可空）：Works 列表按 sortNo 升序、null 靠后、再按 id 稳定排序。
-     * 种子携带（yunshu=1 … shimmer=5），管理台新建的项目为 null 排最后。
-     */
-    @Column(name = "sort_no")
-    private Integer sortNo;
-
     @Column(nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
 
@@ -57,8 +50,6 @@ public class ProjectDetail {
     public void setMetaJson(String metaJson) { this.metaJson = metaJson; }
     public String getSectionsJson() { return sectionsJson; }
     public void setSectionsJson(String sectionsJson) { this.sectionsJson = sectionsJson; }
-    public Integer getSortNo() { return sortNo; }
-    public void setSortNo(Integer sortNo) { this.sortNo = sortNo; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }
