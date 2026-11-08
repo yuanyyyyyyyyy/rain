@@ -61,6 +61,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { heroPhoto, photoGroups, flatPlates, plateNo, dims } from '../data/photos.js'
 
+const BASE = import.meta.env.BASE_URL
 const heroSrc = `${BASE}photos/${heroPhoto.id}.jpg`
 
 // 编号：全局按分组顺序连续
