@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="kicker">05 / INBOX</div>
+    <div class="kicker">05 / INBOX · 数据源：{{ source }}</div>
     <h1>收件箱</h1>
 
     <div v-if="!list.length" class="hint">暂无留言。前台联系表单提交后会出现在这里。</div>
@@ -19,17 +19,35 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { api } from '../api.js'
+import { api, getWorkerCfg, workerGet } from '../api.js'
 
 const list = ref([])
+const source = ref('本地')
 
 async function load() {
+  const { base } = getWorkerCfg()
+  if (base) {
+    try {
+      const r = await workerGet('/messages')
+      // Worker 字段与本地 Spring 对齐（read: 0/1 → boolean 统一）
+      list.value = r.map((m) => ({ ...m, read: !!m.read }))
+      source.value = 'Worker（公网）'
+      return
+    } catch {
+      source.value = '本地（Worker 失败回退）'
+    }
+  }
   list.value = await api.get('/api/messages')
 }
 
 async function markRead(m) {
   if (m.read) return
-  await api.put(`/api/messages/${m.id}/read`)
+  const { base } = getWorkerCfg()
+  if (base && source.value.startsWith('Worker')) {
+    await workerGet(`/messages/${m.id}/read`).catch(() => api.put(`/api/messages/${m.id}/read`))
+  } else {
+    await api.put(`/api/messages/${m.id}/read`)
+  }
   m.read = true
 }
 

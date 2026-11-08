@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="kicker">01 / DASHBOARD</div>
+    <div class="kicker">01 / DASHBOARD · 数据源：{{ source }}</div>
     <h1>概览</h1>
 
     <div class="cards">
@@ -35,11 +35,12 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { api } from '../api.js'
+import { api, getWorkerCfg, workerGet } from '../api.js'
 
 const s = ref({})
 const photos = ref(null)
 const projects = ref(null)
+const source = ref('本地')
 
 const days = computed(() =>
   Object.entries(s.value.daily14 || {}).map(([day, pv]) => ({ day, pv })))
@@ -52,7 +53,18 @@ const barH = (pv) => {
 }
 
 onMounted(async () => {
-  s.value = await api.get('/api/stats/summary')
+  // 数据源：配置了 Worker（公网 collector）优先，失败回退本地 Spring
+  const { base } = getWorkerCfg()
+  if (base) {
+    try {
+      s.value = await workerGet('/stats/summary')
+      source.value = 'Worker（公网）'
+    } catch {
+      s.value = await api.get('/api/stats/summary')
+    }
+  } else {
+    s.value = await api.get('/api/stats/summary')
+  }
   const st = await api.get('/api/publish/status')
   photos.value = st.photos
   projects.value = st.projects
