@@ -114,4 +114,17 @@ mvn -DskipTests package && java -Dserver.port=8081 -jar target/rain-admin-server
 - [x] M2 照片管理（上传压缩 / photo 表 / 列表·更新·删除·设头图 / 静态映射 / 管理台照片页）
 - [x] M3 项目内容编辑（project_detail 表 / sections 类型化表单与校验 / kicker 自动编号 / JS 导出半自动生效）
 - [x] M4 发布链路（数据文件原子写回 / ProcessBuilder 构建 / publish_log / 管理台发布页——半自动过渡全部自动接管）
-- [ ] M5 测试收尾
+- [x] M5 测试收尾（Service 层单测 21 例全绿：校验器 / 上传管线 / photos.js 生成 / JWT round-trip，`mvn test`）
+
+## 测试
+
+```bash
+mvn test   # 21 例，覆盖四个核心纯逻辑单元
+```
+
+| 测试类 | 覆盖点 |
+|---|---|
+| `ContentServiceTest`（8 例） | sections 逐节校验（缺字段报错精确到节与字段）、未知类型、kicker 格式与自动重排、meta 结构、shots pending 双态、导出头注释保留 |
+| `PhotoServiceTest`（6 例） | 非图片/非法分组拒绝、**pid 冲突拒绝且原文件分毫不动**、只缩不放（2000→1600，600 不放大）、**入库失败孤儿文件补偿**、snippet 格式契约 |
+| `PhotoDataGeneratorTest`（3 例） | 组序/头图/空日期/dims 分数表达式、每行 4 条换行、无头图拒绝发布 |
+| `JwtServiceTest`（4 例） | 签发-校验闭环、异密钥伪造、过期、垃圾 token |
