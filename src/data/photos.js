@@ -1,6 +1,6 @@
 // ============================================
 // 摄影页数据 — 照片位于 /photos/（public/photos，网页版长边 1600px）
-// 原图 → 网页版对应关系见 docs/photos-manifest.json
+// 原图 → 网页版对应关系见 docs/素材/照片清单-photos-manifest-20261108.json
 // 分组依据 2026-11-08 拼图审阅：街道与城市 / 光线与氛围 / 日常与人
 // ============================================
 
@@ -41,7 +41,7 @@ export const photoGroups = [
 // 全部照片平铺（Lightbox 翻页用，按分组顺序）
 export const flatPlates = photoGroups.flatMap((g) => g.plates)
 
-// 宽高比 w/h（来自 docs/photos-manifest.json 实测尺寸），对齐行排版用
+// 宽高比 w/h（来自 docs/素材/照片清单 实测尺寸），对齐行排版用
 export const dims = {
   p01: 1600 / 902, p02: 1600 / 902, p03: 1600 / 902, p04: 1600 / 902, p05: 1600 / 902,
   p06: 1600 / 902, p07: 1600 / 902, p08: 1600 / 902, p09: 1600 / 902, p10: 1600 / 1067,
