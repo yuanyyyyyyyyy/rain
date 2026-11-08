@@ -36,6 +36,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/login").permitAll()
                         // 错误转发(/error)不带原请求的认证上下文，放行后 404 才能正常返回
                         .requestMatchers("/error").permitAll()
+                        // 照片文件本身是公开资源（前台同源展示），管理台 img 直接经此读取
+                        .requestMatchers("/photos/**").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().denyAll())
                 .exceptionHandling(e -> e.authenticationEntryPoint((req, res, ex) -> {
