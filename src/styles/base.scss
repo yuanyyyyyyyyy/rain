@@ -8,20 +8,6 @@ html {
   scroll-behavior: smooth;
 }
 
-// 动效敏感用户：关闭平滑滚动与过渡动画
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-  *,
-  *::before,
-  *::after {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-  }
-}
-
 body {
   margin: 0;
   background: var(--c-bg);
@@ -35,7 +21,7 @@ body {
     pointer-events: none;
     z-index: 9;
     opacity: 0.12;
-    background-image: radial-gradient(var(--c-dot) 0.6px, transparent 0.6px);
+    background-image: radial-gradient(#536078 0.6px, transparent 0.6px);
     background-size: 12px 12px;
   }
 }
@@ -53,7 +39,7 @@ p {
 }
 
 .wrap {
-  width: min(var(--max-w), calc(100% - #{tokens.$gutter-x * 2}));
+  width: min(var(--max-w), calc(100% - 88px));
   margin: auto;
 }
 
@@ -106,7 +92,7 @@ p {
   font: 10px var(--font-mono);
   letter-spacing: 0.08em;
   color: var(--c-blue);
-  background: var(--c-bg);
+  background: #fff;
   transition: 0.2s;
   cursor: pointer;
 
