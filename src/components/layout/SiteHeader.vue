@@ -9,11 +9,11 @@
         <span></span><span></span>
       </button>
       <nav :class="{ open }">
-        <a href="/#work" @click="open = false">WORK</a>
-        <a href="/#capabilities" @click="open = false">CAPABILITIES</a>
+        <RouterLink to="/#work" @click="open = false">WORK</RouterLink>
+        <RouterLink to="/#capabilities" @click="open = false">CAPABILITIES</RouterLink>
         <RouterLink to="/about" @click="open = false">ABOUT</RouterLink>
         <RouterLink to="/photography" @click="open = false">PHOTOGRAPHY</RouterLink>
-        <a class="contact" href="/#contact" @click="open = false">CONTACT ↗</a>
+        <RouterLink class="contact" to="/#contact" @click="open = false">CONTACT ↗</RouterLink>
       </nav>
     </div>
   </header>
