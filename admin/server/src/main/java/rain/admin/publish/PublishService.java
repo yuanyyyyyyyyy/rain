@@ -53,6 +53,7 @@ public class PublishService {
         }
         long start = System.currentTimeMillis();
         try {
+            String commitHash = currentCommit();
             // 1. 生成全部数据文件内容（任一生成失败即中止，不碰现有文件）
             List<Photo> photos = photoRepo.findAllByOrderByGroupNameAscSortNoAscIdAsc();
             Photo hero = photos.stream().filter(p -> Boolean.TRUE.equals(p.getIsHero())).findFirst().orElse(null);
@@ -97,15 +98,30 @@ public class PublishService {
             // 3. 触发前台构建
             String buildOutput = runBuild();
             long duration = System.currentTimeMillis() - start;
-            saveLog(triggeredBy, "SUCCESS", "构建成功\n" + buildOutput, duration, written);
+            saveLog(triggeredBy, "SUCCESS", "构建成功\n" + buildOutput, duration, written, commitHash);
             return new PublishResult("SUCCESS", duration, written, tail(buildOutput, 40));
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - start;
             String msg = e.getMessage() == null ? e.toString() : e.getMessage();
-            saveLog(triggeredBy, "FAILED", msg, duration, List.of());
+            saveLog(triggeredBy, "FAILED", msg, duration, List.of(), currentCommit());
             throw new IllegalStateException("发布失败：" + msg, e);
         } finally {
             running.set(false);
+        }
+    }
+
+    /** 发布时的数据版本（git 不可用或非仓库时返回 null，不阻断发布） */
+    private String currentCommit() {
+        try {
+            Process p = new ProcessBuilder("git", "rev-parse", "--short", "HEAD")
+                    .directory(projectRoot.toFile()).start();
+            if (!p.waitFor(10, TimeUnit.SECONDS)) {
+                p.destroyForcibly();
+                return null;
+            }
+            return new String(p.getInputStream().readAllBytes()).trim();
+        } catch (Exception e) {
+            return null;
         }
     }
 
@@ -137,7 +153,8 @@ public class PublishService {
     }
 
     /** 日志落库（repo.save 自带事务；失败不掩盖主流程结果） */
-    private void saveLog(String triggeredBy, String status, String output, long durationMs, List<String> files) {
+    private void saveLog(String triggeredBy, String status, String output, long durationMs,
+                         List<String> files, String commitHash) {
         try {
             PublishLog log = new PublishLog();
             log.setTriggeredBy(triggeredBy);
@@ -145,6 +162,7 @@ public class PublishService {
             log.setOutput(tail(output, 200));
             log.setDurationMs(durationMs);
             log.setWrittenFiles(String.join(", ", files));
+            log.setCommitHash(commitHash);
             logRepo.save(log);
         } catch (RuntimeException ignored) {
             // 日志落库失败不掩盖主流程结果

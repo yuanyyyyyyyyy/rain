@@ -34,6 +34,7 @@
           <span class="t">{{ l.createdAt.replace('T', ' ').slice(0, 19) }}</span>
           <span class="badge" :class="l.status === 'SUCCESS' ? 'ok' : 'fail'">{{ l.status }}</span>
           <span class="dur">{{ (l.durationMs / 1000).toFixed(1) }}s · {{ l.triggeredBy }}</span>
+          <span class="hash" v-if="l.commitHash">{{ l.commitHash }}</span>
           <span class="files" v-if="l.writtenFiles">{{ l.writtenFiles.split(', ').length }} 个文件</span>
           <span class="chev">{{ expanded === l.id ? '▲' : '▼' }}</span>
         </div>
@@ -210,6 +211,7 @@ h2 {
     }
   }
   .dur,
+  .hash,
   .files {
     color: var(--c-muted);
   }
