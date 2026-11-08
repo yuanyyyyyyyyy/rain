@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+"""GitHub Git Data API 历史重放 v2：binary-safe（bytes 读 blob）+ 断点续传（远端 HEAD 匹配本地序列后继续）。"""
+import base64, json, subprocess, time, urllib.request, urllib.error
+
+OWNER, REPO = "yuanyyyyyyyyy", "rain"
+API = f"https://api.github.com/repos/{OWNER}/{REPO}"
+TOKEN = subprocess.run(["gh", "auth", "token"], capture_output=True, text=True).stdout.strip()
+HDR = {"Authorization": f"Bearer {TOKEN}", "Accept": "application/vnd.github+json",
+       "User-Agent": "rain-replay", "Content-Type": "application/json"}
+
+def api(method, path, payload=None, retries=4):
+    req = urllib.request.Request(f"{API}{path}", method=method,
+        data=json.dumps(payload).encode() if payload is not None else None, headers=HDR)
+    for attempt in range(retries):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return json.loads(r.read().decode() or "{}")
+        except urllib.error.HTTPError as e:
+            if e.code in (429, 500, 502, 503) and attempt < retries - 1:
+                time.sleep(3 * (attempt + 1)); continue
+            body = e.read().decode()[:300]
+            raise RuntimeError(f"{method} {path} -> {e.code}: {body}")
+        except (urllib.error.URLError, TimeoutError) as e:
+            if attempt < retries - 1:
+                time.sleep(3 * (attempt + 1)); continue
+            raise
+
+def git_bytes(*args):
+    return subprocess.run(["git", *args], capture_output=True, check=True).stdout
+
+def git_text(*args):
+    return git_bytes(*args).decode("utf-8")
+
+def ls_tree(sha):
+    cur = {}
+    for line in git_text("ls-tree", "-r", sha).strip().split("\n"):
+        if not line:
+            continue
+        meta, path = line.split("\t", 1)
+        mode, typ, bsha = meta.split()
+        cur[path] = (mode, bsha)
+    return cur
+
+lines = git_text("log", "--reverse", "--format=%H%x01%an%x01%ae%x01%aI%x01%s").strip().split("\n")
+commits = [l.split("\x01", 4) for l in lines]
+
+br = api("GET", "/branches/main")
+parent_sha = br["commit"]["sha"]
+parent_tree = br["commit"]["commit"]["tree"]["sha"]
+head_msg = br["commit"]["commit"]["message"].strip()
+
+# 断点：远端 HEAD 对应本地序列中的位置（message 匹配），prev_files 用本地同内容 commit 的树
+start_idx = 0
+for i, (sha, an, ae, ad, msg) in enumerate(commits):
+    if msg.strip() == head_msg:
+        start_idx = i + 1
+        prev_files = ls_tree(sha)
+        break
+else:
+    prev_files = {}
+print(f"remote HEAD: {head_msg[:40]!r} -> resume from #{start_idx + 1}/{len(commits)}", flush=True)
+
+for i in range(start_idx, len(commits)):
+    sha, an, ae, ad, msg = commits[i]
+    cur = ls_tree(sha)
+    changes = []
+    uploaded = 0
+    for path, (mode, bsha) in cur.items():
+        if prev_files.get(path) != (mode, bsha):
+            blob = git_bytes("cat-file", "blob", bsha)
+            r = api("POST", "/git/blobs", {"content": base64.b64encode(blob).decode(), "encoding": "base64"})
+            changes.append({"path": path, "mode": mode, "type": "blob", "sha": r["sha"]})
+            uploaded += 1
+    for path in prev_files:
+        if path not in cur:
+            changes.append({"path": path, "mode": prev_files[path][0], "type": "blob", "sha": None})
+    tree_payload = {"tree": changes}
+    if parent_tree:
+        tree_payload["base_tree"] = parent_tree
+    tree = api("POST", "/git/trees", tree_payload)
+    commit = api("POST", "/git/commits", {
+        "message": msg, "tree": tree["sha"],
+        "parents": ([parent_sha] if parent_sha else []),
+        "author": {"name": an, "email": ae, "date": ad},
+        "committer": {"name": an, "email": ae, "date": ad}})
+    api("PATCH", "/git/refs/heads/main", {"sha": commit["sha"], "force": False})
+    parent_sha, parent_tree = commit["sha"], tree["sha"]
+    prev_files = cur
+    print(f"[{i+1}/{len(commits)}] {msg[:40]}  (+{uploaded} blobs)", flush=True)
+
+print(f"DONE: main -> {parent_sha[:10]}")

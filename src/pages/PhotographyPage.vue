@@ -32,7 +32,7 @@
             @click="openAt(flatIndex(it.p.id))"
           >
             <div class="ph" :style="{ height: row.h + 'px' }">
-              <img :src="`/photos/${it.p.id}.jpg`" :alt="plateAlt(g, it.p)" loading="lazy" />
+              <img :src="`${import.meta.env.BASE_URL}photos/${it.p.id}.jpg`" :alt="plateAlt(g, it.p)" loading="lazy" />
             </div>
             <figcaption>{{ plateLabel(it.p.id) }} — {{ it.p.date }}</figcaption>
           </figure>
@@ -48,7 +48,7 @@
         <button class="lb-close" aria-label="关闭" @click="close">×</button>
         <button class="lb-arrow lb-prev" aria-label="上一张" @click.stop="step(-1)">←</button>
         <figure class="lb-body" @click.self="close">
-          <img :src="`/photos/${flatPlates[lightbox].id}.jpg`" :alt="lightboxAlt" />
+          <img :src="`${import.meta.env.BASE_URL}photos/${flatPlates[lightbox].id}.jpg`" :alt="lightboxAlt" />
           <figcaption>{{ lightboxLabel }} — {{ flatPlates[lightbox].date }}</figcaption>
         </figure>
         <button class="lb-arrow lb-next" aria-label="下一张" @click.stop="step(1)">→</button>
@@ -61,7 +61,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { heroPhoto, photoGroups, flatPlates, plateNo, dims } from '../data/photos.js'
 
-const heroSrc = `/photos/${heroPhoto.id}.jpg`
+const heroSrc = `${import.meta.env.BASE_URL}photos/${heroPhoto.id}.jpg`
 
 // 编号：全局按分组顺序连续
 const flatIndex = (id) => flatPlates.findIndex((x) => x.id === id)
