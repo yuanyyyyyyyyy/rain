@@ -33,7 +33,7 @@
             <template v-else>
               <div class="shots">
                 <figure v-for="(s, i) in sec.items" :key="s.src" class="shot" @click="openShot(sec, i)">
-                  <img :src="`${import.meta.env.BASE_URL}${s.src.replace(/^\//, '')}`" :alt="s.cap" loading="lazy" />
+                  <img :src="`${BASE}${s.src.replace(/^\//, '')}`" :alt="s.cap" loading="lazy" />
                   <figcaption>{{ s.fig }} — {{ s.cap }}</figcaption>
                 </figure>
               </div>
@@ -111,7 +111,7 @@
         <button class="lb-close" aria-label="关闭" @click="closeShot">×</button>
         <button class="lb-arrow lb-prev" aria-label="上一张" @click.stop="stepShot(-1)">←</button>
         <figure class="lb-body" @click.self="closeShot">
-          <img :src="`${import.meta.env.BASE_URL}${shot.s.src.replace(/^\//, '')}`" :alt="shot.s.cap" />
+          <img :src="`${BASE}${shot.s.src.replace(/^\//, '')}`" :alt="shot.s.cap" />
           <figcaption>{{ shot.s.fig }} — {{ shot.s.cap }}</figcaption>
         </figure>
         <button class="lb-arrow lb-next" aria-label="下一张" @click.stop="stepShot(1)">→</button>
@@ -149,6 +149,7 @@ import { intelnexusDetail } from '../data/projects/intelnexus.js'
 import YunshuArch from '../components/project/YunshuArch.vue'
 import IntelnexusArch from '../components/project/IntelnexusArch.vue'
 
+const BASE = import.meta.env.BASE_URL
 const details = { yunshu: yunshuDetail, intelnexus: intelnexusDetail }
 const archMap = { yunshu: YunshuArch, intelnexus: IntelnexusArch }
 const defaultLabels = ['问题', '方案', '效果']
