@@ -3,6 +3,10 @@
 // 联系方式为占位，上线前必须替换为真实信息
 // ============================================
 
+// 埋点/联系表单的后端地址：'' = 同源（本地 dev 经 vite proxy 到 Spring，可用）；
+// 后端公网化（Cloudflare Worker）部署后填 Worker 地址，如 'https://rain-collector.<你的子域>.workers.dev'
+export const apiBase = ''
+
 export const profile = {
   name: '陈雨',
   school: '九江学院 · 软件工程 · 2027 届',

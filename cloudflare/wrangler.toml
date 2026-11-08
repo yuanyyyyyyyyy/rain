@@ -6,13 +6,7 @@ compatibility_date = "2026-11-01"
 #   npx wrangler d1 create rain-collector
 #   npx wrangler d1 execute rain-collector --remote --file schema.sql
 #   npx wrangler secret put ADMIN_TOKEN   # 管理台读接口的 Bearer 密钥
-#   npx wrangler secret put BREVO_API_KEY # 留言邮件通知（Brevo；不配置则只入库不发信）
 [[d1_databases]]
 binding = "DB"
 database_name = "rain-collector"
-database_id = "81713b53-b3ac-4fad-96fd-1be1390e5fab"
-migrations_dir = "migrations"
-
-# 留言通知收件地址（非密钥，明文 var）；发件人 = 同一邮箱，需在 Brevo 后台验证一次
-[vars]
-OWNER_EMAIL = "m13237097902@163.com"
+database_id = "<在 d1 create 后填入>"
