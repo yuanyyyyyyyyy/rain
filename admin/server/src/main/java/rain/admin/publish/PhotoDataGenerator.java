@@ -1,7 +1,5 @@
 package rain.admin.publish;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Component;
@@ -10,6 +8,7 @@ import rain.admin.photo.Photo;
 /**
  * photo 表 → 前台 src/data/photos.js 全文。
  * 分组名/描述为固定文案（管理台不开放建组，新增分组需改此处）；dims 保持 W / H 分数表达式（排版精度友好）。
+ * 生成是确定性的：同数据产出同一文件（无时间戳），发布时间看 publish_log。
  */
 @Component
 public class PhotoDataGenerator {
@@ -20,7 +19,6 @@ public class PhotoDataGenerator {
             "DAILY", new String[] {"DAILY / 日常与人", "雪地的猫、夜市的灯、做手工的人——值得注意的日常瞬间。"});
 
     private static final List<String> GROUP_ORDER = List.of("STREET", "LIGHT", "DAILY");
-    private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     public String generate(List<Photo> photos, Photo hero) {
         if (hero == null) throw new IllegalStateException("没有头图：请先在管理台设置头图再发布");
@@ -32,8 +30,9 @@ public class PhotoDataGenerator {
                     .forEach(ordered::add);
         }
         StringBuilder sb = new StringBuilder();
+        // 不写生成时间戳：保证同数据产出同一文件（可重现构建，git diff 干净）；发布时间看 publish_log
         sb.append("// ============================================\n");
-        sb.append("// 摄影页数据 — 由 rain 管理台发布生成（").append(LocalDateTime.now().format(TS)).append("）\n");
+        sb.append("// 摄影页数据 — 由 rain 管理台发布生成\n");
         sb.append("// 原图 → 网页版对应关系见 docs/素材/照片清单-photos-manifest-20261108.json\n");
         sb.append("// 分组依据 2026-11-08 拼图审阅：街道与城市 / 光线与氛围 / 日常与人\n");
         sb.append("// ============================================\n\n");
