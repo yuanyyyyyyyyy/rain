@@ -16,11 +16,6 @@ public interface VisitLogRepo extends JpaRepository<VisitLog, Long> {
     @Query("select v.path, count(v) from VisitLog v group by v.path order by count(v) desc")
     List<Object[]> topPaths();
 
-    /** 来源 Top N（referrer 非空；与 Worker 端口径对齐） */
-    @Query("select v.referrer, count(v) from VisitLog v " +
-            "where v.referrer is not null and v.referrer <> '' group by v.referrer order by count(v) desc")
-    List<Object[]> topReferrers();
-
     long countByCreatedAtBetween(LocalDateTime from, LocalDateTime to);
 
     /** UV：按 ipHash 去重 */

@@ -8,6 +8,10 @@ export default defineConfig({
   base: process.env.DEPLOY_BASE || '/',
   server: {
     port: 5173,
-    host: true
+    host: true,
+    proxy: {
+      // dev 期埋点上报转到本地后端（公网上该请求静默失败）
+      '/api': 'http://localhost:8081',
+    },
   }
 })

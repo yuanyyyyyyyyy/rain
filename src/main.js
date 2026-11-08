@@ -25,4 +25,19 @@ const router = createRouter({
   },
 })
 
+// 1px 埋点：路由切换上报（无 Cookie；IP 在服务端哈希脱敏）。
+// 静态托管上无后端接收时静默失败，后端公网化后自动生效。
+router.afterEach((to) => {
+  try {
+    fetch('/api/t', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: to.path, referrer: document.referrer }),
+      keepalive: true,
+    }).catch(() => {})
+  } catch {
+    /* 埋点永不影响前台 */
+  }
+})
+
 createApp(App).use(router).mount('#app')
