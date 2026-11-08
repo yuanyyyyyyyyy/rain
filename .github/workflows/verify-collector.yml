@@ -1,0 +1,31 @@
+name: Verify Cloudflare Collector
+
+# 手动触发：从 Actions 网络（海外）端到端验证 Worker 三接口与 D1 写入
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Beacon
+        run: |
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            https://rain-collector.yuanyyyyyyyyy.workers.dev/t \
+            -H "content-type: application/json" \
+            -d '{"path":"/verify-actions"}')
+          echo "beacon: $CODE"; test "$CODE" = "204"
+      - name: Message
+        run: |
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            https://rain-collector.yuanyyyyyyyyy.workers.dev/messages \
+            -H "content-type: application/json" \
+            -d '{"name":"actions-verify","email":"verify@actions.dev","body":"E2E from GitHub Actions"}')
+          echo "message: $CODE"; test "$CODE" = "200"
+      - name: Summary (authed)
+        env:
+          TOKEN: ${{ secrets.COLLECTOR_TOKEN }}
+        run: |
+          curl -s https://rain-collector.yuanyyyyyyyyy.workers.dev/stats/summary \
+            -H "Authorization: Bearer $TOKEN" | tee /tmp/summary.json
+          python3 -c "import json; d=json.load(open('/tmp/summary.json')); assert d['pvTotal'] > 0; print('summary ok, pvTotal =', d['pvTotal'])"
