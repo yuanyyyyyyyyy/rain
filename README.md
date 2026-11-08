@@ -72,7 +72,7 @@ cd admin/ui && npm install && npm run dev # 管理台 :5175
 |---|---|
 | 导航、联系方式、首页卡片 | `src/data/site.js` |
 | 项目详情页章节 | `src/data/projects/<slug>.js` |
-| 摄影分组、顺序、头图 | `src/data/photos.js` |
+| 摄影分组、顺序、头图 | `src/data/photos.js`，或管理台 `#/photos` 上传/排序/设头图（新照片按片段提示接进 photos.js） |
 | 主题色 / 字体 / 间距 | `src/styles/tokens.scss` |
 
 > 联系方式（邮箱 / GitHub / 简历 PDF）当前为占位，上线前必须替换，代码内标注 `TODO(上线前)`。
