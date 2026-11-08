@@ -69,7 +69,7 @@
       <!-- Visual Notes：通往摄影页 -->
       <RouterLink class="project" to="/photography">
         <div class="ptop">
-          <span>PERSONAL / {{ String(projects.length + 1).padStart(3, '0') }}</span>
+          <span>PERSONAL / 004</span>
           <span>ONGOING</span>
         </div>
         <h3>Visual Notes</h3>
@@ -88,8 +88,7 @@
 import { computed } from 'vue'
 import { projects } from '../../data/site.js'
 
-// 兜底：数据漏标 flagship 时退回首个项目，避免模板直接抛错白屏
-const flagship = computed(() => projects.find((p) => p.flagship) || projects[0])
+const flagship = computed(() => projects.find((p) => p.flagship))
 const regular = computed(() => projects.filter((p) => !p.flagship))
 </script>
 
@@ -104,7 +103,7 @@ const regular = computed(() => projects.filter((p) => !p.flagship))
   border: 1px solid var(--c-line);
   padding: 24px;
   position: relative;
-  background: var(--c-bg);
+  background: #fff;
   transition: 0.22s;
   overflow: hidden;
   display: block;
@@ -118,9 +117,9 @@ const regular = computed(() => projects.filter((p) => !p.flagship))
     border-top: 2px solid var(--c-blue);
   }
   &:hover {
-    border-color: var(--c-blue-hover);
+    border-color: #8fa5dc;
     transform: translateY(-4px);
-    box-shadow: 5px 5px 0 var(--c-blue-shadow-soft);
+    box-shadow: 5px 5px 0 #e7ecf8;
   }
 
   h3 {
@@ -153,7 +152,7 @@ const regular = computed(() => projects.filter((p) => !p.flagship))
     color: #596985;
     border: 1px solid #d9e0ef;
     padding: 5px 8px;
-    background: var(--c-blue-faint);
+    background: #fbfcff;
   }
 }
 .arrow {

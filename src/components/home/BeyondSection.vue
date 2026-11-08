@@ -41,20 +41,20 @@
   > p {
     font-size: 14px;
     line-height: 2.1;
-    color: var(--c-ink-soft);
+    color: #626970;
   }
 }
 .photo {
   height: 230px;
-  border: 1px solid var(--c-line-blue);
+  border: 1px solid #bfc8dc;
   position: relative;
   overflow: hidden;
   display: block;
   transition: 0.22s;
 
   &:hover {
-    border-color: var(--c-blue-hover);
-    box-shadow: 5px 5px 0 var(--c-blue-shadow-soft);
+    border-color: #8fa5dc;
+    box-shadow: 5px 5px 0 #e7ecf8;
   }
 
   svg {
@@ -70,7 +70,7 @@
   font: 9px var(--font-mono);
   letter-spacing: 0.1em;
   color: var(--c-blue);
-  background: var(--c-bg);
+  background: #fff;
   padding: 4px 7px;
 }
 @media (max-width: 760px) {

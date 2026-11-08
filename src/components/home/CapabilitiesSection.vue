@@ -30,7 +30,7 @@ import { capabilities } from '../../data/site.js'
   border: 1px solid var(--c-line);
 }
 .cap {
-  background: var(--c-bg);
+  background: #fff;
   padding: 24px;
   min-height: 150px;
 

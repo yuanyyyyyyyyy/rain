@@ -14,8 +14,8 @@
       <div class="actions">
         <a class="btn primary" href="#work">VIEW SELECTED WORK <b>↗</b></a>
         <a class="btn" href="#contact">GET IN TOUCH <b>＋</b></a>
-        <!-- 简历 PDF 在 public/resume.pdf；点击上报下载计数（失败静默） -->
-        <a class="btn ghost" :href="`${BASE}resume.pdf`" target="_blank" rel="noopener" @click="trackResume">下载简历 <b>↓</b></a>
+        <!-- TODO(上线前): 接入真实简历 PDF 下载 -->
+        <a class="btn ghost" href="#contact">下载简历 <b>↓</b></a>
       </div>
     </div>
 
@@ -57,19 +57,7 @@
 </template>
 
 <script setup>
-import { profile, apiBase } from '../../data/site.js'
-
-const BASE = import.meta.env.BASE_URL
-
-// 简历下载计数 beacon：公开端点（POST /api/resume/hit），同 IP 分钟级去重；
-// 失败静默，不影响按钮本身行为
-function trackResume() {
-  try {
-    fetch(`${apiBase}/api/resume/hit`, { method: 'POST', keepalive: true }).catch(() => {})
-  } catch {
-    /* 计数永不影响前台 */
-  }
-}
+import { profile } from '../../data/site.js'
 </script>
 
 <style lang="scss" scoped>
@@ -107,7 +95,7 @@ function trackResume() {
     transform: rotate(45deg);
   }
   .dim {
-    color: var(--c-muted);
+    color: #9aa0a8;
   }
 }
 h1 {
@@ -118,7 +106,7 @@ h1 {
 
   span {
     display: block;
-    color: #8a9097; // 大字 3.2:1（原 #a1a6ad 仅 2.45:1，不达 WCAG 大字标准）
+    color: #a1a6ad;
     font-weight: 400;
   }
 }
@@ -146,10 +134,10 @@ h1 {
 }
 .art {
   height: 390px;
-  border: 1px solid var(--c-line-blue);
+  border: 1px solid #bfc8dc;
   position: relative;
   overflow: hidden;
-  background: var(--c-bg);
+  background: #fff;
 
   &::before {
     content: '';
