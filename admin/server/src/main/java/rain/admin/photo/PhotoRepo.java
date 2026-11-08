@@ -3,7 +3,6 @@ package rain.admin.photo;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 public interface PhotoRepo extends JpaRepository<Photo, Long> {
@@ -21,8 +20,6 @@ public interface PhotoRepo extends JpaRepository<Photo, Long> {
     @Query("select coalesce(max(p.sortNo), 0) from Photo p where p.groupName = :group")
     int maxSortNoInGroup(String group);
 
-    /** 设头图第一步：全表清零（与置一在同一事务内，保证全局唯一） */
-    @Modifying
-    @Query("update Photo p set p.isHero = false")
-    void clearHero();
+    /** 当前头图（0 或 1 条） */
+    List<Photo> findByIsHeroTrue();
 }

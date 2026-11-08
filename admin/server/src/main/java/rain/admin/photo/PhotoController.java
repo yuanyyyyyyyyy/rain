@@ -1,6 +1,5 @@
 package rain.admin.photo;
 
-import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -19,8 +18,6 @@ public class PhotoController {
         this.service = service;
         this.repo = repo;
     }
-
-    public record UploadParams(@NotBlank String groupName, LocalDate shotDate) {}
 
     /** 全量列表（按分组、组内排序号） */
     @GetMapping
@@ -46,6 +43,41 @@ public class PhotoController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of("error", "上传失败：" + e.getMessage()));
+        }
+    }
+
+    /** 更新分组/日期/排序号（管理台表单全字段提交） */
+    @PutMapping("/{id}")
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody PhotoService.UpdateParams params) {
+        try {
+            return ResponseEntity.ok(service.update(id, params));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** 设为头图（全局唯一：旧头图清零 + 本张置一） */
+    @PutMapping("/{id}/hero")
+    public ResponseEntity<?> setHero(@PathVariable Long id) {
+        try {
+            service.setHero(id);
+            return ResponseEntity.ok(Map.of("ok", true));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** 删除：先删记录（事务），后删文件（失败以 warning 提示人工清理，不回滚记录删除） */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> delete(@PathVariable Long id) {
+        try {
+            Photo p = service.deleteRecord(id);
+            List<String> failedFiles = service.deleteFiles(p);
+            if (failedFiles.isEmpty()) return ResponseEntity.ok(Map.of("deleted", p.getPid()));
+            return ResponseEntity.ok(Map.of("deleted", p.getPid(),
+                    "warning", "记录已删除，但以下文件删除失败，请人工清理：" + String.join(", ", failedFiles)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 }
