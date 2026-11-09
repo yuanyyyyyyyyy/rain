@@ -88,7 +88,8 @@
 import { computed } from 'vue'
 import { projects } from '../../data/site.js'
 
-const flagship = computed(() => projects.find((p) => p.flagship))
+// 兜底：数据漏标 flagship 时退回首个项目，避免模板直接抛错白屏
+const flagship = computed(() => projects.find((p) => p.flagship) || projects[0])
 const regular = computed(() => projects.filter((p) => !p.flagship))
 </script>
 

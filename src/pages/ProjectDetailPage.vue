@@ -15,8 +15,8 @@
     <div class="grid">
       <div class="main">
         <template v-for="sec in detail.sections" :key="sec.kicker">
-          <!-- 架构 / 管线图 -->
-          <section v-if="sec.type === 'arch'" class="block">
+          <!-- 架构 / 管线图（component 未注册时整节跳过，不渲染空壳） -->
+          <section v-if="sec.type === 'arch' && archMap[sec.component]" class="block">
             <div class="kicker">{{ sec.kicker }}</div>
             <component :is="archMap[sec.component]" />
           </section>
@@ -32,7 +32,16 @@
             </div>
             <template v-else>
               <div class="shots">
-                <figure v-for="(s, i) in sec.items" :key="s.src" class="shot" @click="openShot(sec, i)">
+                <figure
+                  v-for="(s, i) in sec.items || []"
+                  :key="s.src"
+                  class="shot"
+                  role="button"
+                  tabindex="0"
+                  :aria-label="`查看截图大图：${s.cap}`"
+                  @click="openShot(sec, i)"
+                  @keydown.enter.prevent="openShot(sec, i)"
+                >
                   <img :src="`${BASE}${s.src.replace(/^\//, '')}`" :alt="s.cap" loading="lazy" />
                   <figcaption>{{ s.fig }} — {{ s.cap }}</figcaption>
                 </figure>
@@ -107,8 +116,8 @@
     </nav>
     <!-- 界面截图 Lightbox -->
     <Teleport to="body">
-      <div v-if="shot" class="shotbox" @click.self="closeShot">
-        <button class="lb-close" aria-label="关闭" @click="closeShot">×</button>
+      <div v-if="shot" class="shotbox" role="dialog" aria-modal="true" aria-label="截图查看器" @click.self="closeShot">
+        <button ref="sbCloseRef" class="lb-close" aria-label="关闭" @click="closeShot">×</button>
         <button class="lb-arrow lb-prev" aria-label="上一张" @click.stop="stepShot(-1)">←</button>
         <figure class="lb-body" @click.self="closeShot">
           <img :src="`${BASE}${shot.s.src.replace(/^\//, '')}`" :alt="shot.s.cap" />
@@ -141,7 +150,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
 import { projects } from '../data/site.js'
 import { yunshuDetail } from '../data/projects/yunshu.js'
@@ -161,23 +170,38 @@ const idx = computed(() => projects.findIndex((x) => x.slug === route.params.slu
 const prev = computed(() => projects[idx.value - 1] || null)
 const next = computed(() => projects[idx.value + 1] || null)
 
+// 每路由 SEO：项目页 title 按数据动态设置
+watchEffect(() => {
+  document.title = detail.value
+    ? `${detail.value.headline} — YUAN`
+    : project.value
+      ? `${project.value.title} — YUAN`
+      : '未找到项目 — YUAN'
+})
+
 // 界面截图 Lightbox
 const shotSec = ref(null)
 const shotIdx = ref(-1)
+const sbCloseRef = ref(null)
+let lastFocus = null // 打开前聚焦元素，关闭时归还焦点
 const shot = computed(() => {
   if (!shotSec.value || shotIdx.value < 0) return null
   const items = shotSec.value.items
   return { s: items[shotIdx.value], n: items.length }
 })
 const openShot = (sec, i) => {
+  lastFocus = document.activeElement
   shotSec.value = sec
   shotIdx.value = i
   document.body.style.overflow = 'hidden'
+  nextTick(() => sbCloseRef.value?.focus())
 }
 const closeShot = () => {
   shotSec.value = null
   shotIdx.value = -1
   document.body.style.overflow = ''
+  lastFocus?.focus?.()
+  lastFocus = null
 }
 const stepShot = (d) => {
   const n = shotSec.value.items.length
@@ -384,7 +408,7 @@ onUnmounted(() => {
   dt {
     font-size: 9px;
     letter-spacing: 0.14em;
-    color: #a1a6ad;
+    color: var(--c-muted);
   }
   dd {
     margin: 3px 0 0;
@@ -437,9 +461,9 @@ onUnmounted(() => {
   }
 }
 .shots-pending {
-  border: 1px dashed #a9b4cc;
+  border: 1px dashed var(--c-aux);
   padding: 18px 22px;
-  background: #fafbfe;
+  background: var(--c-blue-faint);
 
   .sp-title {
     font: 10px var(--font-mono);

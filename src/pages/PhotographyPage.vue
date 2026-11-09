@@ -7,8 +7,15 @@
       <p class="lead">观察光线、街道与日常场景，记录那些值得注意的瞬间。多数照片拍摄于黄昏与夜晚。</p>
     </div>
     <div class="wrap">
-      <figure class="hero-ph" @click="openAt(flatIndex(heroPhoto.id))">
-        <img :src="heroSrc" :alt="'页头照片 ' + heroPhoto.date" />
+      <figure
+        class="hero-ph"
+        role="button"
+        tabindex="0"
+        aria-label="查看页头照片大图"
+        @click="openAt(flatIndex(heroPhoto.id))"
+        @keydown.enter.prevent="openAt(flatIndex(heroPhoto.id))"
+      >
+        <img :src="heroSrc" :alt="`Field Notes 页头照片，${heroPhoto.date} 摄`" />
         <figcaption class="ph-label">FIG. 000 — {{ heroPhoto.date }} · 点击任意照片查看大图</figcaption>
       </figure>
     </div>
@@ -28,8 +35,12 @@
             v-for="it in row.items"
             :key="it.p.id"
             class="plate"
+            role="button"
+            tabindex="0"
+            :aria-label="`查看 ${plateLabel(it.p.id)} 大图`"
             :style="{ flex: `${it.r} 1 0px` }"
             @click="openAt(flatIndex(it.p.id))"
+            @keydown.enter.prevent="openAt(flatIndex(it.p.id))"
           >
             <div class="ph" :style="{ height: row.h + 'px' }">
               <img :src="`${BASE}photos/${it.p.id}.jpg`" :alt="plateAlt(g, it.p)" loading="lazy" />
@@ -44,8 +55,8 @@
 
     <!-- Lightbox -->
     <Teleport to="body">
-      <div v-if="lightbox >= 0" class="lightbox" @click.self="close">
-        <button class="lb-close" aria-label="关闭" @click="close">×</button>
+      <div v-if="lightbox >= 0" class="lightbox" role="dialog" aria-modal="true" aria-label="照片查看器" @click.self="close">
+        <button ref="lbCloseRef" class="lb-close" aria-label="关闭" @click="close">×</button>
         <button class="lb-arrow lb-prev" aria-label="上一张" @click.stop="step(-1)">←</button>
         <figure class="lb-body" @click.self="close">
           <img :src="`${BASE}photos/${flatPlates[lightbox].id}.jpg`" :alt="lightboxAlt" />
@@ -121,19 +132,25 @@ onUnmounted(() => {
 
 // Lightbox
 const lightbox = ref(-1)
+const lbCloseRef = ref(null)
+let lastFocus = null // 打开前聚焦元素，关闭时归还焦点
 const lightboxLabel = computed(() =>
   lightbox.value >= 0 ? plateNo(lightbox.value) : ''
 )
 const lightboxAlt = computed(() =>
-  lightbox.value >= 0 ? `照片 ${lightboxLabel.value}` : ''
+  lightbox.value >= 0 ? `照片 ${lightboxLabel.value}，${flatPlates[lightbox.value].date} 摄` : ''
 )
 const openAt = (idx) => {
+  lastFocus = document.activeElement
   lightbox.value = idx
   document.body.style.overflow = 'hidden'
+  nextTick(() => lbCloseRef.value?.focus())
 }
 const close = () => {
   lightbox.value = -1
   document.body.style.overflow = ''
+  lastFocus?.focus?.()
+  lastFocus = null
 }
 const step = (d) => {
   const n = flatPlates.length

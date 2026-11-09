@@ -11,16 +11,16 @@
 
     <form class="form" @submit.prevent="submit">
       <div class="row">
-        <input v-model="name" placeholder="怎么称呼你" maxlength="80" required />
-        <input v-model="email" type="email" placeholder="你的邮箱" maxlength="200" required />
+        <input v-model="name" placeholder="怎么称呼你" aria-label="怎么称呼你" maxlength="80" required />
+        <input v-model="email" type="email" placeholder="你的邮箱" aria-label="你的邮箱" maxlength="200" required />
       </div>
-      <textarea v-model="body" rows="4" placeholder="想聊点什么（招聘合作 / 技术交流都可以）" maxlength="4000" required></textarea>
+      <textarea v-model="body" rows="4" placeholder="想聊点什么（招聘合作 / 技术交流都可以）" aria-label="留言内容" maxlength="4000" required></textarea>
       <div class="form-foot">
         <button class="btn primary" type="submit" :disabled="sending">
           {{ sending ? '发送中…' : 'SEND MESSAGE' }} <b v-if="!sending">↗</b>
         </button>
-        <span v-if="done" class="ok">已收到，感谢留言！</span>
-        <span v-else-if="err" class="err">{{ err }}</span>
+        <span v-if="done" class="ok" role="status">已收到，感谢留言！</span>
+        <span v-else-if="err" class="err" role="status">{{ err }}</span>
       </div>
     </form>
 
