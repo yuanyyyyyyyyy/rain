@@ -25,7 +25,11 @@
     </form>
 
     <div class="actions">
-      <a class="btn" :href="`mailto:${profile.email}`">EMAIL ME <b>↗</b></a>
+      <!-- 邮箱交互：点击复制（mailto: 会唤起系统邮件客户端如 Outlook，体验差，弃用） -->
+      <button class="btn copy-btn" type="button" @click="copyEmail">
+        {{ copied ? 'COPIED ✓' : 'EMAIL ME' }} <b v-if="!copied">⧉</b>
+      </button>
+      <span class="addr" aria-label="邮箱地址">{{ profile.email }}</span>
       <a v-if="profile.github" class="btn" :href="profile.github" target="_blank" rel="noopener">GITHUB <b>↗</b></a>
     </div>
   </section>
@@ -41,6 +45,32 @@ const body = ref('')
 const sending = ref(false)
 const done = ref(false)
 const err = ref('')
+const copied = ref(false)
+let copyTimer = null
+
+// 点击复制邮箱：clipboard API 优先，非 HTTPS/旧浏览器回退 execCommand
+async function copyEmail() {
+  const text = profile.email
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text)
+    } else {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    copied.value = true
+    clearTimeout(copyTimer)
+    copyTimer = setTimeout(() => (copied.value = false), 2000)
+  } catch {
+    // 复制失败静默——邮箱地址本身就在按钮旁边可见
+  }
+}
 
 async function submit() {
   err.value = ''
@@ -131,5 +161,16 @@ async function submit() {
   gap: 12px;
   margin-top: 24px;
   flex-wrap: wrap;
+  align-items: center;
+}
+.copy-btn {
+  cursor: pointer;
+  font-family: inherit;
+}
+.addr {
+  font: 11px var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--c-muted);
+  user-select: all; // 整段选中方便手动复制
 }
 </style>
