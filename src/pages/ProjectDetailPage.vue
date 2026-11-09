@@ -155,6 +155,7 @@ import { useRoute } from 'vue-router'
 import { projects } from '../data/site.js'
 import { yunshuDetail } from '../data/projects/yunshu.js'
 import { intelnexusDetail } from '../data/projects/intelnexus.js'
+import { shimmerDetail } from '../data/projects/shimmer.js'
 import YunshuArch from '../components/project/YunshuArch.vue'
 import IntelnexusArch from '../components/project/IntelnexusArch.vue'
 

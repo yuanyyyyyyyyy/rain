@@ -51,13 +51,12 @@ head_msg = br["commit"]["commit"]["message"].strip()
 
 # 断点：远端 HEAD 对应本地序列中的位置（message 匹配），prev_files 用本地同内容 commit 的树
 start_idx = 0
-for i, (sha, an, ae, ad, msg) in enumerate(commits):
-    if msg.strip() == head_msg:
+prev_files = {}
+for i in range(len(commits) - 1, -1, -1):  # 从最新往回匹配：message 可重复（publish commit），取最新
+    if commits[i][4].strip() == head_msg:
         start_idx = i + 1
-        prev_files = ls_tree(sha)
+        prev_files = ls_tree(commits[i][0])
         break
-else:
-    prev_files = {}
 print(f"remote HEAD: {head_msg[:40]!r} -> resume from #{start_idx + 1}/{len(commits)}", flush=True)
 
 for i in range(start_idx, len(commits)):
@@ -89,3 +88,8 @@ for i in range(start_idx, len(commits)):
     print(f"[{i+1}/{len(commits)}] {msg[:40]}  (+{uploaded} blobs)", flush=True)
 
 print(f"DONE: main -> {parent_sha[:10]}")
+
+# API ref 更新不保证触发 push event：显式触发部署 workflow
+import subprocess as sp
+r = sp.run(["gh", "workflow", "run", "deploy.yml", "--repo", f"{OWNER}/{REPO}"], capture_output=True, text=True)
+print("deploy triggered" if r.returncode == 0 else f"deploy trigger failed: {r.stderr}")
