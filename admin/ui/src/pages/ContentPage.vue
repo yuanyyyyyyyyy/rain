@@ -17,6 +17,9 @@
           <option v-for="p in projects" :key="p.slug" :value="p.slug">{{ p.slug }}</option>
         </select>
       </span>
+      <button class="mini" @click="createProject" title="新建后会出现在项目下拉中，发布时自动上公网">+ 新建</button>
+      <button class="mini danger" @click="deleteProject" title="删除详情数据；下次发布后前台卡片同步移除">删除项目</button>
+      <span class="sep">|</span>
       <a v-for="(s, i) in form.sections" :key="i" @click="scrollToSec(i)">{{ padNo(i) }} {{ kickerTitle(s).slice(0, 10) }}</a>
       <button class="mini" @click="scrollToSec(-1)" title="页面顶部">↑ 顶部</button>
     </nav>
@@ -190,6 +193,37 @@ function scrollToSec(i) {
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
+async function createProject() {
+  const slug = (prompt('新项目 slug（小写字母/数字/连字符，如 my-project）：') || '').trim()
+  if (!slug) return
+  const headline = (prompt('项目名称（卡片与详情页大标题）：') || '').trim()
+  if (!headline) return
+  const summary = (prompt('一句话简介（首页卡片与详情页概述）：') || '').trim()
+  if (!summary) return
+  try {
+    await api.post('/api/content/projects', { slug, headline, summary })
+    projects.value = await api.get('/api/content/projects')
+    slug.value = slug
+    await load()
+    say(`项目 ${slug} 已创建（空骨架）。发布后自动出现在公网首页卡片。`)
+  } catch (e) {
+    say(e.message, true)
+  }
+}
+
+async function deleteProject() {
+  if (!confirm(`删除项目 ${slug.value}？详情数据将删除；下次发布后前台卡片同步移除。`)) return
+  try {
+    await api.delete(`/api/content/projects/${slug.value}`)
+    projects.value = await api.get('/api/content/projects')
+    slug.value = projects.value[0]?.slug || ''
+    await load()
+    say(`项目已删除。点「04 发布」后公网卡片同步移除。`)
+  } catch (e) {
+    say(e.message, true)
+  }
+}
+
 function say(text, isErr = false) {
   msg.value = text
   msgIsErr.value = isErr
@@ -298,6 +332,13 @@ onMounted(async () => {
   }
   .mini {
     margin-left: auto;
+  }
+  .sep {
+    color: var(--c-line);
+  }
+  .mini.danger:hover {
+    border-color: var(--c-danger);
+    color: var(--c-danger);
   }
 }
 .dirty-tag {

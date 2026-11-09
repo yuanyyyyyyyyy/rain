@@ -41,6 +41,34 @@ public class ContentService {
 
     public record UpdateRequest(String headline, String summary, String headerNote, JsonNode meta, JsonNode sections) {}
 
+    public record CreateRequest(String slug, String headline, String summary) {}
+
+    /** 新建项目（最小骨架：空 sections，概述由页面渲染）；发布时写入 site.js 卡片与前台数据文件 */
+    @Transactional
+    public ProjectDetail create(CreateRequest req) {
+        String slug = req.slug() == null ? "" : req.slug().trim().toLowerCase();
+        if (!slug.matches("[a-z0-9][a-z0-9-]{1,40}")) {
+            throw bad("slug 只能是小写字母/数字/连字符（2-40 位）");
+        }
+        if (repo.existsBySlug(slug)) throw bad("slug 已存在: " + slug);
+        if (req.headline() == null || req.headline().isBlank()) throw bad("headline 不能为空");
+        if (req.summary() == null || req.summary().isBlank()) throw bad("summary 不能为空");
+        ProjectDetail d = new ProjectDetail();
+        d.setSlug(slug);
+        d.setHeadline(req.headline().trim());
+        d.setSummary(req.summary());
+        d.setHeaderNote("");
+        d.setMetaJson("[]");
+        d.setSectionsJson("[]");
+        return repo.save(d);
+    }
+
+    /** 删除项目（详情数据一并删除；发布后前台卡片与数据文件同步移除） */
+    @Transactional
+    public void delete(String slug) {
+        repo.delete(bySlug(slug));
+    }
+
     public List<ProjectDetail> list() {
         return repo.findAll();
     }

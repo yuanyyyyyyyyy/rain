@@ -159,7 +159,7 @@ import YunshuArch from '../components/project/YunshuArch.vue'
 import IntelnexusArch from '../components/project/IntelnexusArch.vue'
 
 const BASE = import.meta.env.BASE_URL
-const details = { yunshu: yunshuDetail, intelnexus: intelnexusDetail }
+const details = { yunshu: yunshuDetail, intelnexus: intelnexusDetail, shimmer: shimmerDetail }
 const archMap = { yunshu: YunshuArch, intelnexus: IntelnexusArch }
 const defaultLabels = ['问题', '方案', '效果']
 

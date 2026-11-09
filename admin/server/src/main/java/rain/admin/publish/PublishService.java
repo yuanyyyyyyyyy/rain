@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import rain.admin.content.ContentService;
 import rain.admin.content.ProjectDetail;
+import rain.admin.content.SiteDataGenerator;
 import rain.admin.photo.Photo;
 import rain.admin.photo.PhotoRepo;
 
@@ -27,16 +28,19 @@ public class PublishService {
     private final PhotoRepo photoRepo;
     private final PhotoDataGenerator photoDataGenerator;
     private final ContentService contentService;
+    private final SiteDataGenerator siteDataGenerator;
     private final PublishLogRepo logRepo;
     private final Path projectRoot;
     private final AtomicBoolean running = new AtomicBoolean(false);
 
     public PublishService(PhotoRepo photoRepo, PhotoDataGenerator photoDataGenerator,
-                          ContentService contentService, PublishLogRepo logRepo,
+                          ContentService contentService, SiteDataGenerator siteDataGenerator,
+                          PublishLogRepo logRepo,
                           @Value("${app.storage.frontend-public-dir}") String frontendPublicDir) {
         this.photoRepo = photoRepo;
         this.photoDataGenerator = photoDataGenerator;
         this.contentService = contentService;
+        this.siteDataGenerator = siteDataGenerator;
         this.logRepo = logRepo;
         this.projectRoot = Path.of(frontendPublicDir).getParent();
     }
@@ -59,10 +63,26 @@ public class PublishService {
             Photo hero = photos.stream().filter(p -> Boolean.TRUE.equals(p.getIsHero())).findFirst().orElse(null);
             String photosJs = photoDataGenerator.generate(photos, hero);
             List<ProjectDetail> details = contentService.list();
+            Path siteJsPath = projectRoot.resolve("src/data/site.js");
+            String siteJs = siteDataGenerator.generate(details, Files.readString(siteJsPath));
             List<String[]> files = new ArrayList<>(); // [相对路径, 内容]
             files.add(new String[] {"src/data/photos.js", photosJs});
+            files.add(new String[] {"src/data/site.js", siteJs});
+            List<String> slugs = details.stream().map(ProjectDetail::getSlug).toList();
             for (ProjectDetail d : details) {
                 files.add(new String[] {"src/data/projects/" + d.getSlug() + ".js", contentService.export(d)});
+            }
+            // 清理已删项目的数据文件（DB 之外的 .js）
+            try (var stream = Files.list(projectRoot.resolve("src/data/projects"))) {
+                stream.filter(p -> p.toString().endsWith(".js"))
+                        .filter(p -> slugs.stream().noneMatch(s -> p.getFileName().toString().equals(s + ".js")))
+                        .forEach(p -> {
+                            try {
+                                Files.deleteIfExists(p);
+                            } catch (IOException ignored) {
+                                // 清理失败不阻断发布
+                            }
+                        });
             }
 
             // 2. tmp 全部写成功后再逐个原子替换（写 tmp 失败 = 现有文件分毫未动）
@@ -136,7 +156,7 @@ public class PublishService {
     private String commitAndSync() {
         StringBuilder out = new StringBuilder();
         try {
-            run(20, "git", "add", "src/data/photos.js", "src/data/projects");
+            run(20, "git", "add", "src/data");
             Process diff = new ProcessBuilder("git", "diff", "--cached", "--quiet")
                     .directory(projectRoot.toFile()).start();
             boolean hasChanges = diff.waitFor(10, TimeUnit.SECONDS) && diff.exitValue() != 0;
