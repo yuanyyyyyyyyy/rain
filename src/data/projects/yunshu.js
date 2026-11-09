@@ -6,7 +6,7 @@
 
 export const yunshuDetail = {
   "slug" : "yunshu",
-  "headline" : "微服务架构下的排班预约服务",
+  "headline" : "微服务架构下的排班预约服务（闭环验证）",
   "summary" : "基于 Spring Cloud Alibaba 微服务架构的智慧医院管理平台，团队 8 人。我独立负责排班预约服务 his-j8-setroster 的后端全部代码（该模块单人提交）：日/周排班模板、号源时段与放号策略、日历例外（停诊源头）、停诊通知任务与 AI 排班助手，共 24 个 REST 接口 + 1 个 AI 接口。",
   "meta" : [
     [
