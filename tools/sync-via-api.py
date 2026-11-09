@@ -41,26 +41,33 @@ def ls_tree(sha):
         cur[path] = (mode, bsha)
     return cur
 
-lines = git_text("log", "--reverse", "--format=%H%x01%an%x01%ae%x01%aI%x01%s").strip().split("\n")
-commits = [l.split("\x01", 4) for l in lines]
+lines = git_text("log", "--reverse", "--format=%H%x01%T%x01%an%x01%ae%x01%aI%x01%s").strip().split("\n")
+# [sha, tree, an, ae, ad, msg]：tree sha 由文件内容决定，重放（内容等价）后保持一致
+commits = [l.split("\x01", 5) for l in lines]
 
 br = api("GET", "/branches/main")
 parent_sha = br["commit"]["sha"]
 parent_tree = br["commit"]["commit"]["tree"]["sha"]
 head_msg = br["commit"]["commit"]["message"].strip()
+remote_tree = parent_tree
 
-# 断点：远端 HEAD 对应本地序列中的位置（message 匹配），prev_files 用本地同内容 commit 的树
+# 断点：远端 HEAD 对应本地序列中的位置。必须「message + tree」双匹配：
+# publish commit 消息固定重复，而重放通道会使本地/远端 hash 分叉——只按消息匹配会把
+# 未推送的同名 publish commit 误判为已推送（2026-11-10 事故：任务 C/F 与截图静默丢失）。
 start_idx = 0
 prev_files = {}
-for i in range(len(commits) - 1, -1, -1):  # 从最新往回匹配：message 可重复（publish commit），取最新
-    if commits[i][4].strip() == head_msg:
+for i in range(len(commits) - 1, -1, -1):  # 从最新往回：取最新一个真正等价的断点
+    if commits[i][5].strip() == head_msg and commits[i][1] == remote_tree:
         start_idx = i + 1
         prev_files = ls_tree(commits[i][0])
         break
+if start_idx == 0 and head_msg:
+    # 无断点：检查远端 HEAD 是否本就是本地某 commit 的等价重放失败场景 → 全量重放（幂等安全）
+    print("WARN: no local commit matches remote HEAD (msg+tree); replaying everything", flush=True)
 print(f"remote HEAD: {head_msg[:40]!r} -> resume from #{start_idx + 1}/{len(commits)}", flush=True)
 
 for i in range(start_idx, len(commits)):
-    sha, an, ae, ad, msg = commits[i]
+    sha, ltree, an, ae, ad, msg = commits[i]
     cur = ls_tree(sha)
     changes = []
     uploaded = 0

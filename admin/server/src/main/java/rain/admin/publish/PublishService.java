@@ -178,7 +178,8 @@ public class PublishService {
         }
         boolean photosUncommitted = false;
         try {
-            Process p = new ProcessBuilder("git", "status", "--porcelain", "public/photos")
+            // 照片与截图两个二进制目录都在发布 commit 范围内（任务 C/G），任一有未提交改动都算脏
+            Process p = new ProcessBuilder("git", "status", "--porcelain", "public/photos", "public/screenshots")
                     .directory(projectRoot.toFile()).start();
             String out = new String(p.getInputStream().readAllBytes());
             if (p.waitFor(10, TimeUnit.SECONDS) && !out.isBlank()) photosUncommitted = true;
@@ -229,9 +230,9 @@ public class PublishService {
     private String commitAndSync() {
         StringBuilder out = new StringBuilder();
         try {
-            // 任务 C P0：照片二进制必须与数据文件一起进发布 commit，否则新上传照片公网 404；
-            // git add <pathspec> 自带删除语义，照片删除同样入库
-            run(20, "git", "add", "src/data", "public/photos");
+            // 任务 C P0：照片/截图二进制必须与数据文件一起进发布 commit，否则新上传照片公网 404；
+            // git add <pathspec> 自带删除语义，删除同样入库
+            run(20, "git", "add", "src/data", "public/photos", "public/screenshots");
             Process diff = new ProcessBuilder("git", "diff", "--cached", "--quiet")
                     .directory(projectRoot.toFile()).start();
             boolean hasChanges = diff.waitFor(10, TimeUnit.SECONDS) && diff.exitValue() != 0;
