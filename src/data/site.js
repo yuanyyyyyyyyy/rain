@@ -19,6 +19,7 @@ export const profile = {
   github: '',
 }
 
+// === PROJECTS:AUTO-START ===
 export const projects = [
   {
     slug: 'yunshu',
@@ -57,13 +58,6 @@ export const projects = [
     summary:
       '围绕照片展示与视觉表达构建的全栈项目，结合图片处理、对象存储与 AI 能力。',
     tags: ['VUE 3', 'EXPRESS', 'MYSQL', 'AI API'],
-  },
-  {
-    slug: 'test-e2e',
-    no: '004',
-    title: '端到端验证项目',
-    summary:
-      '验证新建项目与 site.js 写回闭环的临时项目。',
   }
 ]
 // === PROJECTS:AUTO-END ===
