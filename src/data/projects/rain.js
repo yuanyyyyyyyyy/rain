@@ -83,9 +83,40 @@ export const rainDetail = {
       "kicker" : "03 / 数据指标"
     },
     {
+      "note" : "截图由 tools/screenshots.mjs（Playwright，1440px 宽）自动生成；改版后 npm run shots 重新产出，管理台更新图注再发布。",
+      "type" : "shots",
+      "items" : [
+        {
+          "src" : "screenshots/rain/rain-01.png",
+          "caption" : "首页 Hero — Klein Blue v2 主视觉"
+        },
+        {
+          "src" : "screenshots/rain/rain-02.png",
+          "caption" : "Works 列表 — 五个项目卡片（含本站与 Forge）"
+        },
+        {
+          "src" : "screenshots/rain/rain-03.png",
+          "caption" : "首页 Beyond — 摄影与日常入口"
+        },
+        {
+          "src" : "screenshots/rain/rain-04.jpg",
+          "caption" : "摄影页 — 30 张真实照片的对齐行排版"
+        },
+        {
+          "src" : "screenshots/rain/rain-05.png",
+          "caption" : "详情页档案式结构（云枢 case study）"
+        },
+        {
+          "src" : "screenshots/rain/rain-06.png",
+          "caption" : "Forge 详情页 — 三段式实现 + 数据卡"
+        }
+      ],
+      "kicker" : "04 / 界面实录"
+    },
+    {
       "body" : "这个站点本身就是项目：内容与组件分离（src/data），管理台把改文案变成填表单，发布管道把数据库内容写回静态数据文件并触发部署。站点在持续演进中——留言邮件通知、EXIF 自动提取、自动截图管线都在迭代清单上。",
       "type" : "text",
-      "kicker" : "04 / 收获"
+      "kicker" : "05 / 收获"
     }
   ]
 }
