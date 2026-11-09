@@ -2,6 +2,7 @@
  * rain collector — Cloudflare Worker（免费层）
  * 前台埋点 + 联系表单 + 简历下载计数的公网接收端；管理台经 Bearer ADMIN_TOKEN 读统计与收件箱。
  * 存储：D1（绑定名 DB）。密钥：secret ADMIN_TOKEN（wrangler secret put ADMIN_TOKEN）。
+ * 留言通知：secret BREVO_API_KEY + var OWNER_EMAIL（未配置则只入库不发信，任务 D）。
  * 部署见同目录 README.md。
  */
 
@@ -11,6 +12,9 @@ const JSON_HEADERS = {
   "access-control-allow-methods": "GET,POST,PUT,OPTIONS",
   "access-control-allow-headers": "content-type,authorization",
 }
+
+/** 每日转发上限：防止刷表单烧穿 Brevo 免费配额（300 封/天，留余量） */
+const NOTIFY_DAILY_CAP = 20
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS })
@@ -43,8 +47,45 @@ function bjMinute() {
   return d.toISOString().slice(0, 16).replace(/[-T:]/g, "")
 }
 
+/**
+ * 留言邮件通知（Brevo，免费 300 封/天；发件人需在 Brevo 后台验证站长邮箱一次）。
+ * env.BREVO_API_KEY / env.OWNER_EMAIL 未配置 → 静默跳过（留言只入库）。
+ * 任何失败只 console.error，绝不影响表单响应。
+ */
+async function notifyOwnerByEmail(env, name, email, text) {
+  try {
+    const key = env.BREVO_API_KEY
+    const owner = env.OWNER_EMAIL
+    if (!key || !owner) return
+    const recent = await env.DB.prepare(
+      "SELECT COUNT(*) n FROM messages WHERE created_at > datetime('now', '-1 day')"
+    ).first()
+    if ((recent?.n ?? 0) > NOTIFY_DAILY_CAP) {
+      console.error("notify skipped: daily cap exceeded")
+      return
+    }
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: { "api-key": key, "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify({
+        // 发件人 = 站长邮箱（Brevo 已验证的发件人）；回复直接送达访客邮箱
+        sender: { email: owner, name: "rain collector" },
+        to: [{ email: owner, name: "rain 站长" }],
+        replyTo: { email, name },
+        subject: `[rain 留言] ${name}`,
+        textContent:
+          `来自：${name} <${email}>\n时间：${bjDay()}（北京时间）\n\n${text}\n\n` +
+          `— rain collector 自动通知；留言已存 D1，管理台「05 收件箱」可见`,
+      }),
+    })
+    if (!res.ok) console.error("brevo notify failed:", res.status, await res.text().catch(() => ""))
+  } catch (e) {
+    console.error("notify error:", e)
+  }
+}
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") return corsPreflight()
     const url = new URL(request.url)
     try {
@@ -86,6 +127,8 @@ export default {
         await env.DB.prepare(
           "INSERT INTO messages (name, email, body, ip_hash) VALUES (?, ?, ?, ?)"
         ).bind(name, email, text, ipHash).run()
+        // 邮件通知（异步，不阻塞响应；失败不影响入库与 200）
+        ctx.waitUntil(notifyOwnerByEmail(env, name, email, text))
         return json({ ok: true })
       }
 

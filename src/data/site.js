@@ -4,7 +4,7 @@
 
 // 埋点/联系表单的后端地址：'' = 同源（本地 dev 经 vite proxy 到 Spring，可用）。
 // Cloudflare Worker 已部署（https://rain-collector.yuanyyyyyyyyy.workers.dev）：
-// 海外/代理访客的埋点与表单入库；国内直连 workers.dev 受限时前端静默降级（表单转 mailto），无害。
+// 埋点与表单入库；国内直连 workers.dev 受限时前端静默降级——提示访客直接邮箱联系（刻意不弹 mailto），无害。
 export const apiBase = 'https://rain-collector.yuanyyyyyyyyy.workers.dev'
 
 export const profile = {

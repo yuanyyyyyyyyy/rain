@@ -84,7 +84,8 @@ async function submit() {
         body: JSON.stringify({ name: name.value, email: email.value, body: body.value }),
       })
     } catch {
-      // 网络层失败（静态托管上无后端）→ 降级为邮件联系
+      // 网络层失败（workers.dev 直连受限）→ 提示邮箱地址让访客自行联系；
+      // 刻意不自动弹 mailto（本机邮件客户端弹窗体验差，见 commit 7dbb9fe）
       err.value = `在线表单暂不可用，请直接邮件联系：${profile.email}`
       return
     }

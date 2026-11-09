@@ -41,12 +41,28 @@ commit + push（或 `python tools/sync-via-api.py`）→ Actions 自动重新部
 
 ## 接入管理台（让概览/收件箱读公网数据）
 
-管理台侧栏底部「数据源」按钮，填入：
+管理台「06 / 设置 → 数据源」卡片（或侧栏底部「数据源」按钮），填入：
 
 - Worker 地址：`https://rain-collector.<你的子域>.workers.dev`
 - ADMIN_TOKEN：与第 2 步相同的密钥
 
 配置存浏览器 localStorage；未配置或请求失败时自动回退本地 Spring 后端（本地联调模式）。
+
+## 留言邮件通知（可选，任务 D）
+
+新留言入库 D1 的同时转发一封通知邮件到站长邮箱。配置两步：
+
+```bash
+# 1. 注册 Brevo（brevo.com，免费 300 封/天）→ 发件人与安全性 → 验证发件人：
+#    填你的站长邮箱（wrangler.toml [vars] OWNER_EMAIL，需点验证邮件确认一次）
+# 2. 生成 SMTP & API 密钥，配置到 Worker secret：
+npx wrangler secret put BREVO_API_KEY
+npx wrangler deploy   # secret 更新后需重新部署生效
+```
+
+- 未配置 `BREVO_API_KEY` 时：留言照常入库，只是不发邮件（worker 静默跳过）。
+- 防刷保护：24 小时内留言数超过 20 条后自动停止转发（仍入库），防表单刷爆免费配额。
+- 通知邮件的「回复」直接送达访客邮箱（reply-to = 访客）。
 
 ## 本地调试
 

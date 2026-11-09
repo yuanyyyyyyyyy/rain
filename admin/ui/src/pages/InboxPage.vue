@@ -41,6 +41,8 @@ const list = ref([])
 const source = ref('本地')
 const filter = ref('all')
 const busy = ref(false)
+// load() 时快照当前数据源配置（localStorage 非响应式，供空态文案区分提示）
+const workerCfg = ref({ base: '', token: '' })
 
 const tabs = [
   { key: 'all', label: '全部' },
@@ -55,9 +57,12 @@ const shown = computed(() => {
   return list.value
 })
 const emptyText = computed(() =>
-  list.value.length ? '当前筛选下没有留言。' : '暂无留言。前台联系表单提交后会出现在这里。'
+  list.value.length
+    ? '当前筛选下没有留言。'
+    : workerCfg.value.base
+      ? '暂无留言。公网访客提交联系表单后会出现在这里（收件箱当前读取 Worker/D1 数据源）。'
+      : '暂无留言。当前读取本地后端；公网访客的留言在 Cloudflare D1 里——请在「06 / 设置 → 数据源」配置 Worker 地址与 ADMIN_TOKEN 后再查看。'
 )
-
 // Worker 返回 created_at（SQLite 格式），本地 Spring 返回 createdAt（ISO）→ 统一为 createdAt
 function normalize(m) {
   return { ...m, read: !!m.read, archived: !!m.archived, createdAt: m.createdAt || m.created_at || '' }
@@ -66,7 +71,8 @@ function normalize(m) {
 const fmtTime = (t) => String(t).replace('T', ' ').slice(0, 16)
 
 async function load() {
-  const { base } = getWorkerCfg()
+  workerCfg.value = getWorkerCfg()
+  const { base } = workerCfg.value
   if (base) {
     try {
       const r = await workerSend('/messages', 'GET')
