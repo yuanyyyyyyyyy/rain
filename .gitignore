@@ -29,3 +29,6 @@ Desktop.ini
 
 # wrangler 本地状态
 .wrangler/
+
+# 其他 agent 会话的工作目录
+.workbuddy/
