@@ -34,6 +34,12 @@ public class AuthController {
         this.jwtService = jwtService;
     }
 
+    /** 登录限流表回收：XFF 可伪造轮换导致 key 增长，5 分钟清一次过期项 */
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 300_000)
+    public void evictStaleLoginAttempts() {
+        loginLimiter.evictStale();
+    }
+
     public record LoginRequest(@NotBlank String username, @NotBlank String password) {}
 
     public record PasswordChangeRequest(@NotBlank String oldPassword,

@@ -11,6 +11,8 @@
 | `/` | 首页（Hero 几何主视觉 / Selected Works / Capabilities / Beyond Code / Contact） | ✅ |
 | `/projects/yunshu` | 云枢智慧医院管理平台 — 档案式 case study（07 节） | ✅ 正文完成，界面截图待补 |
 | `/projects/intelnexus` | IntelNexus 多源情报分析平台 — case study（07 节） | ✅ 正文完成，界面截图待补 |
+| `/projects/forge` | Forge — Agent Harness（多入口统一 Runtime） | ✅ 2026-11-10 上线 |
+| `/projects/rain` | Rain — 本站（作品集 + 自托管管理台） | ✅ 2026-11-10 上线，含界面实录截图 |
 | `/projects/shimmer` | 照片光影平台 | ⏳ 骨架，素材待接入 |
 | `/about` | About | ⏳ 骨架 |
 | `/photography` | 摄影页 — 对齐行印样 + Lightbox，30 张真实照片 | ✅ |
@@ -77,11 +79,11 @@ cd admin/ui && npm install && npm run dev # 管理台 :5175
 
 | 想改什么 | 改哪里 |
 |---|---|
-| 导航、联系方式、首页卡片 | `src/data/site.js` |
-| 项目详情页章节 | `src/data/projects/<slug>.js` |
-| 摄影分组、顺序、头图 | `src/data/photos.js`，或管理台 `#/photos` 上传/排序/设头图（新照片按片段提示接进 photos.js） |
+| 导航、联系方式、首页卡片 | `src/data/site.js`（projects 数组是发布产物，勿手改锚点区） |
+| 项目详情页章节 | 管理台「03 项目内容」（发布自动写回 `src/data/projects/<slug>.js`，勿手改） |
+| 摄影分组、顺序、头图、图注 | 管理台「02 照片管理」上传/排序/设头图（发布自动写回 `src/data/photos.js`） |
 | 主题色 / 字体 / 间距 | `src/styles/tokens.scss` |
-| 管理台密码 / 公网数据源 | 管理台「06 / 设置」改密；侧栏「数据源」配置 Worker 地址 + ADMIN_TOKEN |
+| 管理台密码 / 公网数据源 | 管理台「06 / 设置」改密 + 配置 Worker 地址与 ADMIN_TOKEN |
 
 > 联系方式已接入真实信息（2026-11-09）：邮箱见 `site.js`；简历 PDF 为 `public/resume.pdf`（Hero"下载简历"按钮直链 + Worker 下载计数）；GitHub 暂不展示（`github: ''` 留空即自动隐藏按钮）。
 

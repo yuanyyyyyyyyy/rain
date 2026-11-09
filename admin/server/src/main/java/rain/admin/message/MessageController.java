@@ -51,6 +51,13 @@ public class MessageController {
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
+    /** 限频表回收：XFF 可伪造轮换导致 key 只增不减，5 分钟清一次过期项 */
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 300_000)
+    public void evictStaleSubmitters() {
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(5);
+        lastSubmit.values().removeIf(t -> t.isBefore(cutoff));
+    }
+
     /** 收件箱列表（管理台） */
     @GetMapping("/api/messages")
     public List<Message> list() {

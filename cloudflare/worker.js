@@ -146,18 +146,20 @@ export default {
       }
 
       if (request.method === "GET" && url.pathname === "/stats/summary") {
+        // verify-collector.yml 的端到端探针（/verify-actions 前缀）不计入真实统计
+        const NOT_VERIFY = "path NOT LIKE '/verify-actions%'"
         const today = bjDay()
         const pvToday = await env.DB.prepare(
-          "SELECT COUNT(*) n FROM visits WHERE substr(minute_bucket, 1, 8) = ?"
+          `SELECT COUNT(*) n FROM visits WHERE ${NOT_VERIFY} AND substr(minute_bucket, 1, 8) = ?`
         ).bind(today.replaceAll("-", "")).first()
-        const pvTotal = await env.DB.prepare("SELECT COUNT(*) n FROM visits").first()
-        const uvTotal = await env.DB.prepare("SELECT COUNT(DISTINCT ip_hash) n FROM visits").first()
+        const pvTotal = await env.DB.prepare(`SELECT COUNT(*) n FROM visits WHERE ${NOT_VERIFY}`).first()
+        const uvTotal = await env.DB.prepare(`SELECT COUNT(DISTINCT ip_hash) n FROM visits WHERE ${NOT_VERIFY}`).first()
         const daily = await env.DB.prepare(
           "SELECT substr(minute_bucket, 1, 8) d, COUNT(*) n FROM visits " +
-          "WHERE minute_bucket >= ? GROUP BY d"
+          `WHERE ${NOT_VERIFY} AND minute_bucket >= ? GROUP BY d`
         ).bind(bjDay(-13).replaceAll("-", "")).all()
         const top = await env.DB.prepare(
-          "SELECT path, COUNT(*) n FROM visits GROUP BY path ORDER BY n DESC LIMIT 5"
+          `SELECT path, COUNT(*) n FROM visits WHERE ${NOT_VERIFY} GROUP BY path ORDER BY n DESC LIMIT 5`
         ).all()
         const refs = await env.DB.prepare(
           "SELECT referrer r, COUNT(*) n FROM visits " +
@@ -183,7 +185,9 @@ export default {
 
       if (request.method === "GET" && url.pathname === "/messages") {
         const r = await env.DB.prepare(
-          "SELECT id, name, email, body, read, archived, created_at FROM messages ORDER BY id DESC LIMIT 100"
+          // 收件箱不显示 CI 探针留言（verify-collector 每次运行都会插入一条）
+          "SELECT id, name, email, body, read, archived, created_at FROM messages " +
+          "WHERE email != 'verify@actions.dev' ORDER BY id DESC LIMIT 100"
         ).all()
         return json(r.results || [])
       }

@@ -31,18 +31,20 @@ public class PublishService {
     private final PhotoDataGenerator photoDataGenerator;
     private final ContentService contentService;
     private final SiteDataGenerator siteDataGenerator;
+    private final SitemapGenerator sitemapGenerator;
     private final PublishLogRepo logRepo;
     private final Path projectRoot;
     private final AtomicBoolean running = new AtomicBoolean(false);
 
     public PublishService(PhotoRepo photoRepo, PhotoDataGenerator photoDataGenerator,
                           ContentService contentService, SiteDataGenerator siteDataGenerator,
-                          PublishLogRepo logRepo,
+                          SitemapGenerator sitemapGenerator, PublishLogRepo logRepo,
                           @Value("${app.storage.frontend-public-dir}") String frontendPublicDir) {
         this.photoRepo = photoRepo;
         this.photoDataGenerator = photoDataGenerator;
         this.contentService = contentService;
         this.siteDataGenerator = siteDataGenerator;
+        this.sitemapGenerator = sitemapGenerator;
         this.logRepo = logRepo;
         this.projectRoot = Path.of(frontendPublicDir).getParent();
     }
@@ -151,6 +153,8 @@ public class PublishService {
         List<String[]> files = new ArrayList<>(); // [相对路径, 内容]
         files.add(new String[] {"src/data/photos.js", photosJs});
         files.add(new String[] {"src/data/site.js", siteJs});
+        // sitemap 随发布自动重写（手工维护曾与项目集脱节）；不带 lastmod 防止跨天误报脏
+        files.add(new String[] {"public/sitemap.xml", sitemapGenerator.generate(details)});
         for (ProjectDetail d : details) {
             files.add(new String[] {"src/data/projects/" + d.getSlug() + ".js", contentService.export(d)});
         }

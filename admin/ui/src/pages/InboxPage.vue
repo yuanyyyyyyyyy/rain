@@ -90,11 +90,9 @@ async function markRead(m) {
   if (m.read) return
   const { base } = getWorkerCfg()
   if (base && source.value.startsWith('Worker')) {
-    try {
-      await workerSend(`/messages/${m.id}/read`, 'PUT')
-    } catch {
-      await api.put(`/api/messages/${m.id}/read`)
-    }
+    // 列表来自 Worker/D1：id 只对 D1 有意义，Worker 写失败绝不能回退写本地 MySQL
+    // （两库 id 独立自增，回退会把本地无关留言误标已读/归档）
+    await workerSend(`/messages/${m.id}/read`, 'PUT')
   } else {
     await api.put(`/api/messages/${m.id}/read`)
   }
@@ -106,11 +104,7 @@ async function readAll() {
   try {
     const { base } = getWorkerCfg()
     if (base && source.value.startsWith('Worker')) {
-      try {
-        await workerSend('/messages/read-all', 'PUT')
-      } catch {
-        await api.post('/api/messages/read-all')
-      }
+      await workerSend('/messages/read-all', 'PUT')
     } else {
       await api.post('/api/messages/read-all')
     }
@@ -126,11 +120,8 @@ async function setArchived(m) {
   const next = !m.archived
   const { base } = getWorkerCfg()
   if (base && source.value.startsWith('Worker')) {
-    try {
-      await workerSend(`/messages/${m.id}/archive`, 'PUT', { archived: next ? 1 : 0 })
-    } catch {
-      await api.put(`/api/messages/${m.id}/archive`, { archived: next })
-    }
+    // 同 markRead：D1 id 不可写本地库
+    await workerSend(`/messages/${m.id}/archive`, 'PUT', { archived: next ? 1 : 0 })
   } else {
     await api.put(`/api/messages/${m.id}/archive`, { archived: next })
   }

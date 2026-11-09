@@ -3,25 +3,19 @@ import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import { apiBase } from './data/site.js'
 import HomePage from './pages/HomePage.vue'
-import ProjectDetailPage from './pages/ProjectDetailPage.vue'
-import AboutPage from './pages/AboutPage.vue'
-import PhotographyPage from './pages/PhotographyPage.vue'
-import NotFoundPage from './pages/NotFoundPage.vue'
 import './styles/base.scss'
 
 // 自托管字体（@fontsource）：取代 Google Fonts 的 <style>@import——
 // 国内 fonts.googleapis.com 不可达会挂起首屏，且 style→css2 双链渲染阻塞。
-// 字重收敛到 CSS/SVG 实际使用的 400/500/600/700；CJK 按 unicode-range 分包按需下载。
+// 字重只装 CSS 实际使用的档位：sans 用 400/500/600（font-weight: 700 全站零使用），
+// mono 只用 400。CJK 按 unicode-range 分包按需下载；每删一档少 ~100 条阻塞 @font-face 声明。
 import '@fontsource/manrope/400.css'
 import '@fontsource/manrope/500.css'
 import '@fontsource/manrope/600.css'
-import '@fontsource/manrope/700.css'
 import '@fontsource/noto-sans-sc/400.css'
 import '@fontsource/noto-sans-sc/500.css'
 import '@fontsource/noto-sans-sc/600.css'
-import '@fontsource/noto-sans-sc/700.css'
 import '@fontsource/dm-mono/400.css'
-import '@fontsource/dm-mono/500.css'
 
 const router = createRouter({
   // BASE_URL 随 Vite base 切换：本地 '/'，GitHub Pages 构建时 '/rain/'
@@ -36,24 +30,25 @@ const router = createRouter({
     {
       path: '/projects/:slug',
       name: 'project',
-      component: ProjectDetailPage, // title 由页面按数据动态设置
+      // 路由级代码分割：摄影数据（30 组宽高比）与全部项目详情不再进首屏 bundle
+      component: () => import('./pages/ProjectDetailPage.vue'), // title 由页面按数据动态设置
     },
     {
       path: '/about',
       name: 'about',
-      component: AboutPage,
+      component: () => import('./pages/AboutPage.vue'),
       meta: { title: 'About — YUAN', desc: '陈雨 — 软件工程专业 2027 届。关于我：方向、经历与正在做的事。' },
     },
     {
       path: '/photography',
       name: 'photography',
-      component: PhotographyPage,
+      component: () => import('./pages/PhotographyPage.vue'),
       meta: { title: 'Photography — YUAN', desc: 'Field Notes — 观察光线、街道与日常场景的摄影档案。' },
     },
     {
       path: '/:pathMatch(.*)*',
       name: 'notfound',
-      component: NotFoundPage,
+      component: () => import('./pages/NotFoundPage.vue'),
       meta: { title: '404 — YUAN' },
     },
   ],

@@ -402,6 +402,10 @@ onMounted(async () => {
   padding: 9px 12px;
   border: 1px solid var(--c-line);
   background: var(--c-blue-faint);
+  // 长表单滚动时节锚点导航吸顶（配合 scrollToSec 平滑滚动）
+  position: sticky;
+  top: 0;
+  z-index: 20;
 
   .proj select {
     width: 130px;
