@@ -87,6 +87,12 @@ public class StatsController {
         repo.topPaths().stream().limit(5)
                 .forEach(r -> top.put(String.valueOf(r[0]), ((Number) r[1]).longValue()));
         m.put("topPaths", top);
+
+        // 来源 Top 5（与 Worker /stats/summary 能力对齐）
+        Map<String, Long> refs = new LinkedHashMap<>();
+        repo.topReferrers().stream().limit(5)
+                .forEach(r -> refs.put(String.valueOf(r[0]), ((Number) r[1]).longValue()));
+        m.put("topReferrers", refs);
         return m;
     }
 

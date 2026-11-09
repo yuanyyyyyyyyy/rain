@@ -13,7 +13,9 @@
         </router-link>
         <router-link to="/settings" active-class="on">06 / 设置</router-link>
       </nav>
-      <button class="src" @click="configSource">数据源</button>
+      <router-link to="/settings" class="src">
+        数据源：<b :class="{ pub: workerCfg.base }">{{ workerCfg.base ? '公网' : '本地' }}</b>
+      </router-link>
       <button class="out" @click="logout">退出登录</button>
     </aside>
     <main class="main">
@@ -23,19 +25,37 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { api, clearToken, getWorkerCfg, setWorkerCfg } from '../api.js'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { api, clearToken, getWorkerCfg, workerSend } from '../api.js'
 
 const router = useRouter()
+const route = useRoute()
 const unread = ref(0)
+// 当前数据源配置快照（localStorage 非响应式：靠 rain-worker-cfg 事件与路由切换时刷新）
+const workerCfg = ref({ base: '', token: '' })
 
 const logout = () => {
   clearToken()
   router.push('/login')
 }
 
-const loadUnread = async () => {
+function refreshCfg() {
+  workerCfg.value = getWorkerCfg()
+}
+
+/** 未读数随数据源走：配了 Worker 读公网 D1，否则读本地 Spring（此前恒读本地，公网留言徽标恒 0） */
+async function loadUnread() {
+  const { base, token } = getWorkerCfg()
+  if (base && token) {
+    try {
+      const list = await workerSend('/messages')
+      unread.value = list.filter((m) => !m.read && !m.archived).length
+      return
+    } catch {
+      // Worker 失败回退本地
+    }
+  }
   try {
     const r = await api.get('/api/messages/unread')
     unread.value = r.unread
@@ -44,23 +64,20 @@ const loadUnread = async () => {
   }
 }
 
-onMounted(loadUnread)
+onMounted(() => {
+  refreshCfg()
+  loadUnread()
+  window.addEventListener('rain-worker-cfg', onCfgChange)
+})
+onUnmounted(() => window.removeEventListener('rain-worker-cfg', onCfgChange))
 
-// 公网数据源（Cloudflare collector）：配置后概览/收件箱优先读 Worker，失败回退本地
-const configSource = () => {
-  const cur = getWorkerCfg()
-  const base = prompt('Worker 地址（留空清除，回退本地后端）：', cur.base)
-  if (base === null) return
-  if (!base) {
-    setWorkerCfg('', '')
-    alert('已清除，概览/收件箱将读本地后端。刷新页面生效。')
-    return
-  }
-  const token = prompt('ADMIN_TOKEN：', cur.token)
-  if (token === null) return
-  setWorkerCfg(base, token)
-  alert('已保存。刷新页面生效。')
+function onCfgChange() {
+  refreshCfg()
+  loadUnread()
 }
+
+// 路由切换时刷新未读（收件箱里读了消息后侧栏角标即时更新）
+watch(() => route.fullPath, loadUnread)
 </script>
 
 <style lang="scss" scoped>
@@ -121,6 +138,7 @@ const configSource = () => {
     font: 10px var(--font-mono);
     letter-spacing: 0.1em;
     cursor: pointer;
+    text-decoration: none;
 
     &:hover {
       color: #fff;
@@ -128,6 +146,14 @@ const configSource = () => {
   }
   .src {
     margin-top: auto;
+
+    b {
+      font-weight: 400;
+
+      &.pub {
+        color: #9effd6;
+      }
+    }
   }
   .out {
     margin-top: 10px;
