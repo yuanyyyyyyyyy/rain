@@ -1,0 +1,60 @@
+{
+  "slug": "rain",
+  "sortNo": 4,
+  "headline": "Rain — Personal Archive",
+  "summary": "个人作品集网站 + 自托管内容管理后台：Vue 3 纯静态前台、Spring Boot 管理台、Cloudflare Worker/D1 公网收集端与 GitHub Pages 自动部署。管理台编辑内容一键发布，前台保持零后端依赖。",
+  "meta": [
+    ["项目名", "Rain — Personal Archive"],
+    ["卡片周期", "2026.10 — 至今"],
+    ["周期", "2026.10 — 至今"],
+    ["技术栈", "VUE 3 · VITE · SPRING BOOT · MYSQL · CLOUDFLARE WORKER · D1 · GITHUB ACTIONS"],
+    ["角色", "独立设计开发"]
+  ],
+  "sections": [
+    {
+      "type": "impl",
+      "kicker": "02 / 核心实现",
+      "items": [
+        {
+          "title": "设计系统单文件驱动",
+          "problem": "多页面视觉一致性依赖人工对齐，改主题色要逐页翻硬编码色值。",
+          "solution": "设计 Token 单文件（tokens.scss）承载色彩/字体/间距变量，全站组件只消费变量；Klein Blue v2 视觉一处改全局生效。",
+          "result": "前台与两个管理台界面共用同一套 Token；新增页面零硬编码色值。"
+        },
+        {
+          "title": "摄影页对齐行排版",
+          "problem": "照片宽高不一，固定网格会裁切或留白，破坏档案式版面。",
+          "solution": "贪心装行的 justified rows：累计宽高比达标即封行，行内按原始比例分配宽度；自研 Lightbox 支持键盘翻页与焦点管理。",
+          "result": "30 张真实照片零裁切对齐行缘；Lightbox 交互与键盘可达性完整。"
+        },
+        {
+          "title": "发布管道",
+          "problem": "管理台编辑的是数据库，前台是纯静态站，两者天然脱节。",
+          "solution": "发布时原子写回 src/data/*.js → 本地构建验证 → git commit+push；push 被墙自动回退 GitHub API 重放通道（保留完整提交历史）。",
+          "result": "管理台改动一键上公网，约 1.5–3 分钟生效；写回用 tmp+move 原子替换，失败不破坏现有文件。"
+        },
+        {
+          "title": "双后端契约兼容",
+          "problem": "公网访客数据与本地联调数据需要两套接收端，接口形态分裂会腐蚀前台代码。",
+          "solution": "Cloudflare Worker 实现与 Spring 完全同契约的 /api 兼容层（埋点/表单/简历计数），Worker 另行提供管理台读接口与 Bearer 鉴权。",
+          "result": "前台代码零分支适配两套后端；管理台可在公网/本地数据源间切换。"
+        }
+      ]
+    },
+    {
+      "type": "metrics",
+      "kicker": "03 / 数据指标",
+      "items": [
+        { "label": "Case Study", "value": "3 × 07 节", "delta": "云枢 / IntelNexus / Shimmer" },
+        { "label": "真实照片", "value": "30 张", "delta": "justified 对齐行" },
+        { "label": "发布生效", "value": "1.5–3 min", "delta": "管理台一键" }
+      ],
+      "note": "全部为可公开自查的站点事实：https://yuanyyyyyyyyy.github.io/rain/。"
+    },
+    {
+      "type": "text",
+      "kicker": "04 / 收获",
+      "body": "这个站点本身就是项目：内容与组件分离（src/data），管理台把改文案变成填表单，发布管道把数据库内容写回静态数据文件并触发部署。站点在持续演进中——留言邮件通知、EXIF 自动提取、自动截图管线都在迭代清单上。"
+    }
+  ]
+}

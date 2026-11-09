@@ -38,12 +38,12 @@
                   class="shot"
                   role="button"
                   tabindex="0"
-                  :aria-label="`查看截图大图：${s.cap}`"
+                  :aria-label="`查看截图大图：${s.caption || s.src}`"
                   @click="openShot(sec, i)"
                   @keydown.enter.prevent="openShot(sec, i)"
                 >
-                  <img :src="`${BASE}${s.src.replace(/^\//, '')}`" :alt="s.cap" loading="lazy" />
-                  <figcaption>{{ s.fig }} — {{ s.cap }}</figcaption>
+                  <img :src="`${BASE}${s.src.replace(/^\//, '')}`" :alt="s.caption || s.src" loading="lazy" />
+                  <figcaption>{{ s.caption }}</figcaption>
                 </figure>
               </div>
               <p v-if="sec.note" class="mnote">{{ sec.note }}</p>
@@ -120,8 +120,8 @@
         <button ref="sbCloseRef" class="lb-close" aria-label="关闭" @click="closeShot">×</button>
         <button class="lb-arrow lb-prev" aria-label="上一张" @click.stop="stepShot(-1)">←</button>
         <figure class="lb-body" @click.self="closeShot">
-          <img :src="`${BASE}${shot.s.src.replace(/^\//, '')}`" :alt="shot.s.cap" />
-          <figcaption>{{ shot.s.fig }} — {{ shot.s.cap }}</figcaption>
+          <img :src="`${BASE}${shot.s.src.replace(/^\//, '')}`" :alt="shot.s.caption || shot.s.src" />
+          <figcaption>{{ shot.s.caption }}</figcaption>
         </figure>
         <button class="lb-arrow lb-next" aria-label="下一张" @click.stop="stepShot(1)">→</button>
       </div>
@@ -153,14 +153,21 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
 import { projects } from '../data/site.js'
-import { yunshuDetail } from '../data/projects/yunshu.js'
-import { intelnexusDetail } from '../data/projects/intelnexus.js'
-import { shimmerDetail } from '../data/projects/shimmer.js'
 import YunshuArch from '../components/project/YunshuArch.vue'
 import IntelnexusArch from '../components/project/IntelnexusArch.vue'
 
 const BASE = import.meta.env.BASE_URL
-const details = { yunshu: yunshuDetail, intelnexus: intelnexusDetail, shimmer: shimmerDetail }
+
+// 详情数据动态收集：管理台新建的项目（发布后生成 src/data/projects/<slug>.js）自动可渲染，
+// 无需改此文件注册（此前静态 import 三个项目，新 slug 只能显示占位骨架）
+const detailModules = import.meta.glob('../data/projects/*.js', { eager: true })
+const details = Object.fromEntries(
+  Object.entries(detailModules).map(([path, mod]) => {
+    const slug = path.split('/').pop().replace(/\.js$/, '')
+    const value = mod.default || mod[Object.keys(mod)[0]]
+    return [slug, value]
+  }),
+)
 const archMap = { yunshu: YunshuArch, intelnexus: IntelnexusArch }
 const defaultLabels = ['问题', '方案', '效果']
 

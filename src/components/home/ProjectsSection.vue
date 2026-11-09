@@ -69,7 +69,7 @@
       <!-- Visual Notes：通往摄影页 -->
       <RouterLink class="project" to="/photography">
         <div class="ptop">
-          <span>PERSONAL / 004</span>
+          <span>PERSONAL / {{ String(projects.length + 1).padStart(3, '0') }}</span>
           <span>ONGOING</span>
         </div>
         <h3>Visual Notes</h3>

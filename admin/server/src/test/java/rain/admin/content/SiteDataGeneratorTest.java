@@ -85,6 +85,20 @@ class SiteDataGeneratorTest {
     }
 
     @Test
+    void ordersBySortNoWithNullsLast() throws Exception {
+        ProjectDetail a = detail("a", "A-null", "[]", "[]");       // null 排最后
+        ProjectDetail b = detail("b", "B-2", "[]", "[]"); b.setSortNo(2);
+        ProjectDetail c = detail("c", "C-1", "[]", "[]"); c.setSortNo(1);
+        // 入参故意乱序（b, a, c）→ 产出按 sortNo：c(1), b(2), a(null)
+        String out = gen.generate(java.util.List.of(b, a, c), SITE);
+        assertTrue(out.indexOf("C-1") < out.indexOf("B-2"));
+        assertTrue(out.indexOf("B-2") < out.indexOf("A-null"));
+        // flagship 恒为排序后的第一个（c）
+        int cPos = out.indexOf("'c'");
+        assertTrue(out.indexOf("flagship: true") > cPos && out.indexOf("flagship: true") < out.indexOf("'b'"));
+    }
+
+    @Test
     void refusesWithoutAnchors() {
         assertThrows(IllegalStateException.class,
                 () -> gen.generate(java.util.List.of(), "export const projects = []"));

@@ -31,10 +31,16 @@ public class SiteDataGenerator {
         if (start < 0 || end < 0 || end < start) {
             throw new IllegalStateException("site.js 缺少 PROJECTS:AUTO 锚点标记，无法写回");
         }
+        // 卡片顺序：sortNo 升序（null 靠后）→ id 升序稳定收尾（id null 防御：未持久化实体）；不依赖 DB findAll 的未定义顺序
+        List<ProjectDetail> ordered = details.stream()
+                .sorted(java.util.Comparator
+                        .comparing(ProjectDetail::getSortNo, java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+                        .thenComparing(ProjectDetail::getId, java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
+                .toList();
         StringBuilder cards = new StringBuilder();
         cards.append("export const projects = [\n");
-        for (int i = 0; i < details.size(); i++) {
-            cards.append(card(details.get(i), i)).append(i < details.size() - 1 ? ",\n" : "\n");
+        for (int i = 0; i < ordered.size(); i++) {
+            cards.append(card(ordered.get(i), i)).append(i < ordered.size() - 1 ? ",\n" : "\n");
         }
         cards.append("]");
         return siteContent.substring(0, start) + START + "\n" + cards
