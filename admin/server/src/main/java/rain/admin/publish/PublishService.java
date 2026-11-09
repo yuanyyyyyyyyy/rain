@@ -97,8 +97,12 @@ public class PublishService {
 
             // 3. 触发前台构建
             String buildOutput = runBuild();
+
+            // 4. 数据文件 commit + 推送公网（闭环：管理台发布 → GitHub → Pages 自动部署）
+            String pushNote = commitAndSync();
+
             long duration = System.currentTimeMillis() - start;
-            saveLog(triggeredBy, "SUCCESS", "构建成功\n" + buildOutput, duration, written, commitHash);
+            saveLog(triggeredBy, "SUCCESS", "构建成功\n" + pushNote + "\n" + buildOutput, duration, written, commitHash);
             return new PublishResult("SUCCESS", duration, written, tail(buildOutput, 40));
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - start;
@@ -122,6 +126,51 @@ public class PublishService {
             return new String(p.getInputStream().readAllBytes()).trim();
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    /**
+     * 4. 数据文件 commit + 推送公网。推送策略：git push（代理开启时最快）失败则回退
+     * tools/sync-via-api.py（API 通道，github.com 被墙时可用）。失败不阻断发布，日志留痕可手动补。
+     */
+    private String commitAndSync() {
+        StringBuilder out = new StringBuilder();
+        try {
+            run(20, "git", "add", "src/data/photos.js", "src/data/projects");
+            Process diff = new ProcessBuilder("git", "diff", "--cached", "--quiet")
+                    .directory(projectRoot.toFile()).start();
+            boolean hasChanges = diff.waitFor(10, TimeUnit.SECONDS) && diff.exitValue() != 0;
+            if (hasChanges) {
+                run(20, "git", "commit", "-m", "publish: content update from admin console");
+                out.append("数据文件已 commit；");
+            } else {
+                out.append("数据无变化，跳过 commit；");
+            }
+            try {
+                run(20, "git", "push");
+                out.append("git push 成功（公网约 1 分钟后更新）");
+            } catch (Exception proxyDown) {
+                run(240, "python", "tools/sync-via-api.py");
+                out.append("经 API 通道推送成功（公网约 1 分钟后更新）");
+            }
+        } catch (Exception e) {
+            out.append("推送失败，可稍后手动执行 python tools/sync-via-api.py：")
+                    .append(e.getMessage() == null ? e.toString() : e.getMessage());
+        }
+        return out.toString();
+    }
+
+    private void run(int timeoutSec, String... cmd) throws IOException, InterruptedException {
+        Process p = new ProcessBuilder(cmd).directory(projectRoot.toFile())
+                .redirectErrorStream(true).start();
+        String output = new String(p.getInputStream().readAllBytes());
+        if (!p.waitFor(timeoutSec, TimeUnit.SECONDS)) {
+            p.destroyForcibly();
+            throw new IllegalStateException("命令超时: " + String.join(" ", cmd));
+        }
+        if (p.exitValue() != 0) {
+            throw new IllegalStateException("命令失败(" + p.exitValue() + "): "
+                    + String.join(" ", cmd) + "\n" + tail(output, 10));
         }
     }
 
