@@ -2,7 +2,9 @@
 
 免费方案：Cloudflare Workers 免费层（10 万请求/天）+ D1 免费层（5GB）。**只需三步，全部在终端完成**。
 
-## 上线三步
+> **部署状态（2026-11-09）**：已上线 `https://rain-collector.yuanyyyyyyyyy.workers.dev`，前台 `src/data/site.js` 已接线，D1 migration 0001 已应用。
+
+## 上线三步（新装参考）
 
 ```bash
 # 0. 登录（浏览器弹窗授权一次；需要你有 Cloudflare 账号，免费注册 dash.cloudflare.com）
@@ -20,6 +22,12 @@ npx wrangler deploy
 ```
 
 部署完成后记下 Worker 地址：`https://rain-collector.<你的子域>.workers.dev`
+
+已有库的 schema 演进走 migrations（不在本目录时用 `--remote`）：
+
+```bash
+npx wrangler d1 migrations apply rain-collector --remote
+```
 
 ## 接入前台（让公网访客的埋点/表单生效）
 
@@ -43,19 +51,26 @@ commit + push（或 `python tools/sync-via-api.py`）→ Actions 自动重新部
 ## 本地调试
 
 ```bash
-npx wrangler dev            # 本地起 Worker（D1 用本地模拟）
-curl -X POST http://localhost:8787/t -H "content-type: application/json" -d '{"path":"/test"}'
+npx wrangler dev            # 本地起 Worker（D1 用本地模拟；本地库首次需 d1 execute --local --file schema.sql）
+curl -X POST http://localhost:8787/api/t -H "content-type: application/json" -d '{"path":"/test"}'
 ```
 
 ## 接口一览
 
+**`/api/` 前缀可剥离**：前台（Spring 契约）用 `/api/t`、`/api/messages`，管理台用根路径，两者等价。
+
 | 方法 | 路径 | 鉴权 | 说明 |
 |---|---|---|---|
-| POST | `/t` | 公开 | 前台埋点 {path}（同 ip+path+分钟去重） |
-| POST | `/messages` | 公开 | 联系表单（同 IP 60s 限频 429） |
-| GET | `/stats/summary` | Bearer | PV/UV/14 天趋势/Top5（北京时间口径） |
-| GET | `/messages` | Bearer | 收件箱列表 |
-| PUT | `/messages/:id/read` | Bearer | 标记已读 |
+| POST | `/t` | 公开 | 前台埋点 {path, referrer}（同 ip+path+分钟去重；同 ip 每分钟限 20 个不同 path） |
+| POST | `/messages` | 公开 | 联系表单（同 IP 60s 限频 429；邮箱格式校验） |
+| POST | `/resume/hit` | 公开 | 简历下载计数 beacon（同 ip+分钟去重；前台 Hero 按钮 click 时上报） |
+| GET | `/stats/summary` | Bearer | PV/UV/14 天趋势/Top5/Top referrers/简历下载数（北京时间口径） |
+| GET | `/messages` | Bearer | 收件箱列表（含 read / archived） |
+| PUT | `/messages/read-all` | Bearer | 全部标记已读 |
+| PUT | `/messages/:id`、`/messages/:id/read` | Bearer | 标记已读 |
+| PUT | `/messages/:id/archive` | Bearer | 归档 / 取消归档（body `{"archived":0}` 取消） |
+
+鉴权失败（含 ADMIN_TOKEN 未配置）一律 401。
 
 ## 成本与限额（免费层）
 

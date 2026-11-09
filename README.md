@@ -21,7 +21,7 @@
 rain/
 ├── src/
 │   ├── styles/tokens.scss     # 设计 Token 单文件（色彩/字体/布局变量）
-│   ├── data/site.js           # 站点内容数据（文案与组件分离）
+│   ├── data/site.js           # 站点内容数据（文案与组件分离；apiBase 指向公网 Worker）
 │   ├── data/projects/*.js     # 详情页分节数据（数据驱动渲染）
 │   ├── data/photos.js         # 摄影页分组/编号/宽高比
 │   ├── components/
@@ -30,23 +30,29 @@ rain/
 │   │   └── project/           # 架构图 SVG（云枢 / IntelNexus 管线）
 │   └── pages/                 # Home / ProjectDetail（通用分节渲染器）/ About / Photography
 ├── public/photos/             # 网页版照片（长边 1600px / q80，原图另存）
+├── cloudflare/                # 公网收集端：Cloudflare Worker + D1（埋点/表单/简历计数）→ cloudflare/README.md
+├── tools/                     # sync-via-api.py（被墙时经 GitHub API 重放推送）→ tools/README.md
+├── .github/workflows/         # deploy.yml（GitHub Pages 自动部署）+ verify-collector.yml（Worker E2E）
 ├── admin/
 │   ├── server/                # 后端：Spring Boot 3 + Security JWT + MySQL → admin/server/README.md
 │   └── ui/                    # 管理台：Vue 3 + Vite（复用 Klein Blue tokens）→ admin/ui/README.md
 └── docs/
     ├── _索引.md               # 文档总索引
     ├── 素材/                   # 素材需求清单、素材回答、照片清单 JSON
-    └── 规划/                   # 后台设计方案（Content Console / Full Console 待推进）
+    ├── 规划/                   # 后台设计方案、审计修复记录
+    └── 交接/                   # agent 交接与项目认知文档
 ```
 
 ## 快速开始
 
 ```bash
 npm install
-npm run dev        # 前台 http://localhost:5173
-npm run build      # 产物在 dist/（纯静态，可部署 Cloudflare Pages / Vercel / Nginx）
+npm run dev        # 前台 http://localhost:5173（埋点/表单直连线上 Worker）
+npm run build      # 产物在 dist/（纯静态）
 npm run preview    # 本地预览构建产物
 ```
+
+线上部署：**GitHub Pages**（push main → Actions `deploy.yml` 自动构建，base=/rain/）。
 
 后台（可选，内容管理用）：
 
@@ -59,10 +65,11 @@ cd admin/ui && npm install && npm run dev # 管理台 :5175
 
 ## 技术栈
 
-- **前台**：Vue 3.5 + Vite 6 + Vue Router 4 + Sass，无 UI 组件库（保持线条风格可控）
+- **前台**：Vue 3.5 + Vite 6 + Vue Router 4 + Sass，无 UI 组件库（保持线条风格可控）；字体自托管（@fontsource）
 - **摄影页**：对齐行排版（justified rows，flex-grow = 宽高比）、懒加载、自研 Lightbox（键盘翻页）
 - **后台**：Spring Boot 3.3.5 + Spring Security + JPA + MySQL 8 / Vue 3 管理台
-- **发布机制**：管理台编辑内容 → 写回 `src/data/*.json` → 触发构建，前台保持纯静态
+- **公网收集端**：Cloudflare Worker + D1（埋点 / 联系表单 / 简历下载计数，`/api/` 前缀兼容 Spring 契约）→ `cloudflare/`
+- **发布机制**：管理台编辑内容 → 写回 `src/data/*.js` → 触发构建，前台保持纯静态
 
 ## 内容维护
 
@@ -74,6 +81,7 @@ cd admin/ui && npm install && npm run dev # 管理台 :5175
 | 项目详情页章节 | `src/data/projects/<slug>.js` |
 | 摄影分组、顺序、头图 | `src/data/photos.js`，或管理台 `#/photos` 上传/排序/设头图（新照片按片段提示接进 photos.js） |
 | 主题色 / 字体 / 间距 | `src/styles/tokens.scss` |
+| 管理台密码 / 公网数据源 | 管理台「06 / 设置」改密；侧栏「数据源」配置 Worker 地址 + ADMIN_TOKEN |
 
 > 联系方式（邮箱 / GitHub / 简历 PDF）当前为占位，上线前必须替换，代码内标注 `TODO(上线前)`。
 
@@ -82,3 +90,4 @@ cd admin/ui && npm install && npm run dev # 管理台 :5175
 - 分批提交，一个功能一个 commit：`feat: / chore: / docs: / fix:`
 - 敏感凭据只放 `application-local.yml`（已 gitignore），仓库内留 `.example` 模板
 - 文档进 `docs/` 并登记 `_索引.md`，命名 `主题-内容-YYYYMMDD.md`
+
