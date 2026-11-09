@@ -25,7 +25,7 @@ public class PhotoController {
         return repo.findAllByOrderByGroupNameAscSortNoAscIdAsc();
     }
 
-    /** 上传：multipart 字段 file + groupName（必填）+ shotDate（可空） */
+    /** 上传：multipart 字段 file + groupName（必填）+ shotDate（可空；缺省时自动提取 EXIF→mtime） */
     @PostMapping("/upload")
     public ResponseEntity<?> upload(@RequestParam("file") MultipartFile file,
                                     @RequestParam("groupName") String groupName,
@@ -33,12 +33,14 @@ public class PhotoController {
         try {
             PhotoService.UploadResult r = service.upload(file, shotDate, groupName);
             Photo p = r.photo();
-            return ResponseEntity.ok(Map.of(
-                    "id", p.getId(),
-                    "pid", p.getPid(),
-                    "width", p.getWidth(),
-                    "height", p.getHeight(),
-                    "snippet", r.snippet()));
+            Map<String, Object> body = new java.util.LinkedHashMap<>();
+            body.put("id", p.getId());
+            body.put("pid", p.getPid());
+            body.put("width", p.getWidth());
+            body.put("height", p.getHeight());
+            body.put("shotDate", p.getShotDate() == null ? "" : p.getShotDate().toString());
+            body.put("dateSource", r.dateSource());
+            return ResponseEntity.ok(body);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
@@ -46,7 +48,17 @@ public class PhotoController {
         }
     }
 
-    /** 更新分组/日期/排序号（管理台表单全字段提交） */
+    /** 批量重排（拖拽排序一次请求写回；items 支持跨组：groupName 可选携带） */
+    @PutMapping("/reorder")
+    public ResponseEntity<?> reorder(@RequestBody List<PhotoService.ReorderItem> items) {
+        try {
+            return ResponseEntity.ok(Map.of("updated", service.reorder(items)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** 更新分组/日期/排序号/图注（管理台表单全字段提交） */
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable Long id, @RequestBody PhotoService.UpdateParams params) {
         try {

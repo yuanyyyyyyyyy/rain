@@ -43,6 +43,10 @@ public class Photo {
     @Column(name = "is_hero", nullable = false)
     private Boolean isHero = false;
 
+    /** 图注（可空）：前台 Lightbox / 版面 caption 展示用 */
+    @Column(length = 255)
+    private String caption;
+
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -63,5 +67,7 @@ public class Photo {
     public void setSortNo(Integer sortNo) { this.sortNo = sortNo; }
     public Boolean getIsHero() { return isHero; }
     public void setIsHero(Boolean isHero) { this.isHero = isHero; }
+    public String getCaption() { return caption; }
+    public void setCaption(String caption) { this.caption = caption; }
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

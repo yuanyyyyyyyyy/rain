@@ -45,7 +45,7 @@
             <div class="ph" :style="{ height: row.h + 'px' }">
               <img :src="`${BASE}photos/${it.p.id}.jpg`" :alt="plateAlt(g, it.p)" loading="lazy" />
             </div>
-            <figcaption>{{ plateLabel(it.p.id) }} — {{ it.p.date }}</figcaption>
+            <figcaption>{{ plateLabel(it.p.id) }} — {{ it.p.date }}<template v-if="it.p.cap"> · {{ it.p.cap }}</template></figcaption>
           </figure>
         </div>
       </div>
@@ -60,7 +60,7 @@
         <button class="lb-arrow lb-prev" aria-label="上一张" @click.stop="step(-1)">←</button>
         <figure class="lb-body" @click.self="close">
           <img :src="`${BASE}photos/${flatPlates[lightbox].id}.jpg`" :alt="lightboxAlt" />
-          <figcaption>{{ lightboxLabel }} — {{ flatPlates[lightbox].date }}</figcaption>
+          <figcaption>{{ lightboxLabel }} — {{ flatPlates[lightbox].date }}<template v-if="flatPlates[lightbox].cap"> · {{ flatPlates[lightbox].cap }}</template></figcaption>
         </figure>
         <button class="lb-arrow lb-next" aria-label="下一张" @click.stop="step(1)">→</button>
       </div>

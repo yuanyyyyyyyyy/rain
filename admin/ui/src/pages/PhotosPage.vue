@@ -5,40 +5,65 @@
         <div class="kicker">02 / PHOTOS</div>
         <h1>照片管理</h1>
       </div>
-      <div class="upload">
-        <input ref="fileRef" type="file" accept="image/*" multiple />
-        <select v-model="uploadGroup">
-          <option v-for="g in GROUP_DEFS" :key="g.key" :value="g.key">{{ g.key }} / {{ g.label }}</option>
-        </select>
-        <input v-model="uploadDate" type="date" title="拍摄日期（可空）" />
-        <button :disabled="uploading || !selectedFiles.length" @click="doUpload">
-          {{ uploading ? `上传中 ${uploadProgress}/${selectedFiles.length}…` : `上传${selectedFiles.length > 1 ? ` ${selectedFiles.length} 张` : ''}` }}
-        </button>
-      </div>
     </div>
 
-    <!-- 上传前预览条 -->
-    <div v-if="previews.length" class="preview-strip">
-      <div class="kicker">即将上传到 {{ uploadGroup }}（确认后点右上「上传」）</div>
-      <div class="strip">
-        <img v-for="p in previews" :key="p.url" :src="p.url" :alt="p.name" :title="p.name" />
+    <!-- 上传区：点击 / 拖拽 / 粘贴 -->
+    <div
+      class="dropzone"
+      :class="{ over: dzOver }"
+      @click="fileRef?.click()"
+      @dragover.prevent="dzOver = true"
+      @dragleave="dzOver = false"
+      @drop.prevent="onDropFiles($event)"
+    >
+      <input ref="fileRef" type="file" accept="image/*" multiple hidden @change="onPickFiles($event)" />
+      <div class="dz-main">拖拽图片到这里，或点击选择（支持 Ctrl+V 粘贴截图）</div>
+      <div class="dz-sub">拍摄日期自动从 EXIF 识别，识别不到用文件时间兜底；上传后仍可逐张修改</div>
+    </div>
+
+    <!-- 待上传队列：逐张可改分组/日期 -->
+    <div v-if="queue.length" class="queue">
+      <div class="queue-head">
+        <div class="kicker">待上传 {{ queue.length }} 张 — 逐张可改分组 / 日期（日期留空 = 自动识别）</div>
+        <button :disabled="uploading || !queue.some((i) => i.status === 'pending' || i.status === 'fail')" @click="doUpload">
+          {{ uploading ? '上传中…' : `上传 ${queue.filter((i) => i.status !== 'done').length} 张` }}
+        </button>
+      </div>
+      <div class="queue-grid">
+        <div v-for="(it, idx) in queue" :key="it.uid" class="qcard" :class="it.status">
+          <img :src="it.url" :alt="it.name" />
+          <select v-model="it.group" :disabled="it.status === 'uploading' || it.status === 'done'">
+            <option v-for="g in GROUP_DEFS" :key="g.key" :value="g.key">{{ g.key }}</option>
+          </select>
+          <input v-model="it.date" type="date" :disabled="it.status === 'uploading' || it.status === 'done'" @input="it.touched = true" />
+          <div class="q-status">
+            <template v-if="it.status === 'done'">
+              <span class="ok">✓ {{ it.result?.dateSource === 'exif' ? 'EXIF' : it.result?.dateSource === 'manual' ? '手填' : '文件时间' }} · {{ it.result?.shotDate || '—' }}</span>
+            </template>
+            <template v-else-if="it.status === 'fail'">
+              <span class="err">{{ it.error }}</span>
+              <button class="mini" :disabled="uploading" @click="uploadOne(it)">重试</button>
+            </template>
+            <template v-else-if="it.exifDate">
+              <span class="chip">EXIF 已识别 {{ it.date }}</span>
+            </template>
+            <template v-else>
+              <span class="chip dim">自动识别</span>
+            </template>
+          </div>
+          <button v-if="it.status === 'pending' || it.status === 'fail'" class="q-remove" title="移除" @click="removeFromQueue(idx)">×</button>
+        </div>
       </div>
     </div>
 
     <p v-if="msg" class="msg" :class="{ err: msgIsErr }">{{ msg }}</p>
 
-    <div v-if="lastSnippet" class="snippet">
-      <div class="kicker">photos.js 片段（仅当发布未自动写回时才需要手工粘贴，正常直接点「04 发布」即可）</div>
-      <pre>{{ lastSnippet }}</pre>
-      <button class="mini" @click="copySnippet">复制</button>
-    </div>
-
     <section v-for="g in groups" :key="g.key" class="group">
       <h2>
         {{ g.key }} / {{ g.label }}
-        <span class="count">{{ g.photos.length }} 张 — 拖拽卡片排序 · 点击图片看大图</span>
+        <span class="count">{{ g.photos.length }} 张 — 拖拽卡片排序（可跨组） · 点击图片看大图</span>
       </h2>
-      <div class="grid">
+      <div class="grid" @dragover.prevent @drop="onDropAppend(g.key, $event)">
         <figure
           v-for="(p, i) in g.photos"
           :key="p.id"
@@ -47,7 +72,7 @@
           draggable="true"
           @dragstart="onDragStart(g.key, i)"
           @dragover.prevent
-          @drop="onDrop(g.key, i)"
+          @drop.stop="onDrop(g.key, i, $event)"
           @dragend="dragFrom = null"
         >
           <span class="handle" title="拖拽排序">⠿</span>
@@ -56,6 +81,7 @@
           <figcaption>
             <span class="pid">{{ p.pid.toUpperCase() }}</span>
             <span class="meta">{{ p.width }}×{{ p.height }} · {{ p.shotDate || '日期—' }}</span>
+            <span v-if="p.caption" class="cap" :title="p.caption">{{ p.caption }}</span>
           </figcaption>
 
           <div v-if="editId !== p.id" class="ops">
@@ -69,6 +95,7 @@
             <select v-model="editGroup">
               <option v-for="gd in GROUP_DEFS" :key="gd.key" :value="gd.key">{{ gd.key }}</option>
             </select>
+            <input v-model="editCaption" type="text" placeholder="图注（可空）" class="cap-input" />
             <button class="mini" @click="saveEdit(p)">保存</button>
             <button class="mini" @click="editId = null">取消</button>
           </div>
@@ -88,7 +115,8 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import exifr from 'exifr'
 import { api } from '../api.js'
 
 const GROUP_DEFS = [
@@ -99,20 +127,21 @@ const GROUP_DEFS = [
 
 const groups = ref([])
 const fileRef = ref(null)
-const selectedFiles = ref([])
-const previews = ref([])
-const uploadGroup = ref('STREET')
-const uploadDate = ref('')
+const dzOver = ref(false)
+const queue = ref([])
 const uploading = ref(false)
-const uploadProgress = ref(0)
 const msg = ref('')
 const msgIsErr = ref(false)
-const lastSnippet = ref('')
 const dragFrom = ref(null)
 const editId = ref(null)
 const editDate = ref('')
 const editGroup = ref('')
+const editCaption = ref('')
 const previewPid = ref(null)
+
+let uidSeq = 0
+
+const pendingCount = computed(() => queue.value.filter((i) => i.status !== 'done').length)
 
 function groupPhotos(list) {
   groups.value = GROUP_DEFS.map((g) => ({
@@ -130,49 +159,105 @@ function say(text, isErr = false) {
   msgIsErr.value = isErr
 }
 
-function onFilesChange() {
-  selectedFiles.value = [...(fileRef.value?.files || [])]
-  previews.value = selectedFiles.value.map((f) => ({ url: URL.createObjectURL(f), name: f.name }))
+// ---- 上传队列 ----
+
+function addFiles(files) {
+  const images = [...files].filter((f) => f.type.startsWith('image/'))
+  if (!images.length) return
+  for (const file of images) {
+    const it = {
+      uid: ++uidSeq,
+      file,
+      url: URL.createObjectURL(file),
+      name: file.name,
+      group: 'STREET',
+      date: '',
+      touched: false,
+      exifDate: false,
+      status: 'pending',
+      error: '',
+      result: null,
+    }
+    queue.value.push(it)
+    prefillDate(it)
+  }
+  say(`已加入 ${images.length} 张待上传`)
 }
 
-async function doUpload() {
-  if (!selectedFiles.value.length) return say('请先选择图片文件', true)
-  uploading.value = true
-  let ok = 0
+/** 前端 exifr 预提取拍摄日期（体验层；后端 EXIF 读取是权威兜底） */
+async function prefillDate(it) {
   try {
-    for (const [i, file] of selectedFiles.value.entries()) {
-      uploadProgress.value = i
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('groupName', uploadGroup.value)
-      if (uploadDate.value) fd.append('shotDate', uploadDate.value)
-      const r = await api.postForm('/api/photos/upload', fd)
-      lastSnippet.value = r.snippet
-      ok++
+    const tags = await exifr.parse(it.file, { pick: ['DateTimeOriginal', 'OffsetTimeOriginal'] })
+    const d = tags?.DateTimeOriginal
+    if (d instanceof Date && !Number.isNaN(d.getTime())) {
+      it.date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      it.exifDate = true
     }
-    say(`${ok} 张已上传并入库。点「04 发布」即可更新到公网。`)
-    clearFiles()
-    await load()
-  } catch (e) {
-    say(e.message, true)
-  } finally {
-    uploading.value = false
+  } catch {
+    // 非 JPEG / 无 EXIF → 留空，后端走 mtime 兜底
   }
 }
 
-function clearFiles() {
-  previews.value.forEach((p) => URL.revokeObjectURL(p.url))
-  previews.value = []
-  selectedFiles.value = []
-  if (fileRef.value) fileRef.value.value = ''
+function onPickFiles(e) {
+  addFiles(e.target.files)
+  e.target.value = ''
 }
 
-async function copySnippet() {
-  await navigator.clipboard.writeText(lastSnippet.value)
-  say('片段已复制到剪贴板')
+function onDropFiles(e) {
+  dzOver.value = false
+  addFiles(e.dataTransfer?.files || [])
 }
 
-// 组内拖拽：drop 后本地重排，再批量写回 sortNo（1 起，全组覆盖）
+function removeFromQueue(idx) {
+  const [it] = queue.value.splice(idx, 1)
+  if (it) URL.revokeObjectURL(it.url)
+}
+
+async function doUpload() {
+  const targets = queue.value.filter((i) => i.status === 'pending' || i.status === 'fail')
+  if (!targets.length) return
+  uploading.value = true
+  let cursor = 0
+  // 并发 2：20MB 大图 × N 不打爆内存与后端 multipart 限制
+  const worker = async () => {
+    while (cursor < targets.length) {
+      await uploadOne(targets[cursor++])
+    }
+  }
+  await Promise.all([worker(), worker()])
+  const ok = targets.filter((i) => i.status === 'done').length
+  const fail = targets.length - ok
+  if (fail) say(`${ok} 张成功，${fail} 张失败（列表内可单张重试）`, true)
+  else say(`${ok} 张已上传入库。点「04 发布」即可更新到公网。`)
+  if (!queue.value.some((i) => i.status !== 'done')) await clearQueue()
+  await load()
+}
+
+async function uploadOne(it) {
+  it.status = 'uploading'
+  it.error = ''
+  try {
+    const fd = new FormData()
+    fd.append('file', it.file)
+    fd.append('groupName', it.group)
+    if (it.date && it.touched) fd.append('shotDate', it.date)
+    const r = await api.postForm('/api/photos/upload', fd)
+    it.result = r
+    it.status = 'done'
+    // 未手动改过日期 → 展示后端权威解析结果（来源标注）
+    if (!it.touched) it.date = r.shotDate || ''
+  } catch (e) {
+    it.status = 'fail'
+    it.error = e.message
+  }
+}
+
+async function clearQueue() {
+  queue.value.forEach((i) => URL.revokeObjectURL(i.url))
+  queue.value = []
+}
+
+// 组内/跨组拖拽：drop 后本地重排，一次请求批量写回（支持跨组移动）
 function onDragStart(groupKey, index) {
   dragFrom.value = { groupKey, index }
 }
@@ -181,20 +266,47 @@ function isDragging(groupKey, index) {
   return dragFrom.value?.groupKey === groupKey && dragFrom.value?.index === index
 }
 
-async function onDrop(groupKey, index) {
+async function onDrop(groupKey, index, evt) {
+  evt?.preventDefault()
   const from = dragFrom.value
   dragFrom.value = null
-  if (!from || from.groupKey !== groupKey || from.index === index) return
-  const g = groups.value.find((x) => x.key === groupKey)
-  const moved = g.photos.splice(from.index, 1)[0]
-  g.photos.splice(index, 0, moved)
+  if (!from) return
+  const fromGroup = groups.value.find((x) => x.key === from.groupKey)
+  const toGroup = groups.value.find((x) => x.key === groupKey)
+  if (!fromGroup || !toGroup || (from.groupKey === groupKey && from.index === index)) return
+  const [moved] = fromGroup.photos.splice(from.index, 1)
+  moved.groupName = groupKey
+  toGroup.photos.splice(index, 0, moved)
+  await persistOrders([fromGroup, toGroup])
+}
+
+/** 拖到组内空白处 = 移到组尾（跨组拖拽的快捷路径） */
+async function onDropAppend(groupKey, evt) {
+  evt?.preventDefault()
+  const from = dragFrom.value
+  dragFrom.value = null
+  if (!from) return
+  const fromGroup = groups.value.find((x) => x.key === from.groupKey)
+  const toGroup = groups.value.find((x) => x.key === groupKey)
+  if (!fromGroup || !toGroup) return
+  const [moved] = fromGroup.photos.splice(from.index, 1)
+  moved.groupName = groupKey
+  toGroup.photos.push(moved)
+  await persistOrders([fromGroup, toGroup])
+}
+
+async function persistOrders(affected) {
+  const items = []
+  for (const g of affected) {
+    g.photos.forEach((p, i) => {
+      p.sortNo = i + 1
+      items.push({ id: p.id, groupName: g.key, sortNo: i + 1 })
+    })
+  }
   try {
-    await Promise.all(
-      g.photos.map((p, i) =>
-        api.put(`/api/photos/${p.id}`, { groupName: groupKey, shotDate: p.shotDate, sortNo: i + 1 }),
-      ),
-    )
-    say(`${groupKey} 组排序已保存`)
+    await api.put('/api/photos/reorder', items)
+    const cross = affected.length > 1
+    say(cross ? `已跨组移动并保存排序` : `${affected[0].key} 组排序已保存`)
   } catch (e) {
     say(`排序保存失败：${e.message}`, true)
     await load()
@@ -205,6 +317,7 @@ function startEdit(p) {
   editId.value = p.id
   editDate.value = p.shotDate || ''
   editGroup.value = p.groupName
+  editCaption.value = p.caption || ''
 }
 
 async function saveEdit(p) {
@@ -213,6 +326,7 @@ async function saveEdit(p) {
       groupName: editGroup.value,
       shotDate: editDate.value || null,
       sortNo: p.sortNo,
+      caption: editCaption.value || null,
     })
     editId.value = null
     say(`${p.pid} 已更新`)
@@ -243,6 +357,12 @@ async function remove(p) {
   }
 }
 
+// Ctrl+V 粘贴图片到页面任意位置
+function onPaste(e) {
+  const files = e.clipboardData?.files
+  if (files?.length) addFiles(files)
+}
+
 function onKey(e) {
   if (e.key === 'Escape' && previewPid.value) previewPid.value = null
 }
@@ -250,8 +370,12 @@ function onKey(e) {
 onMounted(async () => {
   await load()
   window.addEventListener('keydown', onKey)
+  window.addEventListener('paste', onPaste)
 })
-onUnmounted(() => window.removeEventListener('keydown', onKey))
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKey)
+  window.removeEventListener('paste', onPaste)
+})
 </script>
 
 <style lang="scss" scoped>
@@ -272,51 +396,141 @@ h1 {
   font-size: 22px;
   font-weight: 600;
 }
-.upload {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+.dropzone {
+  border: 1px dashed var(--c-blue-hover);
+  padding: 22px 16px;
+  text-align: center;
+  cursor: pointer;
+  margin-bottom: 14px;
+  transition: 0.15s;
 
-  input,
-  select {
-    border: 1px solid var(--c-line);
-    padding: 8px 10px;
-    font: 12px var(--font-sans);
-    background: var(--c-bg);
+  &:hover,
+  &.over {
+    border-color: var(--c-blue);
+    background: var(--c-blue-faint);
   }
-  button {
-    border: 1px solid var(--c-blue);
-    background: var(--c-blue);
-    color: #fff;
-    padding: 9px 16px;
+  .dz-main {
+    font: 13px var(--font-sans);
+    color: var(--c-ink);
+  }
+  .dz-sub {
     font: 10px var(--font-mono);
-    letter-spacing: 0.12em;
-    white-space: nowrap;
-    cursor: pointer;
-
-    &:hover:not(:disabled) {
-      box-shadow: 4px 4px 0 var(--c-blue-shadow);
-      transform: translateY(-2px);
-    }
-    &:disabled {
-      opacity: 0.6;
-      cursor: default;
-    }
+    letter-spacing: 0.06em;
+    color: var(--c-muted);
+    margin-top: 6px;
   }
 }
-.preview-strip {
-  border: 1px dashed var(--c-blue-hover);
+.queue {
+  border: 1px solid var(--c-line);
   padding: 12px 14px;
   margin-bottom: 14px;
 
-  .strip {
+  .queue-head {
     display: flex;
-    gap: 8px;
-    overflow-x: auto;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
 
+    button {
+      border: 1px solid var(--c-blue);
+      background: var(--c-blue);
+      color: #fff;
+      padding: 8px 16px;
+      font: 10px var(--font-mono);
+      letter-spacing: 0.12em;
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        box-shadow: 4px 4px 0 var(--c-blue-shadow);
+        transform: translateY(-2px);
+      }
+      &:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+    }
+  }
+  .queue-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin-top: 10px;
+  }
+  .qcard {
+    position: relative;
+    border: 1px solid var(--c-line-blue);
+    padding: 8px;
+    display: grid;
+    gap: 6px;
+    align-content: start;
+
+    &.uploading {
+      opacity: 0.6;
+    }
+    &.done {
+      border-color: var(--c-blue);
+    }
+    &.fail {
+      border-color: var(--c-danger);
+    }
     img {
-      height: 72px;
+      width: 100%;
+      height: 110px;
+      object-fit: cover;
+      background: var(--c-bg-soft);
+    }
+    select,
+    input {
       border: 1px solid var(--c-line);
+      font: 11px var(--font-sans);
+      padding: 4px 6px;
+      min-width: 0;
+    }
+    .q-status {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      min-height: 20px;
+
+      .chip,
+      .ok,
+      .err {
+        font: 10px var(--font-mono);
+        letter-spacing: 0.04em;
+      }
+      .chip {
+        color: var(--c-muted);
+        &.dim {
+          opacity: 0.7;
+        }
+      }
+      .ok {
+        color: var(--c-blue);
+      }
+      .err {
+        color: var(--c-danger);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+      }
+    }
+    .q-remove {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      border: 1px solid var(--c-line);
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--c-ink-soft);
+      width: 20px;
+      height: 20px;
+      line-height: 1;
+      cursor: pointer;
+
+      &:hover {
+        border-color: var(--c-danger);
+        color: var(--c-danger);
+      }
     }
   }
 }
@@ -333,29 +547,6 @@ h1 {
     color: var(--c-danger);
     border-left-color: var(--c-danger);
     background: #fbf1f1;
-  }
-}
-.snippet {
-  border: 1px solid var(--c-line);
-  padding: 12px 14px;
-  margin-bottom: 20px;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 4px 12px;
-  align-items: center;
-
-  .kicker {
-    grid-column: 1 / 3;
-    margin-bottom: 4px;
-  }
-  pre {
-    margin: 0;
-    font: 12px/1.7 var(--font-mono);
-    color: var(--c-ink);
-    white-space: pre-wrap;
-  }
-  .mini {
-    align-self: start;
   }
 }
 .group {
@@ -450,6 +641,13 @@ h2 {
       letter-spacing: 0.04em;
       color: var(--c-muted);
     }
+    .cap {
+      font: 10px var(--font-sans);
+      color: var(--c-ink-soft);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   }
   .ops,
   .edit {
@@ -467,6 +665,10 @@ h2 {
       font: 11px var(--font-sans);
       padding: 4px 6px;
       min-width: 0;
+    }
+    .cap-input {
+      flex: 1;
+      min-width: 110px;
     }
   }
 }
