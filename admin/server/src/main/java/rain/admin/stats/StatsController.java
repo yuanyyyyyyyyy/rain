@@ -2,14 +2,17 @@ package rain.admin.stats;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import rain.admin.common.RateLimiter;
 
 /**
  * 前台埋点接收（公开，路径 /api/t）+ 管理台统计查询（鉴权，路径 /api/stats/**）。
@@ -19,6 +22,9 @@ import org.springframework.web.bind.annotation.*;
 public class StatsController {
 
     private final VisitLogRepo repo;
+    /** 埋点限流：同 ipHash 每分钟最多 30 次上报（唯一约束只挡重复 path，防伪造 header 轮换 path 刷库） */
+    private final RateLimiter trackLimiter = new RateLimiter(30, Duration.ofMinutes(1));
+    private final AtomicInteger sinceEvict = new AtomicInteger();
 
     public StatsController(VisitLogRepo repo) {
         this.repo = repo;
@@ -34,6 +40,7 @@ public class StatsController {
         try {
             String ip = xff != null && !xff.isBlank() ? xff.split(",")[0].trim() : "local";
             String ipHash = sha256(ip + "|rain-salt");
+            if (!trackLimiter.allow(ipHash)) return ResponseEntity.status(429).build();
             String path = normalize(body.path());
             VisitLog v = new VisitLog();
             v.setIpHash(ipHash);
@@ -42,6 +49,12 @@ public class StatsController {
             v.setUa(trim(ua, 200));
             v.setMinuteBucket(DateTimeFormatter.ofPattern("yyyyMMddHHmm").format(LocalDateTime.now()));
             repo.save(v); // 同 ip+path+分钟重复上报被唯一约束吞掉
+            trackLimiter.record(ipHash);
+            // 低频回收限流器里的过期 key，防 XFF 轮换导致的内存增长
+            if (sinceEvict.incrementAndGet() >= 1000) {
+                sinceEvict.set(0);
+                trackLimiter.evictStale();
+            }
         } catch (RuntimeException ignored) {
             // 去重冲突等一律静默
         }

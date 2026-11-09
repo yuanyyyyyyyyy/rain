@@ -21,6 +21,9 @@ spring:
 app:
   jwt:
     expire-minutes: 120
+  admin:
+    # 首次建库时 admin 账号的初始口令；留空则随机生成并打印到控制台（仅一次）
+    initial-password: ""
   storage:
     # 前台 public 目录绝对路径（机器相关，在 application-local.yml 覆盖）
     frontend-public-dir: ""
