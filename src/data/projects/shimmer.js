@@ -13,6 +13,14 @@ export const shimmerDetail = {
     [
       "技术栈",
       "VUE 3 · EXPRESS · MYSQL · AI API"
+    ],
+    [
+      "项目名",
+      "照片光影展示平台"
+    ],
+    [
+      "卡片周期",
+      "COURSE PROJECT"
     ]
   ],
   "sections" : [ ]

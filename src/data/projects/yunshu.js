@@ -28,6 +28,14 @@ export const yunshuDetail = {
     [
       "接口",
       "24 REST + 1 AI（5 个 Controller 核对）"
+    ],
+    [
+      "项目名",
+      "云枢智慧医院管理平台"
+    ],
+    [
+      "卡片周期",
+      "2026.06 — 至今"
     ]
   ],
   "sections" : [

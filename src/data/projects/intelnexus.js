@@ -28,6 +28,14 @@ export const intelnexusDetail = {
     [
       "质量",
       "95 个测试文件 · 1101 个测试函数 · 架构门禁"
+    ],
+    [
+      "项目名",
+      "IntelNexus"
+    ],
+    [
+      "卡片周期",
+      "2026"
     ]
   ],
   "sections" : [
