@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.springframework.beans.factory.annotation.Value;
@@ -59,19 +61,8 @@ public class PublishService {
         try {
             String commitHash = currentCommit();
             // 1. 生成全部数据文件内容（任一生成失败即中止，不碰现有文件）
-            List<Photo> photos = photoRepo.findAllByOrderByGroupNameAscSortNoAscIdAsc();
-            Photo hero = photos.stream().filter(p -> Boolean.TRUE.equals(p.getIsHero())).findFirst().orElse(null);
-            String photosJs = photoDataGenerator.generate(photos, hero);
-            List<ProjectDetail> details = contentService.list();
-            Path siteJsPath = projectRoot.resolve("src/data/site.js");
-            String siteJs = siteDataGenerator.generate(details, Files.readString(siteJsPath));
-            List<String[]> files = new ArrayList<>(); // [相对路径, 内容]
-            files.add(new String[] {"src/data/photos.js", photosJs});
-            files.add(new String[] {"src/data/site.js", siteJs});
-            List<String> slugs = details.stream().map(ProjectDetail::getSlug).toList();
-            for (ProjectDetail d : details) {
-                files.add(new String[] {"src/data/projects/" + d.getSlug() + ".js", contentService.export(d)});
-            }
+            List<String[]> files = buildFiles();
+            List<String> slugs = contentService.list().stream().map(ProjectDetail::getSlug).toList();
             // 清理已删项目的数据文件（DB 之外的 .js）
             try (var stream = Files.list(projectRoot.resolve("src/data/projects"))) {
                 stream.filter(p -> p.toString().endsWith(".js"))
@@ -149,6 +140,88 @@ public class PublishService {
         }
     }
 
+    /** 从 DB 生成全部数据文件内容（[相对路径, 内容]）；publish 与 dirty 共用同一生成源 */
+    private List<String[]> buildFiles() throws IOException {
+        List<Photo> photos = photoRepo.findAllByOrderByGroupNameAscSortNoAscIdAsc();
+        Photo hero = photos.stream().filter(p -> Boolean.TRUE.equals(p.getIsHero())).findFirst().orElse(null);
+        String photosJs = photoDataGenerator.generate(photos, hero);
+        List<ProjectDetail> details = contentService.list();
+        Path siteJsPath = projectRoot.resolve("src/data/site.js");
+        String siteJs = siteDataGenerator.generate(details, Files.readString(siteJsPath));
+        List<String[]> files = new ArrayList<>(); // [相对路径, 内容]
+        files.add(new String[] {"src/data/photos.js", photosJs});
+        files.add(new String[] {"src/data/site.js", siteJs});
+        for (ProjectDetail d : details) {
+            files.add(new String[] {"src/data/projects/" + d.getSlug() + ".js", contentService.export(d)});
+        }
+        return files;
+    }
+
+    /**
+     * 脏检测：DB 当前内容若立即发布，会有哪些变化。
+     * dirty_files = 生成内容与磁盘不一致的数据文件；dirty_photos = public/photos 有未提交的新增/删除二进制
+     * （此前发布 commit 只带 src/data，新照片公网 404 的根因，任务 C P0 修复后由本接口暴露给 UI 角标）。
+     */
+    public Map<String, Object> dirty() {
+        List<String> changed = new ArrayList<>();
+        try {
+            for (String[] f : buildFiles()) {
+                Path target = projectRoot.resolve(f[0]);
+                if (!Files.exists(target) || !Files.readString(target).equals(f[1])) {
+                    changed.add(f[0]);
+                }
+            }
+        } catch (Exception e) {
+            // 生成失败（如缺头图）也视为有未发布状态，提示文案交给前端
+            return Map.of("dirty", true, "files", changed, "photosUncommitted", false, "error",
+                    e.getMessage() == null ? e.toString() : e.getMessage());
+        }
+        boolean photosUncommitted = false;
+        try {
+            Process p = new ProcessBuilder("git", "status", "--porcelain", "public/photos")
+                    .directory(projectRoot.toFile()).start();
+            String out = new String(p.getInputStream().readAllBytes());
+            if (p.waitFor(10, TimeUnit.SECONDS) && !out.isBlank()) photosUncommitted = true;
+        } catch (Exception ignored) {
+            // git 不可用时按无照片改动处理
+        }
+        boolean dirty = !changed.isEmpty() || photosUncommitted;
+        return Map.of("dirty", dirty, "files", changed, "photosUncommitted", photosUncommitted);
+    }
+
+    /**
+     * 公网部署状态：代理 GitHub Actions 最新一次 runs（公开仓库匿名可读）。
+     * 由后端代理而非前端直连——api.github.com 国内直连同样受限，后端所在网络已验证可达。
+     */
+    public Map<String, Object> deployStatus() {
+        try {
+            java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(8)).build();
+            java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create("https://api.github.com/repos/yuanyyyyyyyyy/rain/actions/runs?per_page=1"))
+                    .header("Accept", "application/vnd.github+json")
+                    .header("User-Agent", "rain-admin")
+                    .timeout(Duration.ofSeconds(8))
+                    .GET().build();
+            java.net.http.HttpResponse<String> res = client.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
+            if (res.statusCode() != 200) {
+                return Map.of("error", "GitHub API " + res.statusCode());
+            }
+            com.fasterxml.jackson.databind.JsonNode run = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readTree(res.body()).path("workflow_runs").path(0);
+            if (run.isMissingNode()) return Map.of("error", "无部署记录");
+            Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("status", run.path("status").asText());
+            String conclusion = run.path("conclusion").asText(null);
+            if (conclusion != null) m.put("conclusion", conclusion);
+            m.put("createdAt", run.path("created_at").asText());
+            m.put("htmlUrl", run.path("html_url").asText());
+            return m;
+        } catch (Exception e) {
+            return Map.of("error", "查询失败：" + (e.getMessage() == null ? e.toString() : e.getMessage()));
+        }
+    }
+
     /**
      * 4. 数据文件 commit + 推送公网。推送策略：git push（代理开启时最快）失败则回退
      * tools/sync-via-api.py（API 通道，github.com 被墙时可用）。失败不阻断发布，日志留痕可手动补。
@@ -156,7 +229,9 @@ public class PublishService {
     private String commitAndSync() {
         StringBuilder out = new StringBuilder();
         try {
-            run(20, "git", "add", "src/data");
+            // 任务 C P0：照片二进制必须与数据文件一起进发布 commit，否则新上传照片公网 404；
+            // git add <pathspec> 自带删除语义，照片删除同样入库
+            run(20, "git", "add", "src/data", "public/photos");
             Process diff = new ProcessBuilder("git", "diff", "--cached", "--quiet")
                     .directory(projectRoot.toFile()).start();
             boolean hasChanges = diff.waitFor(10, TimeUnit.SECONDS) && diff.exitValue() != 0;

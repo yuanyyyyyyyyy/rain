@@ -26,6 +26,10 @@
 
     <p v-if="msg" class="msg" :class="{ err: msgIsErr }">{{ msg }}</p>
 
+    <p v-if="publishDirty && !dirty" class="pub-dirty">
+      ● 有未发布变更——保存只写数据库，点「04 发布」才会更新到公网网站（约 1.5–3 分钟生效）。
+    </p>
+
     <section class="panel">
       <h2>基本信息 — 01 / OVERVIEW</h2>
       <label class="field">
@@ -289,6 +293,7 @@ async function save() {
     await api.put(`/api/content/projects/${slug.value}`, form.value)
     dirty.value = false
     say('已保存。公网生效：点「04 发布」。')
+    await checkPublishDirty()
   } catch (e) {
     say(e.message, true)
   } finally {
@@ -296,10 +301,21 @@ async function save() {
   }
 }
 
+// 未发布变更检测（保存落库 ≠ 公网生效）：有变更时页头横幅提示去发布
+const publishDirty = ref(false)
+async function checkPublishDirty() {
+  try {
+    publishDirty.value = (await api.get('/api/publish/dirty')).dirty
+  } catch {
+    publishDirty.value = false
+  }
+}
+
 onMounted(async () => {
   projects.value = await api.get('/api/content/projects')
   slug.value = projects.value[0]?.slug || ''
   await load()
+  await checkPublishDirty()
 })
 </script>
 
@@ -424,6 +440,14 @@ h2 {
     border-left-color: var(--c-danger);
     background: #fbf1f1;
   }
+}
+.pub-dirty {
+  font: 11px var(--font-mono);
+  color: var(--c-ink-soft);
+  border-left: 2px solid var(--c-aux);
+  padding: 6px 12px;
+  margin: 0 0 14px;
+  background: var(--c-blue-faint);
 }
 .panel {
   border: 1px solid var(--c-line);

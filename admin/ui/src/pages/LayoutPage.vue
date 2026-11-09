@@ -6,7 +6,10 @@
         <router-link to="/" exact-active-class="on">01 / 概览</router-link>
         <router-link to="/photos" active-class="on">02 / 照片管理</router-link>
         <router-link to="/content" active-class="on">03 / 项目内容</router-link>
-        <router-link to="/publish" active-class="on">04 / 发布</router-link>
+        <router-link to="/publish" active-class="on">
+          04 / 发布
+          <span v-if="publishDirty" class="dot" title="有未发布变更，点「04 发布」更新公网">●</span>
+        </router-link>
         <router-link to="/inbox" active-class="on">
           05 / 收件箱
           <span v-if="unread > 0" class="badge">{{ unread > 99 ? '99+' : unread }}</span>
@@ -32,6 +35,7 @@ import { api, clearToken, getWorkerCfg, workerSend } from '../api.js'
 const router = useRouter()
 const route = useRoute()
 const unread = ref(0)
+const publishDirty = ref(false)
 // 当前数据源配置快照（localStorage 非响应式：靠 rain-worker-cfg 事件与路由切换时刷新）
 const workerCfg = ref({ base: '', token: '' })
 
@@ -64,9 +68,19 @@ async function loadUnread() {
   }
 }
 
+/** 未发布变更角标（任务 C）：照片/内容落库但没点发布时提醒 */
+async function loadDirty() {
+  try {
+    publishDirty.value = (await api.get('/api/publish/dirty')).dirty
+  } catch {
+    publishDirty.value = false
+  }
+}
+
 onMounted(() => {
   refreshCfg()
   loadUnread()
+  loadDirty()
   window.addEventListener('rain-worker-cfg', onCfgChange)
 })
 onUnmounted(() => window.removeEventListener('rain-worker-cfg', onCfgChange))
@@ -76,8 +90,11 @@ function onCfgChange() {
   loadUnread()
 }
 
-// 路由切换时刷新未读（收件箱里读了消息后侧栏角标即时更新）
-watch(() => route.fullPath, loadUnread)
+// 路由切换时刷新（收件箱读信后角标即时更新；发布后红点消失）
+watch(() => route.fullPath, () => {
+  loadUnread()
+  loadDirty()
+})
 </script>
 
 <style lang="scss" scoped>
@@ -126,6 +143,12 @@ watch(() => route.fullPath, loadUnread)
     padding: 1px 6px;
     border-radius: 8px;
     margin-left: 6px;
+    vertical-align: 1px;
+  }
+  .dot {
+    color: #ffd34d;
+    font-size: 10px;
+    margin-left: 5px;
     vertical-align: 1px;
   }
   .out,

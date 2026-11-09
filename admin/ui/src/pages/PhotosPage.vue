@@ -58,6 +58,10 @@
 
     <p v-if="msg" class="msg" :class="{ err: msgIsErr }">{{ msg }}</p>
 
+    <p v-if="publishDirty" class="pub-dirty">
+      ● 有未发布变更——上传/排序只写数据库，点「04 发布」才会更新到公网网站（约 1.5–3 分钟生效）。
+    </p>
+
     <section v-for="g in groups" :key="g.key" class="group">
       <h2>
         {{ g.key }} / {{ g.label }}
@@ -159,6 +163,16 @@ function say(text, isErr = false) {
   msgIsErr.value = isErr
 }
 
+// 未发布变更检测：上传/排序/编辑落库后横幅提示去发布
+const publishDirty = ref(false)
+async function checkPublishDirty() {
+  try {
+    publishDirty.value = (await api.get('/api/publish/dirty')).dirty
+  } catch {
+    publishDirty.value = false
+  }
+}
+
 // ---- 上传队列 ----
 
 function addFiles(files) {
@@ -231,6 +245,7 @@ async function doUpload() {
   else say(`${ok} 张已上传入库。点「04 发布」即可更新到公网。`)
   if (!queue.value.some((i) => i.status !== 'done')) await clearQueue()
   await load()
+  await checkPublishDirty()
 }
 
 async function uploadOne(it) {
@@ -307,6 +322,7 @@ async function persistOrders(affected) {
     await api.put('/api/photos/reorder', items)
     const cross = affected.length > 1
     say(cross ? `已跨组移动并保存排序` : `${affected[0].key} 组排序已保存`)
+    await checkPublishDirty()
   } catch (e) {
     say(`排序保存失败：${e.message}`, true)
     await load()
@@ -331,6 +347,7 @@ async function saveEdit(p) {
     editId.value = null
     say(`${p.pid} 已更新`)
     await load()
+    await checkPublishDirty()
   } catch (e) {
     say(e.message, true)
   }
@@ -341,6 +358,7 @@ async function setHero(p) {
     await api.put(`/api/photos/${p.id}/hero`)
     say(`${p.pid} 已设为头图（原头图已取消）`)
     await load()
+    await checkPublishDirty()
   } catch (e) {
     say(e.message, true)
   }
@@ -352,6 +370,7 @@ async function remove(p) {
     const r = await api.delete(`/api/photos/${p.id}`)
     say(r.warning || `${r.deleted} 已删除`)
     await load()
+    await checkPublishDirty()
   } catch (e) {
     say(e.message, true)
   }
@@ -369,6 +388,7 @@ function onKey(e) {
 
 onMounted(async () => {
   await load()
+  await checkPublishDirty()
   window.addEventListener('keydown', onKey)
   window.addEventListener('paste', onPaste)
 })
@@ -533,6 +553,14 @@ h1 {
       }
     }
   }
+}
+.pub-dirty {
+  font: 11px var(--font-mono);
+  color: var(--c-ink-soft);
+  border-left: 2px solid var(--c-aux);
+  padding: 6px 12px;
+  margin: 0 0 14px;
+  background: var(--c-blue-faint);
 }
 .msg {
   font: 11px var(--font-mono);

@@ -22,12 +22,31 @@
           <span class="k">上次发布 · {{ shortTime(status.lastPublish.createdAt) }} · {{ (status.lastPublish.durationMs / 1000).toFixed(1) }}s</span>
         </div>
         <div class="stat" v-else><span class="v">—</span><span class="k">从未发布</span></div>
+        <div class="stat">
+          <span class="v" :class="{ warn: dirty.dirty }">{{ dirty.dirty ? '有' : '无' }}</span>
+          <span class="k">未发布变更</span>
+        </div>
       </div>
+      <p v-if="dirty.dirty" class="hint warn-line">
+        未发布内容：{{ [...(dirty.files || []), ...(dirty.photosUncommitted ? ['public/photos/（新照片或删除未提交）'] : [])].join('、') || '（检测异常，可尝试重新保存）' }}
+      </p>
       <p class="hint">
         发布将：写回 src/data/photos.js 与项目数据文件（原子替换）→ 触发 npm run build → 记录历史。
         公网地址：<a class="site-link" href="https://yuanyyyyyyyyy.github.io/rain/" target="_blank" rel="noopener">yuanyyyyyyyyy.github.io/rain</a>
-        （部署完成后约 1 分钟更新）
       </p>
+    </section>
+
+    <section class="panel">
+      <h2>公网部署进度</h2>
+      <p v-if="deploy.error" class="hint">查询失败：{{ deploy.error }}（api.github.com 受限时不可用，不影响发布本身）</p>
+      <div v-else class="stats">
+        <div class="stat">
+          <span class="v" :class="{ ok: deploy.conclusion === 'success', fail: deploy.conclusion === 'failure' }">{{ deployText }}</span>
+          <span class="k">{{ deploy.createdAt ? `GitHub Actions · ${shortTime(deploy.createdAt)}` : 'GitHub Actions' }}</span>
+        </div>
+        <a v-if="deploy.htmlUrl" class="gh-link" :href="deploy.htmlUrl" target="_blank" rel="noopener">在 GitHub 查看 ↗</a>
+      </div>
+      <p class="hint">发布推送成功后自动开始：排队（queued）→ 构建中（in_progress）→ 成功（success），全程约 1–2 分钟；页面每 10 秒自动刷新。</p>
     </section>
 
     <section class="panel">
@@ -49,7 +68,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { api } from '../api.js'
 
 const status = ref(null)
@@ -58,19 +77,58 @@ const publishing = ref(false)
 const msg = ref('')
 const msgIsErr = ref(false)
 const expanded = ref(null)
+const dirty = ref({})
+const deploy = ref({})
+let deployTimer = null
+
+const DEPLOY_LABELS = {
+  queued: '排队中',
+  in_progress: '构建中',
+  completed: '已完成',
+}
+const deployText = computed(() => {
+  const d = deploy.value
+  if (d.status !== 'completed') return DEPLOY_LABELS[d.status] || d.status || '—'
+  if (d.conclusion === 'success') return '已部署 ✓'
+  if (d.conclusion === 'failure') return '部署失败'
+  if (d.conclusion === 'cancelled') return '已被新部署取代'
+  return d.conclusion || d.status
+})
 
 function say(text, isErr = false) {
   msg.value = text
   msgIsErr.value = isErr
 }
 
-const shortTime = (t) => (t || '').replace('T', ' ').slice(0, 16)
+const shortTime = (t) => (t || '').replace('T', ' ').slice(0, 16).replace('Z', '')
 
 const logText = (l) => `${l.writtenFiles || '（无写回文件）'}\n\n${l.output || '（无日志）'}`
 
 async function load() {
   status.value = await api.get('/api/publish/status')
   logs.value = await api.get('/api/publish/logs')
+  try {
+    dirty.value = await api.get('/api/publish/dirty')
+  } catch {
+    dirty.value = {}
+  }
+}
+
+async function pollDeploy() {
+  try {
+    deploy.value = await api.get('/api/publish/deploy-status')
+  } catch {
+    deploy.value = { error: '网络异常' }
+  }
+}
+
+function startDeployPolling() {
+  pollDeploy()
+  clearInterval(deployTimer)
+  deployTimer = setInterval(() => {
+    if (deploy.value.status === 'completed') return clearInterval(deployTimer)
+    pollDeploy()
+  }, 10000)
 }
 
 async function doPublish() {
@@ -79,7 +137,8 @@ async function doPublish() {
   publishing.value = true
   try {
     const r = await api.post('/api/publish')
-    say(`发布成功：写回 ${r.writtenFiles.length} 个文件，构建耗时 ${(r.durationMs / 1000).toFixed(1)}s`)
+    say(`发布成功：写回 ${r.writtenFiles.length} 个文件，构建耗时 ${(r.durationMs / 1000).toFixed(1)}s；下方开始跟踪公网部署进度`)
+    startDeployPolling()
   } catch (e) {
     say(e.message, true)
   } finally {
@@ -88,7 +147,11 @@ async function doPublish() {
   }
 }
 
-onMounted(load)
+onMounted(async () => {
+  await load()
+  startDeployPolling()
+})
+onUnmounted(() => clearInterval(deployTimer))
 </script>
 
 <style lang="scss" scoped>
@@ -187,6 +250,25 @@ h2 {
       text-decoration: none;
     }
   }
+}
+.warn {
+  color: var(--c-danger) !important;
+}
+.warn-line {
+  color: var(--c-danger);
+  font: 11px var(--font-mono);
+}
+.ok {
+  color: var(--c-blue) !important;
+}
+.fail {
+  color: var(--c-danger) !important;
+}
+.gh-link {
+  align-self: center;
+  font: 10px var(--font-mono);
+  color: var(--c-blue);
+  text-decoration: underline;
 }
 .log-row {
   border-bottom: 1px solid var(--c-line);
