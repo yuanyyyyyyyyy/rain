@@ -155,6 +155,7 @@ import { useRoute } from 'vue-router'
 import { projects } from '../data/site.js'
 import YunshuArch from '../components/project/YunshuArch.vue'
 import IntelnexusArch from '../components/project/IntelnexusArch.vue'
+import ForgeArch from '../components/project/ForgeArch.vue'
 
 const BASE = import.meta.env.BASE_URL
 
@@ -168,7 +169,7 @@ const details = Object.fromEntries(
     return [slug, value]
   }),
 )
-const archMap = { yunshu: YunshuArch, intelnexus: IntelnexusArch }
+const archMap = { yunshu: YunshuArch, intelnexus: IntelnexusArch, forge: ForgeArch }
 const defaultLabels = ['问题', '方案', '效果']
 
 const route = useRoute()
