@@ -14,8 +14,8 @@
       <div class="actions">
         <a class="btn primary" href="#work">VIEW SELECTED WORK <b>↗</b></a>
         <a class="btn" href="#contact">GET IN TOUCH <b>＋</b></a>
-        <!-- TODO(上线前): href 换成真实简历 PDF（如 `${BASE_URL}resume.pdf`）；点击已上报下载计数 -->
-        <a class="btn ghost" href="#contact" @click="trackResume">下载简历 <b>↓</b></a>
+        <!-- 简历 PDF 在 public/resume.pdf；点击上报下载计数（失败静默） -->
+        <a class="btn ghost" :href="`${BASE}resume.pdf`" target="_blank" rel="noopener" @click="trackResume">下载简历 <b>↓</b></a>
       </div>
     </div>
 
@@ -58,6 +58,8 @@
 
 <script setup>
 import { profile, apiBase } from '../../data/site.js'
+
+const BASE = import.meta.env.BASE_URL
 
 // 简历下载计数 beacon：公开端点（POST /api/resume/hit），同 IP 分钟级去重；
 // 失败静默，不影响按钮本身行为

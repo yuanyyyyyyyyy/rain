@@ -83,7 +83,7 @@ cd admin/ui && npm install && npm run dev # 管理台 :5175
 | 主题色 / 字体 / 间距 | `src/styles/tokens.scss` |
 | 管理台密码 / 公网数据源 | 管理台「06 / 设置」改密；侧栏「数据源」配置 Worker 地址 + ADMIN_TOKEN |
 
-> 联系方式（邮箱 / GitHub / 简历 PDF）当前为占位，上线前必须替换，代码内标注 `TODO(上线前)`。
+> 联系方式已接入真实信息（2026-11-09）：邮箱见 `site.js`；简历 PDF 为 `public/resume.pdf`（Hero"下载简历"按钮直链 + Worker 下载计数）；GitHub 暂不展示（`github: ''` 留空即自动隐藏按钮）。
 
 ## Git 约定
 
