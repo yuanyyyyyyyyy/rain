@@ -11,6 +11,7 @@
           05 / 收件箱
           <span v-if="unread > 0" class="badge">{{ unread > 99 ? '99+' : unread }}</span>
         </router-link>
+        <router-link to="/settings" active-class="on">06 / 设置</router-link>
       </nav>
       <button class="src" @click="configSource">数据源</button>
       <button class="out" @click="logout">退出登录</button>

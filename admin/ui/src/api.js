@@ -94,13 +94,21 @@ export function setWorkerCfg(base, token) {
   localStorage.setItem(WORKER_TOKEN_KEY, token)
 }
 
-export async function workerGet(path) {
+export async function workerSend(path, method = 'GET', body) {
   const { base, token } = getWorkerCfg()
+  const headers = { Authorization: `Bearer ${token}` }
+  if (body !== undefined) headers['Content-Type'] = 'application/json'
   const res = await fetch(`${base}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
     // workers.dev 国内直连可能受限：8 秒未响应即回退本地后端，不让页面干等
     signal: AbortSignal.timeout(8000),
   })
   if (!res.ok) throw new Error(`Worker ${res.status}`)
   return res.json()
+}
+
+export function workerGet(path) {
+  return workerSend(path, 'GET')
 }

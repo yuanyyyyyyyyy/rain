@@ -7,6 +7,7 @@
       <div class="card"><span class="v">{{ s.pvToday ?? '—' }}</span><span class="k">今日 PV</span></div>
       <div class="card"><span class="v">{{ s.pvTotal ?? '—' }}</span><span class="k">累计 PV</span></div>
       <div class="card"><span class="v">{{ s.uvTotal ?? '—' }}</span><span class="k">访客数（IP 去重）</span></div>
+      <div v-if="s.resumeDownloads != null" class="card"><span class="v">{{ s.resumeDownloads }}</span><span class="k">简历下载</span></div>
       <div class="card"><span class="v">{{ photos ?? '—' }}</span><span class="k">照片</span></div>
       <div class="card"><span class="v">{{ projects ?? '—' }}</span><span class="k">项目</span></div>
     </div>
@@ -53,21 +54,30 @@ const barH = (pv) => {
 }
 
 onMounted(async () => {
-  // 数据源：配置了 Worker（公网 collector）优先，失败回退本地 Spring
+  // 数据源：配置了 Worker（公网 collector）优先，失败回退本地 Spring；
+  // 双源都失败时保持空态（显示 —），不产生 unhandled rejection
   const { base } = getWorkerCfg()
-  if (base) {
-    try {
-      s.value = await workerGet('/stats/summary')
-      source.value = 'Worker（公网）'
-    } catch {
+  try {
+    if (base) {
+      try {
+        s.value = await workerGet('/stats/summary')
+        source.value = 'Worker（公网）'
+      } catch {
+        s.value = await api.get('/api/stats/summary')
+      }
+    } else {
       s.value = await api.get('/api/stats/summary')
     }
-  } else {
-    s.value = await api.get('/api/stats/summary')
+  } catch {
+    source.value = '本地（不可用）'
   }
-  const st = await api.get('/api/publish/status')
-  photos.value = st.photos
-  projects.value = st.projects
+  try {
+    const st = await api.get('/api/publish/status')
+    photos.value = st.photos
+    projects.value = st.projects
+  } catch {
+    /* 照片/项目计数保持 — */
+  }
 })
 </script>
 
