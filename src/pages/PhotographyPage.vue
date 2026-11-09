@@ -43,7 +43,13 @@
             @keydown.enter.prevent="openAt(flatIndex(it.p.id))"
           >
             <div class="ph" :style="{ height: row.h + 'px' }">
-              <img :src="`${BASE}photos/${it.p.id}.jpg`" :alt="plateAlt(g, it.p)" loading="lazy" />
+              <!-- 网格用 640px 缩略图（加载重量 ~1/5），Lightbox 才加载 1600px 原图；缩略图缺失回退原图 -->
+              <img
+                :src="`${BASE}photos/thumbs/${it.p.id}.jpg`"
+                :alt="plateAlt(g, it.p)"
+                loading="lazy"
+                @error="$event.target.src = `${BASE}photos/${it.p.id}.jpg`"
+              />
             </div>
             <figcaption>{{ plateLabel(it.p.id) }} — {{ it.p.date }}<template v-if="it.p.cap"> · {{ it.p.cap }}</template></figcaption>
           </figure>

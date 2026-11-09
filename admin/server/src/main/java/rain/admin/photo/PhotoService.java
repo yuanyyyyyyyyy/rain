@@ -31,6 +31,8 @@ public class PhotoService {
 
     private static final int LONG_EDGE = 1600;
     private static final double QUALITY = 0.8;
+    private static final int THUMB_EDGE = 640;
+    private static final double THUMB_QUALITY = 0.7;
     private static final Set<String> GROUPS = Set.of("STREET", "LIGHT", "DAILY");
 
     private final PhotoRepo repo;
@@ -90,6 +92,7 @@ public class PhotoService {
             scaled = rotateForOrientation(scaled, exif.orientation());
         }
         Thumbnails.of(scaled).scale(1.0).outputQuality(QUALITY).outputFormat("jpg").toFile(target.toFile());
+        writeThumb(pid, target); // 网格缩略图（640px q70），Lightbox 仍加载 1600px 原图
 
         // 入库；失败则删除两个文件补偿
         try {
@@ -118,6 +121,7 @@ public class PhotoService {
             return new UploadResult(p, source);
         } catch (RuntimeException e) {
             deleteQuietly(target);
+            deleteQuietly(thumbsDir().resolve(pid + ".jpg"));
             deleteQuietly(origTarget);
             throw e;
         }
@@ -130,6 +134,46 @@ public class PhotoService {
         } catch (IOException e) {
             return LocalDate.now();
         }
+    }
+
+    /** 缩略图输出目录：public/photos/thumbs/（在发布 commit 范围 public/photos 内） */
+    public Path thumbsDir() {
+        return frontendPublicDir.resolve("photos").resolve("thumbs");
+    }
+
+    /** 生成 640px q70 缩略图（从 1600px 压缩产物缩，等比且已按 EXIF 摆正）；失败不阻断主流程 */
+    public boolean writeThumb(String pid, Path compressedSource) {
+        try {
+            Path thumb = thumbsDir().resolve(pid + ".jpg");
+            if (Files.exists(thumb)) return true;
+            Files.createDirectories(thumbsDir());
+            BufferedImage src = ImageIO.read(compressedSource.toFile());
+            if (src == null) return false;
+            BufferedImage scaled = src;
+            if (Math.max(src.getWidth(), src.getHeight()) > THUMB_EDGE) {
+                scaled = Thumbnails.of(src).size(THUMB_EDGE, THUMB_EDGE).asBufferedImage();
+            }
+            Thumbnails.of(scaled).scale(1.0).outputQuality(THUMB_QUALITY).outputFormat("jpg").toFile(thumb.toFile());
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** 启动时补齐存量照片的缩略图（一次性回填，幂等）；返回生成数量 */
+    public int backfillThumbs() {
+        Path photosDir = frontendPublicDir.resolve("photos");
+        if (!Files.isDirectory(photosDir)) return 0;
+        int n = 0;
+        try (var stream = Files.list(photosDir)) {
+            for (Path p : stream.filter(f -> f.getFileName().toString().matches("p\\d+\\.jpg")).toList()) {
+                String pid = p.getFileName().toString().replace(".jpg", "");
+                if (writeThumb(pid, p)) n++;
+            }
+        } catch (IOException ignored) {
+            // 回填失败不阻断启动；下次启动重试
+        }
+        return n;
     }
 
     /**
@@ -217,13 +261,18 @@ public class PhotoService {
         return p;
     }
 
-    /** 删除压缩产物 + 原始副本（容忍缺失）；返回失败清单，空 = 全部成功 */
+    /** 删除压缩产物 + 缩略图 + 原始副本（容忍缺失）；返回失败清单，空 = 全部成功 */
     public List<String> deleteFiles(Photo p) {
         List<String> failed = new ArrayList<>();
         try {
             Files.deleteIfExists(frontendPublicDir.resolve("photos").resolve(p.getPid() + ".jpg"));
         } catch (IOException e) {
             failed.add("photos/" + p.getPid() + ".jpg");
+        }
+        try {
+            Files.deleteIfExists(thumbsDir().resolve(p.getPid() + ".jpg"));
+        } catch (IOException e) {
+            failed.add("photos/thumbs/" + p.getPid() + ".jpg");
         }
         if (Files.isDirectory(origDir)) {
             try (var stream = Files.list(origDir)) {

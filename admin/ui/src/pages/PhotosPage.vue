@@ -25,9 +25,15 @@
     <div v-if="queue.length" class="queue">
       <div class="queue-head">
         <div class="kicker">待上传 {{ queue.length }} 张 — 逐张可改分组 / 日期（日期留空 = 自动识别）</div>
-        <button :disabled="uploading || !queue.some((i) => i.status === 'pending' || i.status === 'fail')" @click="doUpload">
-          {{ uploading ? '上传中…' : `上传 ${queue.filter((i) => i.status !== 'done').length} 张` }}
-        </button>
+        <div class="bulk">
+          <span>全部应用为</span>
+          <select v-model="bulkGroup" @change="applyBulkGroup">
+            <option v-for="g in GROUP_DEFS" :key="g.key" :value="g.key">{{ g.key }} / {{ g.label }}</option>
+          </select>
+          <button :disabled="uploading || !queue.some((i) => i.status === 'pending' || i.status === 'fail')" @click="doUpload">
+            {{ uploading ? '上传中…' : `上传 ${queue.filter((i) => i.status !== 'done').length} 张` }}
+          </button>
+        </div>
       </div>
       <div class="queue-grid">
         <div v-for="(it, idx) in queue" :key="it.uid" class="qcard" :class="it.status">
@@ -146,6 +152,14 @@ const previewPid = ref(null)
 let uidSeq = 0
 
 const pendingCount = computed(() => queue.value.filter((i) => i.status !== 'done').length)
+
+// 批量分组：一次把所有待上传项设为同一组（逐张仍可单独改）
+const bulkGroup = ref('STREET')
+function applyBulkGroup() {
+  queue.value.forEach((i) => {
+    if (i.status === 'pending' || i.status === 'fail') i.group = bulkGroup.value
+  })
+}
 
 function groupPhotos(list) {
   groups.value = GROUP_DEFS.map((g) => ({
@@ -451,6 +465,22 @@ h1 {
     align-items: center;
     gap: 12px;
 
+    .bulk {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+
+      span {
+        font: 10px var(--font-mono);
+        color: var(--c-muted);
+        white-space: nowrap;
+      }
+      select {
+        border: 1px solid var(--c-line);
+        font: 11px var(--font-sans);
+        padding: 5px 8px;
+      }
+    }
     button {
       border: 1px solid var(--c-blue);
       background: var(--c-blue);
