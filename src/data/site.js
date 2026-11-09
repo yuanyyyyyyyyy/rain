@@ -24,26 +24,30 @@ export const projects = [
     slug: 'yunshu',
     no: '001',
     flagship: true,
-    period: '2026.06 — 至今',
-    title: '云枢智慧医院管理平台',
+    period: '2026.06 — 至今（核心开发 06–08，缓存/MQ/AI 增强 09–10）',
+    title: '微服务架构下的排班预约服务',
     summary:
-      '基于 Spring Cloud Alibaba 微服务架构的智慧医院管理平台。我独立负责排班预约服务（his-j8-setroster）后端全部代码，围绕缓存、并发控制、异步通知与 AI 排班助手开展工程实践。',
-    tags: ['JAVA', 'SPRING CLOUD', 'REDIS', 'ROCKETMQ', 'SPRING AI'],
-    // 性能数据：hey -n 2000 -c 50，本机服务 + dev 虚机中间件，测试环境数据（出处：压测报告.md）
+      '基于 Spring Cloud Alibaba 微服务架构的智慧医院管理平台，团队 8 人。我独立负责排班预约服务 his-j8-setroster 的后端全部代码（该模块单人提交）：日/周排班模板、号源时段与放号策略、日历例外（停诊源头）、停诊通知任务与 AI 排班助手，共 24 个 REST 接口 + 1 个 AI 接口。',
+    tags: ['JAVA', 'SPRING BOOT', 'SPRING CLOUD ALIBABA', 'MYBATIS-PLUS', 'REDIS/REDISSON', 'ROCKETMQ', 'SPRING AI', ],
     metrics: [
       { label: 'P99', value: '1.468s → 0.148s' },
       { label: '吞吐', value: '496 → 2480 req/s' },
-      { label: '均响', value: '99.3 → 19.7ms' },
+      { label: '平均响应', value: '99.3 → 19.7ms' },
     ],
   },
   {
     slug: 'intelnexus',
     no: '002',
-    period: '2026',
-    title: 'IntelNexus',
+    period: '2026（持续迭代中）',
+    title: '让每一条情报结论都可评分、可溯源、可核验',
     summary:
-      'AI 驱动的多源情报分析平台：可信度评估、证据链追溯与冲突检测构成分析内核。独立完成需求定义、方案决策、集成与验证。',
-    tags: ['PYTHON', 'LANGCHAIN', 'RAG', 'KNOWLEDGE GRAPH'],
+      'AI 驱动的多源网络情报分析平台：以可信度评估、证据链追溯与冲突检测为分析内核，上接 15 类信息源的多源采集，下接定时简报与可导出的结构化报告。我独立完成需求定义、方案决策、集成与验证；功能代码以 AI 生成为主，由我负责设计约束、逐轮审查、测试与迭代修正。',
+    tags: ['PYTHON', 'LANGCHAIN', 'STREAMLIT', 'NETWORKX/PYVIS', 'SENTENCE-TRANSFORMERS', ],
+    metrics: [
+      { label: '测试文件', value: '95 个' },
+      { label: '测试函数', value: '1101 个' },
+      { label: '测试类', value: '126 个' },
+    ],
   },
   {
     slug: 'shimmer',
@@ -52,9 +56,17 @@ export const projects = [
     title: '照片光影展示平台',
     summary:
       '围绕照片展示与视觉表达构建的全栈项目，结合图片处理、对象存储与 AI 能力。',
-    tags: ['VUE 3', 'EXPRESS', 'MYSQL', 'AI API'],
+    tags: ['VUE 3', 'EXPRESS', 'MYSQL', 'AI API', ],
   },
+  {
+    slug: 'test-e2e',
+    no: '004',
+    title: '端到端验证项目',
+    summary:
+      '验证新建项目与 site.js 写回闭环的临时项目。',
+  }
 ]
+// === PROJECTS:AUTO-END ===
 
 export const capabilities = [
   {
