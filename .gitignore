@@ -26,3 +26,6 @@ Desktop.ini
 .zcode/
 
 .dev.vars
+
+# wrangler 本地状态
+.wrangler/
