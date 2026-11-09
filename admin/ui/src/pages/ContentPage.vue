@@ -7,6 +7,7 @@
       </div>
       <div class="actions">
         <span v-if="dirty" class="dirty-tag">● 未保存</span>
+        <button class="mini" @click="preview" title="打开公网项目页（显示的是已发布内容，未发布的改动发布后生效）">预览 ↗</button>
         <button class="primary" :disabled="saving" @click="save">{{ saving ? '保存中…' : '保存' }}</button>
       </div>
     </div>
@@ -64,7 +65,7 @@
           :value="kickerTitle(s)"
           @input="s.kicker = padNo(i) + ' / ' + $event.target.value"
         />
-        <span class="type-tag">{{ s.type }}</span>
+        <span class="type-tag">{{ TYPE_LABEL[s.type] || s.type }}</span>
         <button class="mini" :disabled="i === 0" @click="move(i, -1)">↑</button>
         <button class="mini" :disabled="i === form.sections.length - 1" @click="move(i, 1)">↓</button>
         <button v-if="s.type !== 'arch'" class="mini danger" @click="removeSection(i)">删</button>
@@ -154,9 +155,42 @@
     <div class="add-sec">
       <span>新增节：</span>
       <select v-model="newType">
-        <option v-for="t in EDITABLE_TYPES" :key="t" :value="t">{{ t }}</option>
+        <option v-for="(desc, t) in TYPE_DESC" :key="t" :value="t">{{ desc }}</option>
       </select>
-      <button class="mini" @click="addSection">+ 添加（编号自动顺延）</button>
+      <button class="mini" @click="addSection">+ 添加</button>
+    </div>
+    <p class="add-sec-guide">
+      「01 概述」由页面自动渲染（headline + summary），不需要新增；新增节的编号自动顺延（02 起）并按位置重排，标题只需填文字。
+      想让数据上首页卡片：加「数据指标」节，前 3 条会自动进 Works 卡片。
+    </p>
+
+    <!-- 新建项目模态框 -->
+    <div v-if="creating" class="modal" @click.self="creating = false">
+      <div class="box create">
+        <h2>新建项目</h2>
+        <label class="field">
+          <span>slug（路由标识，小写字母/数字/连字符，创建后不可改）</span>
+          <input v-model="newSlug" placeholder="如 my-project" spellcheck="false" />
+        </label>
+        <label class="field">
+          <span>项目名称（首页卡片与详情页大标题）</span>
+          <input v-model="newHeadline" placeholder="如 My Project — 一句话定位" />
+        </label>
+        <label class="field">
+          <span>一句话简介（首页卡片描述 + 详情页概述）</span>
+          <textarea v-model="newSummary" rows="3" placeholder="它是什么、你做了什么、亮点是什么"></textarea>
+        </label>
+        <p class="hint">
+          创建后是空骨架：在下方「+ 添加」节填充正文；「04 发布」后卡片与详情页自动上公网（详情页正文由发布自动写回，无需改代码）。
+        </p>
+        <p v-if="createErr" class="err">{{ createErr }}</p>
+        <div class="modal-ops">
+          <button class="primary" :disabled="creatingBusy" @click="submitCreate">
+            {{ creatingBusy ? '创建中…' : '创建' }}
+          </button>
+          <button class="mini" @click="creating = false">取消</button>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -169,6 +203,16 @@ import { api } from '../api.js'
 
 const EDITABLE_TYPES = ['shots', 'impl', 'metrics', 'pits', 'text']
 
+// 类型中文化（任务 F）：下拉与节标签可读，说明讲清各类型用途
+const TYPE_LABEL = { arch: '架构图', shots: '界面截图', impl: '核心实现', metrics: '数据指标', pits: '踩坑复盘', text: '正文段落' }
+const TYPE_DESC = {
+  shots: '界面截图 — 上传截图，或先列 wanted 占位待补',
+  impl: '核心实现 — 问题 / 方案 / 效果 三段式条目',
+  metrics: '数据指标 — 数值 + 变化（前 3 条自动进首页卡片）',
+  pits: '踩坑复盘 — 坑标题 + 经过与解决',
+  text: '正文段落 — 纯文本（换行会保留）',
+}
+
 const projects = ref([])
 const slug = ref('')
 const form = ref({ headline: '', summary: '', headerNote: '', meta: [], sections: [] })
@@ -178,6 +222,13 @@ const msg = ref('')
 const msgIsErr = ref(false)
 const dirty = ref(false)
 const newType = ref('text')
+// 新建项目模态框（任务 F：替代 3 连原生 prompt）
+const creating = ref(false)
+const creatingBusy = ref(false)
+const newSlug = ref('')
+const newHeadline = ref('')
+const newSummary = ref('')
+const createErr = ref('')
 
 // 未保存跟踪：任何编辑置 dirty；保存/切换成功后清除
 watch(form, () => { dirty.value = true }, { deep: true })
@@ -198,21 +249,43 @@ function scrollToSec(i) {
 }
 
 async function createProject() {
-  const slug = (prompt('新项目 slug（小写字母/数字/连字符，如 my-project）：') || '').trim()
-  if (!slug) return
-  const headline = (prompt('项目名称（卡片与详情页大标题）：') || '').trim()
-  if (!headline) return
-  const summary = (prompt('一句话简介（首页卡片与详情页概述）：') || '').trim()
-  if (!summary) return
-  try {
-    await api.post('/api/content/projects', { slug, headline, summary })
-    projects.value = await api.get('/api/content/projects')
-    slug.value = slug
-    await load()
-    say(`项目 ${slug} 已创建（空骨架）。发布后自动出现在公网首页卡片。`)
-  } catch (e) {
-    say(e.message, true)
+  newSlug.value = newHeadline.value = newSummary.value = ''
+  createErr.value = ''
+  creating.value = true
+}
+
+async function submitCreate() {
+  const s = newSlug.value.trim()
+  const headline = newHeadline.value.trim()
+  const summary = newSummary.value.trim()
+  createErr.value = ''
+  if (!/^[a-z0-9][a-z0-9-]{1,40}$/.test(s)) {
+    createErr.value = 'slug 需为 2-41 位小写字母/数字/连字符（字母开头），如 my-project'
+    return
   }
+  if (!headline || !summary) {
+    createErr.value = '项目名称与一句话简介必填'
+    return
+  }
+  creatingBusy.value = true
+  try {
+    await api.post('/api/content/projects', { slug: s, headline, summary })
+    projects.value = await api.get('/api/content/projects')
+    slug.value = s
+    creating.value = false
+    await load()
+    say(`项目 ${s} 已创建（空骨架）。填好内容后点「04 发布」即上公网首页卡片；详情页正文随发布自动渲染。`)
+    await checkPublishDirty()
+  } catch (e) {
+    createErr.value = e.message
+  } finally {
+    creatingBusy.value = false
+  }
+}
+
+// 公网预览：打开项目详情页（显示已发布内容；未发布改动需先发布）
+function preview() {
+  window.open(`https://yuanyyyyyyyyy.github.io/rain/projects/${slug.value}`, '_blank', 'noopener')
 }
 
 async function deleteProject() {
@@ -605,27 +678,44 @@ textarea {
   z-index: 50;
 
   .box {
-    width: min(860px, 92vw);
+    width: min(560px, 92vw);
     max-height: 86vh;
+    overflow: auto;
     display: grid;
-    grid-template-rows: auto 1fr auto;
-    gap: 10px;
+    gap: 12px;
     background: var(--c-bg);
     border: 1px solid var(--c-line);
     padding: 18px 20px;
 
-    pre {
+    h2 {
+      font: 11px var(--font-mono);
+      letter-spacing: 0.14em;
+      color: var(--c-ink-soft);
       margin: 0;
-      overflow: auto;
-      font: 11px/1.7 var(--font-mono);
-      border: 1px solid var(--c-line);
-      padding: 12px;
-      background: var(--c-blue-faint);
+    }
+    .hint {
+      font: 11px/1.8 var(--font-sans);
+      color: var(--c-muted);
+      margin: 0;
+    }
+    .err {
+      color: var(--c-danger);
+      font-size: 12px;
+      margin: 0;
     }
     .modal-ops {
       display: flex;
       gap: 8px;
+
+      .primary {
+        padding: 9px 18px;
+      }
     }
   }
+}
+.add-sec-guide {
+  font: 10px/1.9 var(--font-mono);
+  color: var(--c-muted);
+  margin: 10px 0 0;
 }
 </style>

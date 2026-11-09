@@ -392,6 +392,7 @@ onUnmounted(() => {
   line-height: 2.05;
   color: var(--c-ink-soft);
   max-width: 680px;
+  white-space: pre-line; // 管理台 textarea 里的换行原样保留（任务 F）
 }
 
 // 侧栏
