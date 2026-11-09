@@ -6,13 +6,20 @@
         <h1>项目内容</h1>
       </div>
       <div class="actions">
-        <select v-model="slug" @change="load">
-          <option v-for="p in projects" :key="p.slug" :value="p.slug">{{ p.slug }}</option>
-        </select>
-        <button @click="openExport">导出 JS</button>
+        <span v-if="dirty" class="dirty-tag">● 未保存</span>
         <button class="primary" :disabled="saving" @click="save">{{ saving ? '保存中…' : '保存' }}</button>
       </div>
     </div>
+
+    <nav class="sec-nav">
+      <span class="proj">
+        <select v-model="slug" @change="load">
+          <option v-for="p in projects" :key="p.slug" :value="p.slug">{{ p.slug }}</option>
+        </select>
+      </span>
+      <a v-for="(s, i) in form.sections" :key="i" @click="scrollToSec(i)">{{ padNo(i) }} {{ kickerTitle(s).slice(0, 10) }}</a>
+      <button class="mini" @click="scrollToSec(-1)" title="页面顶部">↑ 顶部</button>
+    </nav>
 
     <p v-if="msg" class="msg" :class="{ err: msgIsErr }">{{ msg }}</p>
 
@@ -145,25 +152,12 @@
       <button class="mini" @click="addSection">+ 添加（编号自动顺延）</button>
     </div>
 
-    <Teleport to="body">
-      <div v-if="exportText !== null" class="modal" @click.self="exportText = null">
-        <div class="box">
-          <div class="kicker">
-            {{ slug }}.js — 整文件替换 src/data/projects/{{ slug }}.js，然后 npm run build
-          </div>
-          <pre>{{ exportText }}</pre>
-          <div class="modal-ops">
-            <button class="mini" @click="copyExport">复制全文</button>
-            <button class="mini" @click="exportText = null">关闭</button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { api } from '../api.js'
 
 const EDITABLE_TYPES = ['shots', 'impl', 'metrics', 'pits', 'text']
@@ -175,8 +169,26 @@ const screenshots = ref([])
 const saving = ref(false)
 const msg = ref('')
 const msgIsErr = ref(false)
-const exportText = ref(null)
+const dirty = ref(false)
 const newType = ref('text')
+
+// 未保存跟踪：任何编辑置 dirty；保存/切换成功后清除
+watch(form, () => { dirty.value = true }, { deep: true })
+
+window.addEventListener('beforeunload', (e) => {
+  if (dirty.value) { e.preventDefault(); e.returnValue = '' }
+})
+
+onBeforeRouteLeave(() => {
+  if (dirty.value && !confirm('有未保存的修改，确定离开？')) return false
+  dirty.value = false
+})
+
+function scrollToSec(i) {
+  if (i < 0) { window.scrollTo({ top: 0, behavior: 'smooth' }); return }
+  const el = document.querySelectorAll('section.panel.sec')[i]
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 
 function say(text, isErr = false) {
   msg.value = text
@@ -193,6 +205,7 @@ async function load() {
     sections: d.sections,
   }
   screenshots.value = await api.get(`/api/content/screenshots/${slug.value}`)
+  dirty.value = false
 }
 
 const padNo = (i) => String(i + 2).padStart(2, '0')
@@ -240,26 +253,13 @@ async function save() {
   saving.value = true
   try {
     await api.put(`/api/content/projects/${slug.value}`, form.value)
-    say('已保存到数据库。前台生效：导出 JS → 替换数据文件 → npm run build')
-    await load()
+    dirty.value = false
+    say('已保存。公网生效：点「04 发布」。')
   } catch (e) {
     say(e.message, true)
   } finally {
     saving.value = false
   }
-}
-
-async function openExport() {
-  try {
-    exportText.value = await api.getText(`/api/content/projects/${slug.value}/export`)
-  } catch (e) {
-    say(e.message, true)
-  }
-}
-
-async function copyExport() {
-  await navigator.clipboard.writeText(exportText.value)
-  say('已复制到剪贴板')
 }
 
 onMounted(async () => {
@@ -270,6 +270,42 @@ onMounted(async () => {
 </script>
 
 <style lang="scss" scoped>
+.sec-nav {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding: 9px 12px;
+  border: 1px solid var(--c-line);
+  background: var(--c-blue-faint);
+
+  .proj select {
+    width: 130px;
+    padding: 6px 8px;
+  }
+  a {
+    font: 10px var(--font-mono);
+    letter-spacing: 0.06em;
+    color: var(--c-ink-soft);
+    cursor: pointer;
+    padding: 4px 7px;
+
+    &:hover {
+      color: var(--c-blue);
+      background: #fff;
+    }
+  }
+  .mini {
+    margin-left: auto;
+  }
+}
+.dirty-tag {
+  font: 10px var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--c-danger);
+  align-self: center;
+}
 .head {
   display: flex;
   justify-content: space-between;

@@ -23,7 +23,11 @@
         </div>
         <div class="stat" v-else><span class="v">—</span><span class="k">从未发布</span></div>
       </div>
-      <p class="hint">发布将：写回 src/data/photos.js 与项目数据文件（原子替换）→ 触发 npm run build → 记录历史。</p>
+      <p class="hint">
+        发布将：写回 src/data/photos.js 与项目数据文件（原子替换）→ 触发 npm run build → 记录历史。
+        公网地址：<a class="site-link" href="https://yuanyyyyyyyyy.github.io/rain/" target="_blank" rel="noopener">yuanyyyyyyyyy.github.io/rain</a>
+        （部署完成后约 1 分钟更新）
+      </p>
     </section>
 
     <section class="panel">
@@ -70,7 +74,8 @@ async function load() {
 }
 
 async function doPublish() {
-  if (!confirm('发布将写回 src/data/ 数据文件并触发前台构建，继续？')) return
+  const n = status.value?.projects ?? 2
+  if (!confirm(`发布将执行：\n\n1. 写回 photos.js + ${n} 个项目数据文件\n2. 触发前端构建\n3. 自动提交并推送到 GitHub（公网约 1 分钟后更新）\n\n继续？`)) return
   publishing.value = true
   try {
     const r = await api.post('/api/publish')
@@ -173,6 +178,15 @@ h2 {
   font: 11px var(--font-sans);
   color: var(--c-muted);
   margin: 12px 0 0;
+
+  .site-link {
+    color: var(--c-blue);
+    text-decoration: underline;
+
+    &:hover {
+      text-decoration: none;
+    }
+  }
 }
 .log-row {
   border-bottom: 1px solid var(--c-line);

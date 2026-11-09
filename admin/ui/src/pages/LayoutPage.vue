@@ -7,7 +7,10 @@
         <router-link to="/photos" active-class="on">02 / 照片管理</router-link>
         <router-link to="/content" active-class="on">03 / 项目内容</router-link>
         <router-link to="/publish" active-class="on">04 / 发布</router-link>
-        <router-link to="/inbox" active-class="on">05 / 收件箱</router-link>
+        <router-link to="/inbox" active-class="on">
+          05 / 收件箱
+          <span v-if="unread > 0" class="badge">{{ unread > 99 ? '99+' : unread }}</span>
+        </router-link>
       </nav>
       <button class="src" @click="configSource">数据源</button>
       <button class="out" @click="logout">退出登录</button>
@@ -19,14 +22,28 @@
 </template>
 
 <script setup>
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { clearToken, getWorkerCfg, setWorkerCfg } from '../api.js'
+import { api, clearToken, getWorkerCfg, setWorkerCfg } from '../api.js'
 
 const router = useRouter()
+const unread = ref(0)
+
 const logout = () => {
   clearToken()
   router.push('/login')
 }
+
+const loadUnread = async () => {
+  try {
+    const r = await api.get('/api/messages/unread')
+    unread.value = r.unread
+  } catch {
+    unread.value = 0
+  }
+}
+
+onMounted(loadUnread)
 
 // 公网数据源（Cloudflare collector）：配置后概览/收件箱优先读 Worker，失败回退本地
 const configSource = () => {
@@ -83,6 +100,15 @@ const configSource = () => {
       background: rgba(255, 255, 255, 0.14);
       border-left-color: #fff;
     }
+  }
+  .badge {
+    background: #fff;
+    color: var(--c-blue);
+    font-size: 9px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    margin-left: 6px;
+    vertical-align: 1px;
   }
   .out,
   .src {
