@@ -9,4 +9,4 @@ compatibility_date = "2026-11-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "rain-collector"
-database_id = "<在 d1 create 后填入>"
+database_id = "81713b53-b3ac-4fad-96fd-1be1390e5fab"
