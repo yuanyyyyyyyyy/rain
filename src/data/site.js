@@ -49,8 +49,36 @@ export const projects = [
     ],
   },
   {
-    slug: 'shimmer',
+    slug: 'forge',
     no: '003',
+    period: '2026.01 — 2026.05',
+    title: 'Forge — Agent Harness',
+    summary:
+      '面向多入口 AI Agent 场景的统一 Runtime：CLI、终端 TUI、后台 Gateway、定时任务与飞书/QQ/企业微信等消息渠道共享同一执行链路，Runtime 统一负责调度、上下文组装、工具执行与会话持久化，消除各入口重复实现。',
+    tags: ['PYTHON', 'TYPESCRIPT', 'ASYNCIO', 'LITELLM', 'MCP', 'PYTEST'],
+    metrics: [
+      { label: '真实请求', value: '4,160' },
+      { label: '端到端 P95', value: '11.66s' },
+      { label: '验收通过率', value: '99.95%' },
+    ],
+  },
+  {
+    slug: 'rain',
+    no: '004',
+    period: '2026.10 — 至今',
+    title: 'Rain — Personal Archive',
+    summary:
+      '个人作品集网站 + 自托管内容管理后台：Vue 3 纯静态前台、Spring Boot 管理台、Cloudflare Worker/D1 公网收集端与 GitHub Pages 自动部署。管理台编辑内容一键发布，前台保持零后端依赖。',
+    tags: ['VUE 3', 'VITE', 'SPRING BOOT', 'MYSQL', 'CLOUDFLARE WORKER', 'D1', 'GITHUB ACTIONS'],
+    metrics: [
+      { label: 'Case Study', value: '3 × 07 节' },
+      { label: '真实照片', value: '30 张' },
+      { label: '发布生效', value: '1.5–3 min' },
+    ],
+  },
+  {
+    slug: 'shimmer',
+    no: '005',
     period: 'COURSE PROJECT',
     title: '照片光影展示平台',
     summary:
