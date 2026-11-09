@@ -32,6 +32,11 @@ export const forgeDetail = {
   ],
   "sections" : [
     {
+      "type" : "arch",
+      "kicker" : "02 / 架构图",
+      "component" : "forge"
+    },
+    {
       "type" : "impl",
       "items" : [
         {
@@ -65,7 +70,7 @@ export const forgeDetail = {
           "solution" : "自建 ForgeBench 评测体系：冻结模型/参数/Prompt 变量，保留执行凭证与证据摘要。"
         }
       ],
-      "kicker" : "02 / 核心实现"
+      "kicker" : "03 / 核心实现"
     },
     {
       "note" : "数据来自项目验收记录与 ForgeBench 对照实验（72 Trials 冻结变量）。诚实口径：P95 为端到端耗时，含模型推理时间。",
@@ -102,12 +107,12 @@ export const forgeDetail = {
           "value" : "113ms"
         }
       ],
-      "kicker" : "03 / 数据指标"
+      "kicker" : "04 / 数据指标"
     },
     {
       "body" : "这个项目让我把 Agent 系统从「跑起来」推进到「可度量」：统一 Runtime 消除了入口层的重复实现，而 ForgeBench 冻结变量的对照实验让每一次优化都能归因——调优收益不再依赖肉眼感觉，也不会被模型波动污染。",
       "type" : "text",
-      "kicker" : "04 / 收获"
+      "kicker" : "05 / 收获"
     }
   ]
 }
