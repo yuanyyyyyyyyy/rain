@@ -10,11 +10,11 @@
 |---|---|---|
 | `/` | 首页（Hero 几何主视觉 / Selected Works / Capabilities / Beyond Code / Contact） | ✅ |
 | `/projects/yunshu` | 云枢智慧医院管理平台 — 档案式 case study（07 节） | ✅ 正文完成，界面截图待补 |
-| `/projects/intelnexus` | IntelNexus 多源情报分析平台 — case study（07 节） | ✅ 正文完成，界面截图待补 |
-| `/projects/forge` | Forge — Agent Harness（多入口统一 Runtime） | ✅ 上线，界面截图待补（终端/聊天形态，见 docs/素材） |
+| `/projects/intelnexus` | IntelNexus 多源情报分析平台 — case study（07 节） | ✅ 2026-11-10 含界面实录截图 ×6 |
+| `/projects/forge` | Forge — Agent Harness（多入口统一 Runtime） | ✅ 上线，F1–F4/F6 截图已接入（F5 飞书对话待补） |
 | `/projects/rain` | Rain — 本站（作品集 + 自托管管理台） | ✅ 2026-11-10 上线，含界面实录截图 |
-| `/projects/shimmer` | 照片光影平台 | ⏳ 骨架，素材待接入 |
-| `/about` | About | ⏳ 骨架 |
+| `/projects/shimmer` | 光影手记 — AI 照片故事平台 | ✅ 2026-11-10 上线，含界面实录截图 ×10 |
+| `/about` | About | ✅ 档案行 + WIP 区（课程/竞赛细节待本人素材，见页面 TODO） |
 | `/photography` | 摄影页 — 对齐行印样 + Lightbox，30 张真实照片 | ✅ |
 
 ## 目录结构
