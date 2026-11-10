@@ -30,7 +30,7 @@
         {
           "title": "发布管道",
           "problem": "管理台编辑的是数据库，前台是纯静态站，两者天然脱节。",
-          "solution": "发布时原子写回 src/data/*.js → 本地构建验证 → git commit+push；push 被墙自动回退 GitHub API 重放通道（保留完整提交历史）。",
+          "solution": "发布时原子写回 content/*.json（内容层，与代码分离）→ 本地构建验证 → git commit+push；push 被墙自动回退 GitHub API 重放通道（保留完整提交历史）。",
           "result": "管理台改动一键上公网，约 1.5–3 分钟生效；写回用 tmp+move 原子替换，失败不破坏现有文件。"
         },
         {
