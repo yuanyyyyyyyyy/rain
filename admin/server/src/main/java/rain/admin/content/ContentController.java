@@ -15,14 +15,18 @@ public class ContentController {
         this.service = service;
     }
 
-    /** 项目列表（管理台切换用） */
+    /** 项目列表（管理台切换/排序用）：按 sortNo 升序（null 靠后）→ id 稳定收尾，与首页卡片顺序一致 */
     @GetMapping("/projects")
     public List<Map<String, Object>> list() {
         return service.list().stream()
+                .sorted(java.util.Comparator
+                        .comparing(ProjectDetail::getSortNo, java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+                        .thenComparing(ProjectDetail::getId, java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
                 .map(d -> Map.<String, Object>of(
                         "slug", d.getSlug(),
                         "headline", d.getHeadline(),
                         "hidden", d.getHidden(),
+                        "sortNo", d.getSortNo() == null ? 0 : d.getSortNo(),
                         "updatedAt", d.getUpdatedAt().toString()))
                 .toList();
     }
@@ -75,6 +79,19 @@ public class ContentController {
             boolean hidden = body == null || !Boolean.FALSE.equals(body.get("hidden"));
             ProjectDetail d = service.setHidden(slug, hidden);
             return ResponseEntity.ok(Map.of("slug", d.getSlug(), "hidden", d.getHidden()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * 卡片排序：按提交顺序写 sortNo（首页 Works / sitemap 生成顺序的唯一事实源）。
+     * 此前 sortNo 只有种子值且无任何修改入口，新项目永远排最后（2026-11-10 审计 P1）。
+     */
+    @PutMapping("/projects/reorder")
+    public ResponseEntity<?> reorder(@RequestBody List<String> slugs) {
+        try {
+            return ResponseEntity.ok(Map.of("updated", service.reorder(slugs).size()));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

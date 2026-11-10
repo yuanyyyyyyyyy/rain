@@ -77,6 +77,27 @@ public class ContentService {
         return repo.save(d);
     }
 
+    /**
+     * 卡片排序：按提交顺序写 sortNo 1..n（首页 Works 与 sitemap 均按 sortNo 升序生成）。
+     * 必须提交全部 slug（学 PhotoGroupService.reorder 的全量校验），漏传/多传都报错，避免漏项后顺序错乱。
+     * 隐藏项目也参与排序（管理台顺序即唯一事实；前台过滤 hidden，可见项相对顺序不变）。
+     */
+    @Transactional
+    public List<ProjectDetail> reorder(List<String> slugs) {
+        List<ProjectDetail> all = repo.findAll();
+        if (slugs == null || slugs.size() != all.size()) {
+            throw bad("排序参数必须包含全部项目（当前 " + all.size() + " 个）");
+        }
+        var existing = all.stream().map(ProjectDetail::getSlug).collect(java.util.stream.Collectors.toSet());
+        if (!new java.util.HashSet<>(slugs).equals(existing)) {
+            throw bad("排序参数包含不存在的 slug");
+        }
+        for (ProjectDetail d : all) {
+            d.setSortNo(slugs.indexOf(d.getSlug()) + 1);
+        }
+        return repo.saveAll(all);
+    }
+
     public List<ProjectDetail> list() {
         return repo.findAll();
     }
@@ -155,6 +176,8 @@ public class ContentService {
 
     /** shots 表单的截图选择器：列 public/screenshots/<slug>/ 下的文件名（目录不存在 = 空数组） */
     public List<String> listScreenshots(String slug) {
+        // slug 拼进文件路径，按 create() 同款白名单校验，防 `..` 等穿越到上级目录列目录（2026-11-10 审计）
+        if (slug == null || !slug.matches("[a-z0-9][a-z0-9-]{1,40}")) return List.of();
         Path dir = frontendPublicDir.resolve("screenshots").resolve(slug);
         if (!Files.isDirectory(dir)) return List.of();
         try (Stream<Path> stream = Files.list(dir)) {

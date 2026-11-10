@@ -9,6 +9,8 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Optional;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -248,5 +250,32 @@ class PhotoServiceTest {
                 new PhotoService.UpdateParams("STREET", java.time.LocalDate.of(2019, 3, 3), 1, null, "manual"));
         assertEquals(java.time.LocalDate.of(2019, 3, 3), manual.getShotDate());
         assertEquals("manual", manual.getDateSource());
+    }
+
+    @Test
+    void rejectsDeletingHeroPhoto() {
+        Photo hero = new Photo();
+        hero.setPid("p01");
+        hero.setIsHero(true);
+        when(repo.findById(1L)).thenReturn(Optional.of(hero));
+
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> service.deleteRecord(1L));
+        assertTrue(e.getMessage().contains("头图不能删除"));
+        Mockito.verify(repo, Mockito.never()).delete(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void deleteFilesMovesOrigCopyToTrashInsteadOfDeleting() throws Exception {
+        Photo p = new Photo();
+        p.setPid("p02");
+        Files.createDirectories(origDir);
+        Files.write(origDir.resolve("p02-camera.jpg"), "ORIG".getBytes());
+
+        List<String> failed = service.deleteFiles(p);
+
+        assertTrue(failed.isEmpty());
+        assertFalse(Files.exists(origDir.resolve("p02-camera.jpg")));           // 原位置已清
+        assertTrue(Files.exists(origDir.resolve(".trash").resolve("p02-camera.jpg"))); // 移入回收档
     }
 }

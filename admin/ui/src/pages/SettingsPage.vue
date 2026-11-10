@@ -55,7 +55,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { api, getWorkerCfg, setWorkerCfg, testWorkerConnection } from '../api.js'
+import { api, clearToken, getWorkerCfg, setWorkerCfg, testWorkerConnection } from '../api.js'
 
 // ---- 数据源 ----
 const workerCfg = ref({ base: '', token: '' })
@@ -140,7 +140,10 @@ async function submit() {
   try {
     await api.put('/api/auth/password', { oldPassword: oldPwd.value, newPassword: newPwd.value })
     ok.value = true
-    msg.value = '已更新，下次登录使用新密码'
+    // 改密后旧 JWT 并未吊销（最长还能用 120 分钟），立即清 token 强制重新登录，缩短旧凭据可用窗口
+    clearToken()
+    msg.value = '密码已更新，请用新密码重新登录…'
+    setTimeout(() => { location.hash = '#/login' }, 1200)
     oldPwd.value = newPwd.value = newPwd2.value = ''
   } catch (e) {
     ok.value = false

@@ -1,5 +1,6 @@
 package rain.admin.photo;
 
+import java.awt.Dimension;
 import java.awt.geom.AffineTransform;
 import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
@@ -13,6 +14,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import javax.imageio.ImageIO;
+import javax.imageio.stream.ImageInputStream;
 import net.coobird.thumbnailator.Thumbnails;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,8 @@ public class PhotoService {
     private static final int LONG_EDGE = 1600;
     private static final double QUALITY = 0.8;
     private static final int THUMB_EDGE = 640;
+    /** 解压炸弹防护上限：约 8000 万像素（1.5 亿像素机型照片约 1.3 亿，够用；20MB JPEG 可声明超大尺寸撑爆堆） */
+    private static final long MAX_IMAGE_PIXELS = 80_000_000L;
     // q85（2026-11-10 由 q70 提升）：q70 单张仅 0.5~1.7 bit/px，夜景渐变出现明显涂抹与色带。
     // 该档只服务窄视口 / 小屏，桌面由前台 srcset 直接取 1600px 原图，画质不打折。
     private static final double THUMB_QUALITY = 0.85;
@@ -85,6 +89,17 @@ public class PhotoService {
 
         // 拍摄日期与方向
         PhotoExifReader.ExifData exif = PhotoExifReader.read(origTarget);
+
+        // 解压炸弹防护（2026-11-10 审计）：先只读图片头部取像素尺寸，超限拒绝，再做全量解码
+        Dimension dim = readImageDimensions(origTarget);
+        if (dim == null) {
+            deleteQuietly(origTarget);
+            throw new IllegalArgumentException("无法解析的图片文件");
+        }
+        if ((long) dim.width * dim.height > MAX_IMAGE_PIXELS) {
+            deleteQuietly(origTarget);
+            throw new IllegalArgumentException("图片像素过大（" + dim.width + "×" + dim.height + "），已拒绝处理");
+        }
 
         // 压缩：长边超过 1600 才缩（只缩不放），jpg q80
         BufferedImage src = ImageIO.read(origTarget.toFile());
@@ -163,6 +178,27 @@ public class PhotoService {
                     .toLocalDate();
         } catch (IOException e) {
             return LocalDate.now();
+        }
+    }
+
+    /** 只解码图片头部取宽高（不加载像素）；无法识别返回 null */
+    private static Dimension readImageDimensions(Path file) throws IOException {
+        try (var in = Files.newInputStream(file)) {
+            ImageInputStream iis = ImageIO.createImageInputStream(in);
+            if (iis == null) return null;
+            try {
+                var readers = ImageIO.getImageReaders(iis);
+                if (!readers.hasNext()) return null;
+                var reader = readers.next();
+                try {
+                    reader.setInput(iis);
+                    return new Dimension(reader.getWidth(0), reader.getHeight(0));
+                } finally {
+                    reader.dispose();
+                }
+            } finally {
+                iis.close();
+            }
         }
     }
 
@@ -327,15 +363,22 @@ public class PhotoService {
         return repo.save(p);
     }
 
-    /** 删除记录（事务内）；文件删除由调用方在事务提交后执行，失败不影响记录删除 */
+    /** 删除记录（事务内）；头图禁止删除（与隐藏同一话术：生成器需要头图，删头图会让下次发布必然失败） */
     @Transactional
     public Photo deleteRecord(Long id) {
         Photo p = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("照片不存在"));
+        if (Boolean.TRUE.equals(p.getIsHero())) {
+            throw new IllegalArgumentException("头图不能删除，请先设其他照片为头图");
+        }
         repo.delete(p);
         return p;
     }
 
-    /** 删除压缩产物 + 缩略图 + 原始副本（容忍缺失）；返回失败清单，空 = 全部成功 */
+    /**
+     * 删除压缩产物 + 缩略图（容忍缺失）；原始副本移入 origDir/.trash/ 留档。
+     * 压缩产物可由原图再生成、且随发布 commit 入 git，删了不心疼；原图是用户资产且 var/ 不入 git，
+     * 此前直接删除 = 误删永久丢失（2026-11-10 审计）。返回失败清单，空 = 全部成功。
+     */
     public List<String> deleteFiles(Photo p) {
         List<String> failed = new ArrayList<>();
         try {
@@ -349,10 +392,13 @@ public class PhotoService {
             failed.add("photos/thumbs/" + p.getPid() + ".jpg");
         }
         if (Files.isDirectory(origDir)) {
+            Path trash = origDir.resolve(".trash");
             try (var stream = Files.list(origDir)) {
                 stream.filter(f -> f.getFileName().toString().startsWith(p.getPid() + "-")).forEach(f -> {
                     try {
-                        Files.deleteIfExists(f);
+                        Files.createDirectories(trash);
+                        Files.move(f, trash.resolve(f.getFileName().toString()),
+                                StandardCopyOption.REPLACE_EXISTING);
                     } catch (IOException e) {
                         failed.add(f.getFileName().toString());
                     }

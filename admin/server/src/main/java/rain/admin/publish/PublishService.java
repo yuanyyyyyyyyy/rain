@@ -210,21 +210,23 @@ public class PublishService {
         return Map.of("dirty", dirty, "files", changed, "photosUncommitted", photosUncommitted);
     }
 
+    /** GitHub API 查询客户端（进程级复用，避免每次状态轮询新建连接池） */
+    private static final java.net.http.HttpClient GITHUB_CLIENT = java.net.http.HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(8)).build();
+
     /**
      * 公网部署状态：代理 GitHub Actions 最新一次 runs（公开仓库匿名可读）。
      * 由后端代理而非前端直连——api.github.com 国内直连同样受限，后端所在网络已验证可达。
      */
     public Map<String, Object> deployStatus() {
         try {
-            java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(8)).build();
             java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
                     .uri(java.net.URI.create("https://api.github.com/repos/yuanyyyyyyyyy/rain/actions/runs?per_page=1"))
                     .header("Accept", "application/vnd.github+json")
                     .header("User-Agent", "rain-admin")
                     .timeout(Duration.ofSeconds(8))
                     .GET().build();
-            java.net.http.HttpResponse<String> res = client.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
+            java.net.http.HttpResponse<String> res = GITHUB_CLIENT.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
             if (res.statusCode() != 200) {
                 return Map.of("error", "GitHub API " + res.statusCode());
             }
@@ -346,7 +348,7 @@ public class PublishService {
         }
     }
 
-    /** 日志落库（repo.save 自带事务；失败不掩盖主流程结果） */
+    /** 日志落库（repo.save 自带事务；失败不掩盖主流程结果）；顺手修剪过期日志防无界增长 */
     private void saveLog(String triggeredBy, String status, String output, long durationMs,
                          List<String> files, String commitHash) {
         try {
@@ -358,8 +360,9 @@ public class PublishService {
             log.setWrittenFiles(String.join(", ", files));
             log.setCommitHash(commitHash);
             logRepo.save(log);
+            logRepo.deleteByCreatedAtBefore(java.time.LocalDateTime.now().minusDays(365));
         } catch (RuntimeException ignored) {
-            // 日志落库失败不掩盖主流程结果
+            // 日志落库/修剪失败不掩盖主流程结果
         }
     }
 

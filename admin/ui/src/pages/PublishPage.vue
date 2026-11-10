@@ -133,7 +133,7 @@ function startDeployPolling() {
 
 async function doPublish() {
   const n = status.value?.projects ?? 2
-  if (!confirm(`发布将执行：\n\n1. 写回 photos.js + ${n} 个项目数据文件\n2. 触发前端构建\n3. 自动提交并推送到 GitHub（公网约 1 分钟后更新）\n\n继续？`)) return
+  if (!confirm(`发布将执行：\n\n1. 写回 content/ 内容层（photos.json + ${n} 个项目 JSON + sitemap.xml，原子替换）\n2. 触发前台构建\n3. 自动 commit 并推送到 GitHub（公网约 1 分钟后更新）\n\n继续？`)) return
   publishing.value = true
   try {
     const r = await api.post('/api/publish')

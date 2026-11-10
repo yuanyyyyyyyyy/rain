@@ -18,6 +18,8 @@
           <option v-for="p in projects" :key="p.slug" :value="p.slug">{{ p.slug }}{{ p.hidden ? '（已隐藏）' : '' }}</option>
         </select>
       </span>
+      <button class="mini" @click="moveProject(-1)" :disabled="projIdx <= 0" title="首页 Works 卡片上移一位（发布后生效）">↑</button>
+      <button class="mini" @click="moveProject(1)" :disabled="projIdx < 0 || projIdx >= projects.length - 1" title="首页 Works 卡片下移一位（发布后生效）">↓</button>
       <button class="mini" @click="createProject" title="新建后会出现在项目下拉中，发布时自动上公网">+ 新建</button>
       <button class="mini" @click="toggleHidden" :title="currentHidden ? '当前已隐藏：前台卡片与详情页均不展示（留库）；点击恢复' : '点击后前台卡片与详情页均不展示（留库）'">{{ currentHidden ? '显示' : '隐藏' }}</button>
       <button class="mini danger" @click="deleteProject" title="删除详情数据；下次发布后前台卡片同步移除">删除项目</button>
@@ -198,7 +200,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch, computed } from 'vue'
+import { onMounted, onUnmounted, ref, watch, computed } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { api } from '../api.js'
 
@@ -233,6 +235,16 @@ const createErr = ref('')
 
 // 未保存跟踪：任何编辑置 dirty；保存/切换成功后清除
 watch(form, () => { dirty.value = true }, { deep: true })
+
+// Ctrl/Cmd+S 快捷保存（编辑器高频操作，避免去顶栏找按钮）
+function onKeyDown(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault()
+    if (!saving.value) save()
+  }
+}
+window.addEventListener('keydown', onKeyDown)
+onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
 
 window.addEventListener('beforeunload', (e) => {
   if (dirty.value) { e.preventDefault(); e.returnValue = '' }
@@ -303,6 +315,25 @@ async function deleteProject() {
 }
 
 const currentHidden = computed(() => projects.value.find((p) => p.slug === slug.value)?.hidden === true)
+
+const projIdx = computed(() => projects.value.findIndex((p) => p.slug === slug.value))
+
+// 卡片排序（2026-11-10 审计补入口）：按提交顺序写 sortNo；首页 Works 与 sitemap 均按它生成
+async function moveProject(dir) {
+  const i = projIdx.value
+  const j = i + dir
+  if (i < 0 || j < 0 || j >= projects.value.length) return
+  const arr = [...projects.value]
+  ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  try {
+    await api.put('/api/content/projects/reorder', arr.map((p) => p.slug))
+    projects.value = await api.get('/api/content/projects')
+    await checkPublishDirty()
+    say(`卡片顺序已调整；点「04 发布」后首页 Works 生效。`)
+  } catch (e) {
+    say(e.message, true)
+  }
+}
 
 async function toggleHidden() {
   try {

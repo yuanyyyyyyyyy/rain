@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -125,5 +126,52 @@ class ContentServiceTest {
         assertTrue(root.path("sections").isArray());
         assertEquals("02 / 收获", root.path("sections").get(0).path("kicker").asText());
         assertFalse(json.contains("export const"));
+    }
+
+    // ---- 卡片排序（2026-11-10 审计补入口：sortNo 此前无任何修改手段） ----
+
+    private ProjectDetail detail(String slug) {
+        ProjectDetail d = new ProjectDetail();
+        d.setSlug(slug);
+        d.setHeadline("h");
+        d.setSummary("s");
+        return d;
+    }
+
+    @Test
+    void reorderWritesSortNoBySubmissionOrder() {
+        when(repo.findAll()).thenReturn(List.of(detail("a"), detail("b")));
+        when(repo.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        List<ProjectDetail> out = service.reorder(List.of("b", "a"));
+
+        // 断言按 slug 对号：b 提交在前 → sortNo 1（首页卡片第一位）
+        assertEquals(1, out.stream().filter(d -> "b".equals(d.getSlug())).findFirst().orElseThrow().getSortNo());
+        assertEquals(2, out.stream().filter(d -> "a".equals(d.getSlug())).findFirst().orElseThrow().getSortNo());
+    }
+
+    @Test
+    void reorderRejectsMissingSlug() {
+        when(repo.findAll()).thenReturn(List.of(detail("a"), detail("b")));
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> service.reorder(List.of("b")));
+        assertTrue(e.getMessage().contains("全部项目"));
+    }
+
+    @Test
+    void reorderRejectsUnknownSlug() {
+        when(repo.findAll()).thenReturn(List.of(detail("a"), detail("b")));
+        // 数量恰好相等但 slug 不在库（ghost 替换了 b）→ 必须报「不存在的 slug」而不是静默错排
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> service.reorder(List.of("a", "ghost")));
+        assertTrue(e.getMessage().contains("不存在的 slug"));
+    }
+
+    @Test
+    void listScreenshotsRejectsUnsafeSlug() {
+        // slug 拼进文件路径，非白名单字符一律空数组（防 ../ 穿越列目录）
+        assertTrue(service.listScreenshots("..").isEmpty());
+        assertTrue(service.listScreenshots("..%2Fetc").isEmpty());
+        assertTrue(service.listScreenshots("A_UPPER").isEmpty());
     }
 }
