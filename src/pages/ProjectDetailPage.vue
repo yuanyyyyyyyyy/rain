@@ -15,8 +15,8 @@
     <div class="grid">
       <div class="main">
         <template v-for="sec in detail.sections" :key="sec.kicker">
-          <!-- 架构 / 管线图 -->
-          <section v-if="sec.type === 'arch'" class="block">
+          <!-- 架构 / 管线图（component 未注册时整节跳过，不渲染空壳） -->
+          <section v-if="sec.type === 'arch' && archMap[sec.component]" class="block">
             <div class="kicker">{{ sec.kicker }}</div>
             <component :is="archMap[sec.component]" />
           </section>
@@ -32,9 +32,26 @@
             </div>
             <template v-else>
               <div class="shots">
-                <figure v-for="(s, i) in sec.items" :key="s.src" class="shot" @click="openShot(sec, i)">
-                  <img :src="`${BASE}${s.src.replace(/^\//, '')}`" :alt="s.cap" loading="lazy" />
-                  <figcaption>{{ s.fig }} — {{ s.cap }}</figcaption>
+                <figure
+                  v-for="(s, i) in sec.items || []"
+                  :key="s.src"
+                  class="shot"
+                  role="button"
+                  tabindex="0"
+                  :aria-label="`查看截图大图：${s.caption || s.src}`"
+                  @click="openShot(sec, i)"
+                  @keydown.enter.prevent="openShot(sec, i)"
+                >
+                  <img
+                    :src="shotThumb(s.src)"
+                    :alt="s.caption || s.src"
+                    loading="lazy"
+                    decoding="async"
+                    :class="{ ready: loadedShots.has(s.src) }"
+                    @load="markShotReady(s.src)"
+                    @error="onShotImgError($event, s.src)"
+                  />
+                  <figcaption>{{ s.caption }}<span class="shot-hint"> · 点击查看完整截图</span></figcaption>
                 </figure>
               </div>
               <p v-if="sec.note" class="mnote">{{ sec.note }}</p>
@@ -107,12 +124,12 @@
     </nav>
     <!-- 界面截图 Lightbox -->
     <Teleport to="body">
-      <div v-if="shot" class="shotbox" @click.self="closeShot">
-        <button class="lb-close" aria-label="关闭" @click="closeShot">×</button>
+      <div v-if="shot" class="shotbox" role="dialog" aria-modal="true" aria-label="截图查看器" @click.self="closeShot">
+        <button ref="sbCloseRef" class="lb-close" aria-label="关闭" @click="closeShot">×</button>
         <button class="lb-arrow lb-prev" aria-label="上一张" @click.stop="stepShot(-1)">←</button>
         <figure class="lb-body" @click.self="closeShot">
-          <img :src="`${BASE}${shot.s.src.replace(/^\//, '')}`" :alt="shot.s.cap" />
-          <figcaption>{{ shot.s.fig }} — {{ shot.s.cap }}</figcaption>
+          <img :src="shotSrc(shot.s.src)" :alt="shot.s.caption || shot.s.src" />
+          <figcaption>{{ shot.s.caption }}</figcaption>
         </figure>
         <button class="lb-arrow lb-next" aria-label="下一张" @click.stop="stepShot(1)">→</button>
       </div>
@@ -141,17 +158,48 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
 import { projects } from '../data/site.js'
-import { yunshuDetail } from '../data/projects/yunshu.js'
-import { intelnexusDetail } from '../data/projects/intelnexus.js'
 import YunshuArch from '../components/project/YunshuArch.vue'
 import IntelnexusArch from '../components/project/IntelnexusArch.vue'
+import ForgeArch from '../components/project/ForgeArch.vue'
 
 const BASE = import.meta.env.BASE_URL
-const details = { yunshu: yunshuDetail, intelnexus: intelnexusDetail }
-const archMap = { yunshu: YunshuArch, intelnexus: IntelnexusArch }
+
+// 界面实录：网格加载 1200px/q85 缩略图（npm run shots 自动产出），Lightbox 才取完整原图。
+// 缩略图缺失时回退原图，保证管理台新挂的截图不会出现空白。
+const shotSrc = (src) => `${BASE}${src.replace(/^\//, '')}`
+const shotThumb = (src) =>
+  `${BASE}${src.replace(/^\//, '').replace(/\/([^/]+)\.(png|jpe?g)$/i, '/thumbs/$1.jpg')}`
+
+// 就绪后才淡入：加载期间由纯色骨架占位（不用模糊占位图，避免"先糊后清"的观感），
+// 同时 CSS 固定 16:10 高度，图片到达不再把下方内容逐张往下顶。
+const loadedShots = ref(new Set())
+function markShotReady(src) {
+  if (loadedShots.value.has(src)) return
+  const next = new Set(loadedShots.value)
+  next.add(src)
+  loadedShots.value = next
+}
+function onShotImgError(e, src) {
+  const el = e.target
+  if (el.dataset.fallback) return // 原图也失败时不再重试，避免死循环
+  el.dataset.fallback = '1'
+  el.src = shotSrc(src)
+}
+
+// 详情数据动态收集：管理台新建的项目（发布后生成 src/data/projects/<slug>.js）自动可渲染，
+// 无需改此文件注册（此前静态 import 三个项目，新 slug 只能显示占位骨架）
+const detailModules = import.meta.glob('../data/projects/*.js', { eager: true })
+const details = Object.fromEntries(
+  Object.entries(detailModules).map(([path, mod]) => {
+    const slug = path.split('/').pop().replace(/\.js$/, '')
+    const value = mod.default || mod[Object.keys(mod)[0]]
+    return [slug, value]
+  }),
+)
+const archMap = { yunshu: YunshuArch, intelnexus: IntelnexusArch, forge: ForgeArch }
 const defaultLabels = ['问题', '方案', '效果']
 
 const route = useRoute()
@@ -161,23 +209,38 @@ const idx = computed(() => projects.findIndex((x) => x.slug === route.params.slu
 const prev = computed(() => projects[idx.value - 1] || null)
 const next = computed(() => projects[idx.value + 1] || null)
 
+// 每路由 SEO：项目页 title 按数据动态设置
+watchEffect(() => {
+  document.title = detail.value
+    ? `${detail.value.headline} — YUAN`
+    : project.value
+      ? `${project.value.title} — YUAN`
+      : '未找到项目 — YUAN'
+})
+
 // 界面截图 Lightbox
 const shotSec = ref(null)
 const shotIdx = ref(-1)
+const sbCloseRef = ref(null)
+let lastFocus = null // 打开前聚焦元素，关闭时归还焦点
 const shot = computed(() => {
   if (!shotSec.value || shotIdx.value < 0) return null
   const items = shotSec.value.items
   return { s: items[shotIdx.value], n: items.length }
 })
 const openShot = (sec, i) => {
+  lastFocus = document.activeElement
   shotSec.value = sec
   shotIdx.value = i
   document.body.style.overflow = 'hidden'
+  nextTick(() => sbCloseRef.value?.focus())
 }
 const closeShot = () => {
   shotSec.value = null
   shotIdx.value = -1
   document.body.style.overflow = ''
+  lastFocus?.focus?.()
+  lastFocus = null
 }
 const stepShot = (d) => {
   const n = shotSec.value.items.length
@@ -360,6 +423,7 @@ onUnmounted(() => {
   line-height: 2.05;
   color: var(--c-ink-soft);
   max-width: 680px;
+  white-space: pre-line; // 管理台 textarea 里的换行原样保留（任务 F）
 }
 
 // 侧栏
@@ -384,7 +448,7 @@ onUnmounted(() => {
   dt {
     font-size: 9px;
     letter-spacing: 0.14em;
-    color: #a1a6ad;
+    color: var(--c-muted);
   }
   dd {
     margin: 3px 0 0;
@@ -420,10 +484,20 @@ onUnmounted(() => {
 
   img {
     width: 100%;
+    // 固定比例占位：加载前就有高度，消除逐张撑开造成的抖动；2 倍屏下 1200px 缩略图仍有余量
+    aspect-ratio: 16 / 10;
+    // contain 而非 cover：界面截图看的是文字与布局，宁可上下留白也不裁掉左右内容
+    object-fit: contain;
+    object-position: top center;
     display: block;
     border: 1px solid var(--c-line);
-    background: var(--c-bg-soft);
-    transition: 0.22s;
+    background: var(--c-bg);
+    opacity: 0;
+    transition: opacity 0.32s ease, border-color 0.22s, box-shadow 0.22s;
+
+    &.ready {
+      opacity: 1;
+    }
   }
   &:hover img {
     border-color: var(--c-blue-hover);
@@ -435,11 +509,15 @@ onUnmounted(() => {
     letter-spacing: 0.12em;
     color: var(--c-muted);
   }
+  .shot-hint {
+    color: var(--c-blue);
+    opacity: 0.75;
+  }
 }
 .shots-pending {
-  border: 1px dashed #a9b4cc;
+  border: 1px dashed var(--c-aux);
   padding: 18px 22px;
-  background: #fafbfe;
+  background: var(--c-blue-faint);
 
   .sp-title {
     font: 10px var(--font-mono);
