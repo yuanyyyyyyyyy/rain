@@ -11,7 +11,7 @@
 | `/` | 首页（Hero 几何主视觉 / Selected Works / Capabilities / Beyond Code / Contact） | ✅ |
 | `/projects/yunshu` | 云枢智慧医院管理平台 — 档案式 case study（07 节） | ✅ 正文完成，界面截图待补 |
 | `/projects/intelnexus` | IntelNexus 多源情报分析平台 — case study（07 节） | ✅ 正文完成，界面截图待补 |
-| `/projects/forge` | Forge — Agent Harness（多入口统一 Runtime） | ✅ 2026-11-10 上线 |
+| `/projects/forge` | Forge — Agent Harness（多入口统一 Runtime） | ✅ 上线，界面截图待补（终端/聊天形态，见 docs/素材） |
 | `/projects/rain` | Rain — 本站（作品集 + 自托管管理台） | ✅ 2026-11-10 上线，含界面实录截图 |
 | `/projects/shimmer` | 照片光影平台 | ⏳ 骨架，素材待接入 |
 | `/about` | About | ⏳ 骨架 |
