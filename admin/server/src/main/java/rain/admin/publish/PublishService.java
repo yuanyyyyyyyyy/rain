@@ -292,17 +292,30 @@ public class PublishService {
         return out.toString();
     }
 
+    /** 输出重定向到临时文件再 waitFor（2026-11-10 审计）：readAllBytes 无超时，
+     *  子进程不退出也不关 stdout 时（如 git push 挂起等凭据输入）会永久阻塞并卡死发布锁。 */
     private void run(int timeoutSec, String... cmd) throws IOException, InterruptedException {
-        Process p = new ProcessBuilder(cmd).directory(projectRoot.toFile())
-                .redirectErrorStream(true).start();
-        String output = new String(p.getInputStream().readAllBytes());
-        if (!p.waitFor(timeoutSec, TimeUnit.SECONDS)) {
-            p.destroyForcibly();
-            throw new IllegalStateException("命令超时: " + String.join(" ", cmd));
-        }
-        if (p.exitValue() != 0) {
-            throw new IllegalStateException("命令失败(" + p.exitValue() + "): "
-                    + String.join(" ", cmd) + "\n" + tail(output, 10));
+        Path outFile = Files.createTempFile("rain-cmd-", ".log");
+        try {
+            ProcessBuilder pb = new ProcessBuilder(cmd).directory(projectRoot.toFile())
+                    .redirectErrorStream(true);
+            pb.redirectOutput(outFile.toFile());
+            Process p = pb.start();
+            if (!p.waitFor(timeoutSec, TimeUnit.SECONDS)) {
+                p.destroyForcibly();
+                throw new IllegalStateException("命令超时: " + String.join(" ", cmd));
+            }
+            String output = Files.readString(outFile);
+            if (p.exitValue() != 0) {
+                throw new IllegalStateException("命令失败(" + p.exitValue() + "): "
+                        + String.join(" ", cmd) + "\n" + tail(output, 10));
+            }
+        } finally {
+            try {
+                Files.deleteIfExists(outFile);
+            } catch (IOException ignored) {
+                // 临时日志删除失败可接受
+            }
         }
     }
 

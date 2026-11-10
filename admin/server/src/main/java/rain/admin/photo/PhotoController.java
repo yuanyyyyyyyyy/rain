@@ -45,7 +45,11 @@ public class PhotoController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of("error", "上传失败：" + e.getMessage()));
+            // 2026-11-10 审计：500 分支不外发原始异常（可能带内部路径），细节进服务端日志
+            org.slf4j.LoggerFactory.getLogger(PhotoController.class)
+                    .error("photo upload failed", e);
+            return ResponseEntity.internalServerError().body(Map.of("error",
+                    "上传失败：图片解析或落盘异常，请确认文件为有效图片后重试"));
         }
     }
 
