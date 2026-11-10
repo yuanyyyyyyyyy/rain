@@ -37,6 +37,20 @@ export const forgeDetail = {
       "component" : "forge"
     },
     {
+      "note" : "截图注意：终端截图打码本机用户名/绝对路径/API Key；聊天截图处理群名与其他成员昵称头像（他人隐私）。详见 docs/素材/截图需求-Forge-20261110.md。优先级 F1/F5/F2。",
+      "type" : "shots",
+      "kicker" : "03 / 界面实录",
+      "wanted" : [
+        "F1 · TUI 主界面——单会话完整执行一轮 Agent 循环（工具调用步骤 + 流式输出）",
+        "F2 · 多会话并发视图——会话内串行、跨会话并行同时可见",
+        "F3 · 多工具调用过程输出——读取类工具并行执行的日志与耗时",
+        "F4 · 上下文/成本统计——LiteLLM 缓存命中与费用面板，或三层上下文组装日志",
+        "F5 · 消息渠道真实对话——飞书/QQ/企业微信派任务并收到完成回复",
+        "F6 · ForgeBench 评测输出——冻结变量说明、Trials 进度、通过率汇总"
+      ],
+      "pending" : true
+    },
+    {
       "type" : "impl",
       "items" : [
         {
@@ -70,7 +84,7 @@ export const forgeDetail = {
           "solution" : "自建 ForgeBench 评测体系：冻结模型/参数/Prompt 变量，保留执行凭证与证据摘要。"
         }
       ],
-      "kicker" : "03 / 核心实现"
+      "kicker" : "04 / 核心实现"
     },
     {
       "note" : "数据来自项目验收记录与 ForgeBench 对照实验（72 Trials 冻结变量）。诚实口径：P95 为端到端耗时，含模型推理时间。",
@@ -107,12 +121,12 @@ export const forgeDetail = {
           "value" : "113ms"
         }
       ],
-      "kicker" : "04 / 数据指标"
+      "kicker" : "05 / 数据指标"
     },
     {
       "body" : "这个项目让我把 Agent 系统从「跑起来」推进到「可度量」：统一 Runtime 消除了入口层的重复实现，而 ForgeBench 冻结变量的对照实验让每一次优化都能归因——调优收益不再依赖肉眼感觉，也不会被模型波动污染。",
       "type" : "text",
-      "kicker" : "05 / 收获"
+      "kicker" : "06 / 收获"
     }
   ]
 }
