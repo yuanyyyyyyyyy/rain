@@ -1,5 +1,6 @@
 {
   "apiBase": "https://rain-collector.yuanyyyyyyyyy.workers.dev",
+  "turnstileSiteKey": "",
   "profile": {
     "name": "陈雨",
     "school": "九江学院 · 软件工程 · 2027 届",

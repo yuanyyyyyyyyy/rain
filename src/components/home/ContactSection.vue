@@ -15,6 +15,8 @@
         <input v-model="email" type="email" placeholder="你的邮箱" aria-label="你的邮箱" maxlength="200" required />
       </div>
       <textarea v-model="body" rows="4" placeholder="想聊点什么（招聘合作 / 技术交流都可以）" aria-label="留言内容" maxlength="4000" required></textarea>
+      <!-- Cloudflare Turnstile（灰度）：site.json 的 turnstileSiteKey 非空才渲染；Worker 端同条件校验 -->
+      <div v-if="tsEnabled" ref="tsEl" class="ts-box"></div>
       <div class="form-foot">
         <button class="btn primary" type="submit" :disabled="sending">
           {{ sending ? '发送中…' : 'SEND MESSAGE' }} <b v-if="!sending">↗</b>
@@ -36,8 +38,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { profile, apiBase } from '../../data/site.js'
+import { onMounted, ref } from 'vue'
+import { profile, apiBase, turnstileSiteKey } from '../../data/site.js'
 
 const name = ref('')
 const email = ref('')
@@ -47,6 +49,39 @@ const done = ref(false)
 const err = ref('')
 const copied = ref(false)
 let copyTimer = null
+
+// ---- Turnstile 人机验证（灰度：key 为空 = 关闭，行为与原来完全一致）----
+const tsEnabled = !!turnstileSiteKey
+const tsEl = ref(null)
+const tsToken = ref('')
+let tsWidgetId = null
+
+onMounted(() => {
+  if (!tsEnabled) return
+  const render = () => {
+    if (!window.turnstile || !tsEl.value || tsWidgetId !== null) return
+    tsWidgetId = window.turnstile.render(tsEl.value, {
+      sitekey: turnstileSiteKey,
+      callback: (t) => (tsToken.value = t),
+      'expired-callback': () => (tsToken.value = ''),
+      theme: 'light',
+    })
+  }
+  if (window.turnstile) {
+    render()
+    return
+  }
+  const s = document.createElement('script')
+  s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+  s.async = true
+  s.onload = render
+  document.head.appendChild(s)
+})
+
+function resetTurnstile() {
+  tsToken.value = ''
+  if (tsWidgetId !== null) window.turnstile?.reset(tsWidgetId)
+}
 
 // 点击复制邮箱：clipboard API 优先，非 HTTPS/旧浏览器回退 execCommand
 async function copyEmail() {
@@ -74,6 +109,10 @@ async function copyEmail() {
 
 async function submit() {
   err.value = ''
+  if (tsEnabled && !tsToken.value) {
+    err.value = '请先完成人机验证'
+    return
+  }
   sending.value = true
   try {
     let res
@@ -81,7 +120,12 @@ async function submit() {
       res = await fetch(`${apiBase}/api/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.value, email: email.value, body: body.value }),
+        body: JSON.stringify({
+          name: name.value,
+          email: email.value,
+          body: body.value,
+          ...(tsEnabled ? { turnstileToken: tsToken.value } : {}),
+        }),
       })
     } catch {
       // 网络层失败（workers.dev 直连受限）→ 提示邮箱地址让访客自行联系；
@@ -92,10 +136,12 @@ async function submit() {
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
       err.value = data.error || `发送失败（${res.status}）`
+      resetTurnstile() // token 一次性，失败后换新再试
       return
     }
     done.value = true
     name.value = email.value = body.value = ''
+    resetTurnstile()
   } finally {
     sending.value = false
   }
@@ -137,6 +183,9 @@ async function submit() {
     &:focus {
       border-color: var(--c-blue);
     }
+  }
+  .ts-box {
+    justify-self: start;
   }
   .form-foot {
     display: flex;

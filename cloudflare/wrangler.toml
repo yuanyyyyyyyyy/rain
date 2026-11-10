@@ -8,6 +8,8 @@ compatibility_date = "2026-11-01"
 #   npx wrangler secret put ADMIN_TOKEN   # 管理台读接口的 Bearer 密钥
 #   npx wrangler secret put BREVO_API_KEY # 留言邮件通知（Brevo；不配置则只入库不发信）
 #   npx wrangler secret put IP_SALT       # IP 哈希盐（2026-11-10 审计加固；建议 openssl rand -hex 16，不配置退回旧盐）
+#   npx wrangler secret put TURNSTILE_SECRET_KEY # 人机验证（灰度）：配置后留言表单强制 Turnstile；
+#                                         # site key 填 content/site.json 的 turnstileSiteKey，两者同时配置才生效
 [[d1_databases]]
 binding = "DB"
 database_name = "rain-collector"

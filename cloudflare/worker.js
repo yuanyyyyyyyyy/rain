@@ -179,6 +179,23 @@ export default {
         if ((todayCount?.n ?? 0) >= 10) {
           return json(request, { error: "今日提交已达上限，请明天再来或直接发邮件" }, 429)
         }
+        // Turnstile 人机验证（灰度，2026-11-10 审计建议 #2）：配置 TURNSTILE_SECRET_KEY 才启用；
+        // 未配置时此分支整段跳过，行为与原来完全一致。token 一次性，由 siteverify 服务端核销。
+        if (env.TURNSTILE_SECRET_KEY) {
+          const tsToken = String(body.turnstileToken || "")
+          if (!tsToken) return json(request, { error: "人机验证未完成，请刷新后重试" }, 403)
+          const verifyRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+            method: "POST",
+            headers: { "content-type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              secret: env.TURNSTILE_SECRET_KEY,
+              response: tsToken,
+              remoteip: ip,
+            }).toString(),
+          })
+          const verdict = await verifyRes.json().catch(() => ({}))
+          if (!verdict.success) return json(request, { error: "人机验证未通过，请重试" }, 403)
+        }
         await env.DB.prepare(
           "INSERT INTO messages (name, email, body, ip_hash) VALUES (?, ?, ?, ?)"
         ).bind(name, email, text, ipHash).run()

@@ -4,5 +4,5 @@
 import site from '../../content/site.json'
 import projectCards from '../../content/projects.json'
 
-export const { apiBase, profile, capabilities } = site
+export const { apiBase, profile, capabilities, turnstileSiteKey } = site
 export const projects = projectCards
