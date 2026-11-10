@@ -42,8 +42,16 @@
                   @click="openShot(sec, i)"
                   @keydown.enter.prevent="openShot(sec, i)"
                 >
-                  <img :src="`${BASE}${s.src.replace(/^\//, '')}`" :alt="s.caption || s.src" loading="lazy" />
-                  <figcaption>{{ s.caption }}</figcaption>
+                  <img
+                    :src="shotThumb(s.src)"
+                    :alt="s.caption || s.src"
+                    loading="lazy"
+                    decoding="async"
+                    :class="{ ready: loadedShots.has(s.src) }"
+                    @load="markShotReady(s.src)"
+                    @error="onShotImgError($event, s.src)"
+                  />
+                  <figcaption>{{ s.caption }}<span class="shot-hint"> · 点击查看完整截图</span></figcaption>
                 </figure>
               </div>
               <p v-if="sec.note" class="mnote">{{ sec.note }}</p>
@@ -120,7 +128,7 @@
         <button ref="sbCloseRef" class="lb-close" aria-label="关闭" @click="closeShot">×</button>
         <button class="lb-arrow lb-prev" aria-label="上一张" @click.stop="stepShot(-1)">←</button>
         <figure class="lb-body" @click.self="closeShot">
-          <img :src="`${BASE}${shot.s.src.replace(/^\//, '')}`" :alt="shot.s.caption || shot.s.src" />
+          <img :src="shotSrc(shot.s.src)" :alt="shot.s.caption || shot.s.src" />
           <figcaption>{{ shot.s.caption }}</figcaption>
         </figure>
         <button class="lb-arrow lb-next" aria-label="下一张" @click.stop="stepShot(1)">→</button>
@@ -158,6 +166,28 @@ import IntelnexusArch from '../components/project/IntelnexusArch.vue'
 import ForgeArch from '../components/project/ForgeArch.vue'
 
 const BASE = import.meta.env.BASE_URL
+
+// 界面实录：网格加载 1200px/q85 缩略图（npm run shots 自动产出），Lightbox 才取完整原图。
+// 缩略图缺失时回退原图，保证管理台新挂的截图不会出现空白。
+const shotSrc = (src) => `${BASE}${src.replace(/^\//, '')}`
+const shotThumb = (src) =>
+  `${BASE}${src.replace(/^\//, '').replace(/\/([^/]+)\.(png|jpe?g)$/i, '/thumbs/$1.jpg')}`
+
+// 就绪后才淡入：加载期间由纯色骨架占位（不用模糊占位图，避免"先糊后清"的观感），
+// 同时 CSS 固定 16:10 高度，图片到达不再把下方内容逐张往下顶。
+const loadedShots = ref(new Set())
+function markShotReady(src) {
+  if (loadedShots.value.has(src)) return
+  const next = new Set(loadedShots.value)
+  next.add(src)
+  loadedShots.value = next
+}
+function onShotImgError(e, src) {
+  const el = e.target
+  if (el.dataset.fallback) return // 原图也失败时不再重试，避免死循环
+  el.dataset.fallback = '1'
+  el.src = shotSrc(src)
+}
 
 // 详情数据动态收集：管理台新建的项目（发布后生成 src/data/projects/<slug>.js）自动可渲染，
 // 无需改此文件注册（此前静态 import 三个项目，新 slug 只能显示占位骨架）
@@ -454,10 +484,20 @@ onUnmounted(() => {
 
   img {
     width: 100%;
+    // 固定比例占位：加载前就有高度，消除逐张撑开造成的抖动；2 倍屏下 1200px 缩略图仍有余量
+    aspect-ratio: 16 / 10;
+    // contain 而非 cover：界面截图看的是文字与布局，宁可上下留白也不裁掉左右内容
+    object-fit: contain;
+    object-position: top center;
     display: block;
     border: 1px solid var(--c-line);
-    background: var(--c-bg-soft);
-    transition: 0.22s;
+    background: var(--c-bg);
+    opacity: 0;
+    transition: opacity 0.32s ease, border-color 0.22s, box-shadow 0.22s;
+
+    &.ready {
+      opacity: 1;
+    }
   }
   &:hover img {
     border-color: var(--c-blue-hover);
@@ -468,6 +508,10 @@ onUnmounted(() => {
     font: 9px var(--font-mono);
     letter-spacing: 0.12em;
     color: var(--c-muted);
+  }
+  .shot-hint {
+    color: var(--c-blue);
+    opacity: 0.75;
   }
 }
 .shots-pending {

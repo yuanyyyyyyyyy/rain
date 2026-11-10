@@ -25,9 +25,14 @@ hash 分叉（同内容不同 hash），只按消息匹配会把未推送的同�
 npm run build && npm run shots            # 起 vite preview 截全部目标
 npm run shots -- --target rain            # 只截某个 slug
 npm run shots -- --url http://...         # 复用已起的服务（如 IntelNexus/Shimmer 本地服务）
+npm run shots -- --thumbs-only            # 只补缩略图，不重新截图（新截图入库后跑这条）
 ```
 
 - 产出 `public/screenshots/<slug>/<slug>-NN.png|jpg`（元素级截图，1440px 宽；大区块 jpg q85 控制单张 ≤2MB）
+- **每次截图自动同步** `public/screenshots/<slug>/thumbs/<stem>.jpg`：1200px 宽 / 高上限 1000px / JPEG q85，
+  供详情页网格用；Lightbox 仍取完整原图。幂等（缩略图比原图新就跳过），也可用 `--thumbs-only` 单独补。
+  网格格子约 500px 宽，2 倍屏物理像素约 1000×625，缩略图留了余量，**不为提速压糊画质**。
+  总重量从 4.09MB（PNG 原图）降到 1.16MB，且 JPEG 解码远快于 PNG。
 - 接入走管理台：shots 节取消 pending → datalist 选文件 + 写图注 → 04 发布（发布 commit 自带截图目录）
 - 目标配置在脚本内 TARGETS 数组；选择器须为页面稳定根区块（.hero / #work / .gallery / .detail）
 - forge 无 Web UI 不设 shots；云枢截图必须人工过脱敏后再接入

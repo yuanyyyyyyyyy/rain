@@ -32,7 +32,9 @@ public class PhotoService {
     private static final int LONG_EDGE = 1600;
     private static final double QUALITY = 0.8;
     private static final int THUMB_EDGE = 640;
-    private static final double THUMB_QUALITY = 0.7;
+    // q85（2026-11-10 由 q70 提升）：q70 单张仅 0.5~1.7 bit/px，夜景渐变出现明显涂抹与色带。
+    // 该档只服务窄视口 / 小屏，桌面由前台 srcset 直接取 1600px 原图，画质不打折。
+    private static final double THUMB_QUALITY = 0.85;
     private static final Set<String> GROUPS = Set.of("STREET", "LIGHT", "DAILY");
 
     private final PhotoRepo repo;
@@ -92,7 +94,7 @@ public class PhotoService {
             scaled = rotateForOrientation(scaled, exif.orientation());
         }
         Thumbnails.of(scaled).scale(1.0).outputQuality(QUALITY).outputFormat("jpg").toFile(target.toFile());
-        writeThumb(pid, target); // 网格缩略图（640px q70），Lightbox 仍加载 1600px 原图
+        writeThumb(pid, target); // 网格轻量档（640px q85，供窄视口）；桌面网格与 Lightbox 均取 1600px 原图
 
         // 入库；失败则删除两个文件补偿
         try {
@@ -141,7 +143,7 @@ public class PhotoService {
         return frontendPublicDir.resolve("photos").resolve("thumbs");
     }
 
-    /** 生成 640px q70 缩略图（从 1600px 压缩产物缩，等比且已按 EXIF 摆正）；失败不阻断主流程 */
+    /** 生成 640px q85 轻量档（从 1600px 压缩产物缩，等比且已按 EXIF 摆正）；失败不阻断主流程 */
     public boolean writeThumb(String pid, Path compressedSource) {
         try {
             Path thumb = thumbsDir().resolve(pid + ".jpg");
