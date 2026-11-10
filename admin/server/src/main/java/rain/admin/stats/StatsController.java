@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import rain.admin.common.RateLimiter;
@@ -22,12 +23,16 @@ import rain.admin.common.RateLimiter;
 public class StatsController {
 
     private final VisitLogRepo repo;
+    /** 仅当部署在可信反向代理之后才置 true（与 AuthController 口径一致） */
+    private final boolean trustProxy;
     /** 埋点限流：同 ipHash 每分钟最多 30 次上报（唯一约束只挡重复 path，防伪造 header 轮换 path 刷库） */
     private final RateLimiter trackLimiter = new RateLimiter(30, Duration.ofMinutes(1));
     private final AtomicInteger sinceEvict = new AtomicInteger();
 
-    public StatsController(VisitLogRepo repo) {
+    public StatsController(VisitLogRepo repo,
+                           @Value("${app.security.trust-proxy:false}") boolean trustProxy) {
         this.repo = repo;
+        this.trustProxy = trustProxy;
     }
 
     public record TrackBody(String path, String referrer) {}
@@ -36,9 +41,11 @@ public class StatsController {
     @PostMapping("/api/t")
     public ResponseEntity<Void> track(@RequestBody TrackBody body,
                                       @RequestHeader(value = "User-Agent", defaultValue = "") String ua,
-                                      @RequestHeader(value = "X-Forwarded-For", required = false) String xff) {
+                                      @RequestHeader(value = "X-Forwarded-For", required = false) String xff,
+                                      jakarta.servlet.http.HttpServletRequest http) {
         try {
-            String ip = xff != null && !xff.isBlank() ? xff.split(",")[0].trim() : "local";
+            // 限流键默认取直连地址：XFF 客户端可伪造，无条件信任会绕过埋点限流（2026-11-10 审计，同 AuthController）
+            String ip = clientIp(http, xff);
             String ipHash = sha256(ip + "|rain-salt");
             if (!trackLimiter.allow(ipHash)) return ResponseEntity.status(429).build();
             String path = normalize(body.path());
@@ -105,6 +112,12 @@ public class StatsController {
     private static String trim(String s, int max) {
         if (s == null) return "";
         return s.length() > max ? s.substring(0, max) : s;
+    }
+
+    /** 限流键 IP：默认直连地址；仅 trust-proxy=true（可信反代后）才读 XFF 首段 */
+    private String clientIp(jakarta.servlet.http.HttpServletRequest http, String xff) {
+        if (trustProxy && xff != null && !xff.isBlank()) return xff.split(",")[0].trim();
+        return http.getRemoteAddr();
     }
 
     private static String sha256(String s) {

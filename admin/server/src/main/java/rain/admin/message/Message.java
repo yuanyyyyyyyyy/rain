@@ -1,5 +1,6 @@
 package rain.admin.message;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -25,8 +26,9 @@ public class Message {
     @Column(length = 200)
     private String sourcePath;
 
-    /** ip 哈希（脱敏，限频用） */
+    /** ip 哈希（脱敏，限频用）；仅服务端内部使用，不随管理台列表接口出网（2026-11-10 审计） */
     @Column(name = "ip_hash", nullable = false, length = 64)
+    @JsonIgnore
     private String ipHash;
 
     /** read 是 MySQL 保留字，列名用 is_read */

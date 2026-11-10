@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,11 +22,15 @@ import org.springframework.web.bind.annotation.*;
 public class MessageController {
 
     private final MessageRepo repo;
+    /** 仅当部署在可信反向代理之后才置 true（与 AuthController 口径一致） */
+    private final boolean trustProxy;
     /** 简易限频：ipHash -> 上次提交时间（单实例足够） */
     private final ConcurrentHashMap<String, LocalDateTime> lastSubmit = new ConcurrentHashMap<>();
 
-    public MessageController(MessageRepo repo) {
+    public MessageController(MessageRepo repo,
+                             @Value("${app.security.trust-proxy:false}") boolean trustProxy) {
         this.repo = repo;
+        this.trustProxy = trustProxy;
     }
 
     public record SubmitRequest(@NotBlank @Size(max = 80) String name,
@@ -35,8 +40,11 @@ public class MessageController {
     /** 前台提交（公开）：同 IP 60 秒 1 条 */
     @PostMapping("/api/messages")
     public ResponseEntity<?> submit(@Valid @RequestBody SubmitRequest req,
-                                    @RequestHeader(value = "X-Forwarded-For", required = false) String xff) {
-        String ipHash = sha256(xff != null && !xff.isBlank() ? xff.split(",")[0].trim() : "local");
+                                    @RequestHeader(value = "X-Forwarded-For", required = false) String xff,
+                                    jakarta.servlet.http.HttpServletRequest http) {
+        // 限流键默认取直连地址：XFF 客户端可伪造，无条件信任会绕过限频（2026-11-10 审计，同 AuthController）
+        String ip = trustProxy && xff != null && !xff.isBlank() ? xff.split(",")[0].trim() : http.getRemoteAddr();
+        String ipHash = sha256(ip);
         LocalDateTime last = lastSubmit.get(ipHash);
         if (last != null && last.isAfter(LocalDateTime.now().minusSeconds(60))) {
             return ResponseEntity.status(429).body(Map.of("error", "发送过于频繁，请稍后再试"));

@@ -1,5 +1,8 @@
 server:
   port: 8081
+  # 2026-11-10 审计加固：管理 API 只服务本机 Vite dev（5175），不向局域网暴露。
+  # 如需远程访问：改回 0.0.0.0 并置于可信反代（TLS）之后，同时设 app.security.trust-proxy=true
+  address: 127.0.0.1
 
 spring:
   application:
@@ -21,6 +24,9 @@ spring:
 app:
   jwt:
     expire-minutes: 120
+  security:
+    # 限流键是否信任 X-Forwarded-For。XFF 客户端可伪造，只有确定部署在可信反代之后才置 true
+    trust-proxy: false
   admin:
     # 首次建库时 admin 账号的初始口令；留空则随机生成并打印到控制台（仅一次）
     initial-password: ""
