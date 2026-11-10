@@ -49,7 +49,9 @@ parent_sha = br["commit"]["sha"]
 parent_tree = br["commit"]["commit"]["tree"]["sha"]
 head_msg = br["commit"]["commit"]["message"].strip()
 
-# 断点：远端 HEAD 对应本地序列中的位置（message 匹配），prev_files 用本地同内容 commit 的树
+# 并发护栏（2026-11-10）：message 相同的 publish commit 有很多个，只按消息匹配断点会把
+# 远程 HEAD 误判成「本地很早的状态」，随后全量重放把线上文件树回退成旧版
+# （事故：画质修复与照片排序被静默覆盖）。找不到可信断点时必须停下，绝不重放。
 start_idx = 0
 for i, (sha, an, ae, ad, msg) in enumerate(commits):
     if msg.strip() == head_msg:
@@ -57,7 +59,11 @@ for i, (sha, an, ae, ad, msg) in enumerate(commits):
         prev_files = ls_tree(sha)
         break
 else:
-    prev_files = {}
+    raise SystemExit(
+        "ABORT: 远端 HEAD 在本地历史里找不到可信断点，已禁止全量重放历史。"
+        " 通常是另一个会话/工作区更新过 main。请先 git fetch origin main，"
+        " 把本地提交 rebase 到 origin/main 之后再发布。"
+    )
 print(f"remote HEAD: {head_msg[:40]!r} -> resume from #{start_idx + 1}/{len(commits)}", flush=True)
 
 for i in range(start_idx, len(commits)):

@@ -19,6 +19,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # 多会话并发护栏：任何一端把仓库回退到旧树时，宁可让部署失败报警，
+      # 也不能把旧版静默发布到线上（2026-11-10 事故）。
+      - name: Guard against stale tree
+        run: |
+          set -e
+          grep -q "48vw" src/pages/PhotographyPage.vue || { echo "::error::摄影页组件被回退（缺 srcset/sizes），拒绝部署"; exit 1; }
+          grep -q "shotThumb" src/pages/ProjectDetailPage.vue || { echo "::error::详情页组件被回退（缺截图缩略图逻辑），拒绝部署"; exit 1; }
       - uses: actions/setup-node@v4
         with:
           node-version: 22
