@@ -1,0 +1,77 @@
+[ {
+  "slug" : "yunshu",
+  "no" : "001",
+  "flagship" : true,
+  "period" : "2026.06 — 至今",
+  "title" : "云枢智慧医院管理平台",
+  "summary" : "基于 Spring Cloud Alibaba 微服务架构的智慧医院管理平台，团队 8 人。我独立负责排班预约服务 his-j8-setroster 的后端全部代码（该模块单人提交）：日/周排班模板、号源时段与放号策略、日历例外（停诊源头）、停诊通知任务与 AI 排班助手，共 24 个 REST 接口 + 1 个 AI 接口。",
+  "tags" : [ "JAVA", "SPRING BOOT", "SPRING CLOUD ALIBABA", "MYBATIS-PLUS", "REDIS/REDISSON", "ROCKETMQ", "SPRING AI" ],
+  "metrics" : [ {
+    "label" : "P99",
+    "value" : "1.468s → 0.148s"
+  }, {
+    "label" : "吞吐",
+    "value" : "496 → 2480 req/s"
+  }, {
+    "label" : "平均响应",
+    "value" : "99.3 → 19.7ms"
+  } ]
+}, {
+  "slug" : "intelnexus",
+  "no" : "002",
+  "period" : "2026",
+  "title" : "IntelNexus",
+  "summary" : "AI 驱动的多源网络情报分析平台：以可信度评估、证据链追溯与冲突检测为分析内核，上接 15 类信息源的多源采集，下接定时简报与可导出的结构化报告。我独立完成需求定义、方案决策、集成与验证；功能代码以 AI 生成为主，由我负责设计约束、逐轮审查、测试与迭代修正。",
+  "tags" : [ "PYTHON", "LANGCHAIN", "STREAMLIT", "NETWORKX/PYVIS", "SENTENCE-TRANSFORMERS" ],
+  "metrics" : [ {
+    "label" : "测试文件",
+    "value" : "95 个"
+  }, {
+    "label" : "测试函数",
+    "value" : "1101 个"
+  }, {
+    "label" : "测试类",
+    "value" : "126 个"
+  } ]
+}, {
+  "slug" : "forge",
+  "no" : "003",
+  "period" : "2026.01 — 2026.05",
+  "title" : "Forge — Agent Harness",
+  "summary" : "面向多入口 AI Agent 场景的统一 Runtime：CLI、终端 TUI、后台 Gateway、定时任务与飞书/QQ/企业微信等消息渠道共享同一执行链路，Runtime 统一负责调度、上下文组装、工具执行与会话持久化，消除各入口重复实现。",
+  "tags" : [ "PYTHON", "TYPESCRIPT", "ASYNCIO", "LITELLM", "MCP", "PYTEST" ],
+  "metrics" : [ {
+    "label" : "真实请求",
+    "value" : "4,160"
+  }, {
+    "label" : "端到端 P95",
+    "value" : "11.66s"
+  }, {
+    "label" : "验收通过率",
+    "value" : "99.95%"
+  } ]
+}, {
+  "slug" : "rain",
+  "no" : "004",
+  "period" : "2026.10 — 至今",
+  "title" : "Rain — Personal Archive",
+  "summary" : "个人作品集网站 + 自托管内容管理后台：Vue 3 纯静态前台、Spring Boot 管理台、Cloudflare Worker/D1 公网收集端与 GitHub Pages 自动部署。管理台编辑内容一键发布，前台保持零后端依赖。",
+  "tags" : [ "VUE 3", "VITE", "SPRING BOOT", "MYSQL", "CLOUDFLARE WORKER", "D1", "GITHUB ACTIONS" ],
+  "metrics" : [ {
+    "label" : "Case Study",
+    "value" : "3 × 07 节"
+  }, {
+    "label" : "真实照片",
+    "value" : "30 张"
+  }, {
+    "label" : "发布生效",
+    "value" : "1.5–3 min"
+  } ]
+}, {
+  "slug" : "shimmer",
+  "no" : "005",
+  "period" : "COURSE PROJECT",
+  "title" : "照片光影展示平台",
+  "summary" : "围绕照片展示与视觉表达构建的全栈项目，结合图片处理、对象存储与 AI 能力。",
+  "tags" : [ "VUE 3", "EXPRESS", "MYSQL", "AI API" ]
+} ]
