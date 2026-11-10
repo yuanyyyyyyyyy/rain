@@ -37,6 +37,17 @@ public class Message {
     @Column(nullable = false)
     private Boolean archived = false;
 
+    /**
+     * 回收站（软删）：true = 已删除进入回收站，可恢复或彻底删除；false = 正常。
+     * 与 archived 正交：归档是"搁置但可见"，回收站是"已删可恢复"。
+     */
+    @Column(name = "deleted", nullable = false, columnDefinition = "bit not null default 0")
+    private Boolean deleted = false;
+
+    /** 软删时间（回收站排序/展示用） */
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -55,5 +66,9 @@ public class Message {
     public void setRead(Boolean read) { this.read = read; }
     public Boolean getArchived() { return archived; }
     public void setArchived(Boolean archived) { this.archived = archived; }
+    public Boolean getDeleted() { return deleted; }
+    public void setDeleted(Boolean deleted) { this.deleted = deleted; }
+    public LocalDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

@@ -80,6 +80,18 @@ public class PhotoController {
         }
     }
 
+    /** 隐藏 / 显示：true = 前台不展示（留库留文件）；头图禁止隐藏 */
+    @PutMapping("/{id}/hidden")
+    public ResponseEntity<?> setHidden(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
+        try {
+            boolean hidden = body == null || !Boolean.FALSE.equals(body.get("hidden"));
+            Photo p = service.setHidden(id, hidden);
+            return ResponseEntity.ok(Map.of("id", p.getId(), "hidden", p.getHidden()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     /** 删除：先删记录（事务），后删文件（失败以 warning 提示人工清理，不回滚记录删除） */
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {

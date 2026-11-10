@@ -11,22 +11,34 @@
           :class="{ on: filter === t.key }"
           @click="filter = t.key"
         >
-          {{ t.label }}<span v-if="t.key === 'unread' && unreadCount" class="n">{{ unreadCount }}</span>
+          {{ t.label }}<span v-if="t.key === 'unread' && unreadCount" class="n">{{ unreadCount }}</span><span v-if="t.key === 'trash' && trashCount" class="n">{{ trashCount }}</span>
         </button>
-        <button class="op" :disabled="!unreadCount || busy" @click="readAll">全部已读</button>
+        <button v-if="filter !== 'trash'" class="op" :disabled="!unreadCount || busy" @click="readAll">全部已读</button>
+        <button v-else class="op danger" :disabled="!trashCount || busy" @click="emptyTrash">清空回收站</button>
       </div>
+    </div>
+
+    <div v-if="filter !== 'trash' && isWorker" class="hint warn">
+      当前数据源为 Worker（公网 D1），删除 / 回收站仅对<b>本地 MySQL</b>生效。切到本地数据源后这里才能管理删除与回收站。
     </div>
 
     <div v-if="!shown.length" class="hint">{{ emptyText }}</div>
 
-    <div v-for="m in shown" :key="m.id" class="msg" :class="{ unread: !m.read }" @click="markRead(m)">
+    <div v-for="m in shown" :key="m.id" class="msg" :class="{ unread: !m.read, archived: m.archived }" @click="markRead(m)">
       <div class="msg-head">
         <span class="who">{{ m.name }}</span>
         <a class="mail" :href="`mailto:${m.email}`">{{ m.email }}</a>
         <span class="t">{{ fmtTime(m.createdAt) }}</span>
         <span v-if="!m.read" class="dot">未读</span>
-        <span v-if="m.archived" class="tag">已归档</span>
-        <button class="arc" @click.stop="setArchived(m)">{{ m.archived ? '取消归档' : '归档' }}</button>
+        <span v-if="m.archived && filter !== 'trash'" class="tag">已归档</span>
+        <template v-if="filter !== 'trash'">
+          <button class="arc" @click.stop="setArchived(m)">{{ m.archived ? '取消归档' : '归档' }}</button>
+          <button class="arc danger" v-if="!isWorker" @click.stop="softDelete(m)">删除</button>
+        </template>
+        <template v-else>
+          <button class="arc" @click.stop="restore(m)">恢复</button>
+          <button class="arc danger" v-if="!isWorker" @click.stop="purge(m)">彻底删除</button>
+        </template>
       </div>
       <p class="body">{{ m.body }}</p>
     </div>
@@ -38,6 +50,8 @@ import { computed, onMounted, ref } from 'vue'
 import { api, getWorkerCfg, workerSend } from '../api.js'
 
 const list = ref([])
+const trash = ref([])
+const trashCount = ref(0)
 const source = ref('本地')
 const filter = ref('all')
 const busy = ref(false)
@@ -48,24 +62,35 @@ const tabs = [
   { key: 'all', label: '全部' },
   { key: 'unread', label: '未读' },
   { key: 'archived', label: '归档' },
+  { key: 'trash', label: '回收站' },
 ]
 
+const isWorker = computed(() => source.value.startsWith('Worker'))
 const unreadCount = computed(() => list.value.filter((m) => !m.read).length)
 const shown = computed(() => {
+  if (filter.value === 'trash') return trash.value
   if (filter.value === 'unread') return list.value.filter((m) => !m.read && !m.archived)
   if (filter.value === 'archived') return list.value.filter((m) => m.archived)
   return list.value
 })
-const emptyText = computed(() =>
-  list.value.length
+const emptyText = computed(() => {
+  if (filter.value === 'trash') return '回收站是空的。删除的留言会先进回收站，可在此恢复或彻底删除。'
+  return list.value.length
     ? '当前筛选下没有留言。'
     : workerCfg.value.base
       ? '暂无留言。公网访客提交联系表单后会出现在这里（收件箱当前读取 Worker/D1 数据源）。'
       : '暂无留言。当前读取本地后端；公网访客的留言在 Cloudflare D1 里——请在「06 / 设置 → 数据源」配置 Worker 地址与 ADMIN_TOKEN 后再查看。'
-)
+})
 // Worker 返回 created_at（SQLite 格式），本地 Spring 返回 createdAt（ISO）→ 统一为 createdAt
 function normalize(m) {
-  return { ...m, read: !!m.read, archived: !!m.archived, createdAt: m.createdAt || m.created_at || '' }
+  return {
+    ...m,
+    read: !!m.read,
+    archived: !!m.archived,
+    deleted: !!m.deleted,
+    createdAt: m.createdAt || m.created_at || '',
+    deletedAt: m.deletedAt || m.deleted_at || '',
+  }
 }
 
 const fmtTime = (t) => String(t).replace('T', ' ').slice(0, 16)
@@ -84,6 +109,60 @@ async function load() {
     }
   }
   list.value = (await api.get('/api/messages')).map(normalize)
+  // 回收站 / 计数仅本地 MySQL 源有意义（Worker/D1 删除暂未实现）
+  if (!isWorker.value) {
+    trash.value = (await api.get('/api/messages/trash')).map(normalize)
+    trashCount.value = (await api.get('/api/messages/trash-count')).trash || 0
+  } else {
+    trash.value = []
+    trashCount.value = 0
+  }
+}
+
+// 软删：移入回收站（可恢复）
+async function softDelete(m) {
+  if (isWorker.value) return
+  try {
+    await api.delete(`/api/messages/${m.id}`)
+    await load()
+  } catch (e) {
+    alert(e.message || '删除失败')
+  }
+}
+
+// 恢复：从回收站取回
+async function restore(m) {
+  if (isWorker.value) return
+  try {
+    await api.post(`/api/messages/${m.id}/restore`)
+    await load()
+  } catch (e) {
+    alert(e.message || '恢复失败')
+  }
+}
+
+// 彻底删除：真正删库，不可恢复
+async function purge(m) {
+  if (isWorker.value) return
+  if (!confirm('彻底删除该留言？此操作不可恢复。')) return
+  try {
+    await api.delete(`/api/messages/${m.id}/purge`)
+    await load()
+  } catch (e) {
+    alert(e.message || '彻底删除失败')
+  }
+}
+
+// 清空回收站：彻底删除全部已软删留言
+async function emptyTrash() {
+  if (isWorker.value) return
+  if (!confirm('清空回收站？全部已删除留言将彻底移除，不可恢复。')) return
+  try {
+    await api.delete('/api/messages/trash')
+    await load()
+  } catch (e) {
+    alert(e.message || '清空失败')
+  }
 }
 
 async function markRead(m) {
@@ -184,10 +263,27 @@ onMounted(load)
     margin-left: 4px;
     color: var(--c-blue);
   }
+  &.danger {
+    border-color: var(--c-danger);
+    color: var(--c-danger);
+
+    &:hover {
+      background: var(--c-danger);
+      color: #fff;
+    }
+  }
 }
 .hint {
   font: 12px var(--font-sans);
   color: var(--c-muted);
+
+  &.warn {
+    border: 1px solid var(--c-danger);
+    color: var(--c-danger);
+    padding: 8px 12px;
+    border-radius: 2px;
+    background: var(--c-danger-faint, transparent);
+  }
 }
 .msg {
   border: 1px solid var(--c-line);
@@ -246,6 +342,15 @@ onMounted(load)
       &:hover {
         border-color: var(--c-blue);
         color: var(--c-blue);
+      }
+      &.danger {
+        border-color: var(--c-danger);
+        color: var(--c-danger);
+
+        &:hover {
+          background: var(--c-danger);
+          color: #fff;
+        }
       }
     }
   }

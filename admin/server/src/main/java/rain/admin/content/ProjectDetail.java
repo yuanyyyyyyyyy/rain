@@ -41,6 +41,13 @@ public class ProjectDetail {
     @Column(name = "sort_no")
     private Integer sortNo;
 
+    /**
+     * 隐藏：true = 留库但前台不展示（卡片与详情页均不出现，含直接 URL），由发布生成层过滤。
+     * 新建项目默认为 false（展示）。
+     */
+    @Column(name = "hidden", nullable = false, columnDefinition = "bit not null default 0")
+    private Boolean hidden = false;
+
     @Column(nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
 
@@ -59,6 +66,8 @@ public class ProjectDetail {
     public void setSectionsJson(String sectionsJson) { this.sectionsJson = sectionsJson; }
     public Integer getSortNo() { return sortNo; }
     public void setSortNo(Integer sortNo) { this.sortNo = sortNo; }
+    public Boolean getHidden() { return hidden; }
+    public void setHidden(Boolean hidden) { this.hidden = hidden; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

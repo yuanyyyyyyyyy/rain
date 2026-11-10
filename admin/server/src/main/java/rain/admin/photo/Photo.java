@@ -68,6 +68,13 @@ public class Photo {
     @Column(name = "date_source", length = 16)
     private String dateSource;
 
+    /**
+     * 隐藏：true = 留库留文件但前台不展示（含直接 URL），由发布生成层过滤。
+     * 头图禁止隐藏（管理台 UI 禁用 + 服务端校验），否则生成器会因"没有头图"报错。
+     */
+    @Column(name = "hidden", nullable = false, columnDefinition = "bit not null default 0")
+    private Boolean hidden = false;
+
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -100,5 +107,7 @@ public class Photo {
     public void setManualDate(LocalDate manualDate) { this.manualDate = manualDate; }
     public String getDateSource() { return dateSource; }
     public void setDateSource(String dateSource) { this.dateSource = dateSource; }
+    public Boolean getHidden() { return hidden; }
+    public void setHidden(Boolean hidden) { this.hidden = hidden; }
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

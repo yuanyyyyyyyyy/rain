@@ -69,6 +69,14 @@ public class ContentService {
         repo.delete(bySlug(slug));
     }
 
+    /** 隐藏 / 显示：true = 留库但前台不展示（卡片与详情页均移除，含直接 URL）；由发布生成层过滤 */
+    @Transactional
+    public ProjectDetail setHidden(String slug, boolean hidden) {
+        ProjectDetail d = bySlug(slug);
+        d.setHidden(hidden);
+        return repo.save(d);
+    }
+
     public List<ProjectDetail> list() {
         return repo.findAll();
     }
@@ -83,6 +91,7 @@ public class ContentService {
         n.put("slug", d.getSlug());
         n.put("headline", d.getHeadline());
         n.put("summary", d.getSummary());
+        n.put("hidden", d.getHidden());
         n.put("headerNote", d.getHeaderNote() == null ? "" : d.getHeaderNote());
         n.put("updatedAt", d.getUpdatedAt().toString());
         try {

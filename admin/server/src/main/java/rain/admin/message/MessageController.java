@@ -58,16 +58,72 @@ public class MessageController {
         lastSubmit.values().removeIf(t -> t.isBefore(cutoff));
     }
 
-    /** 收件箱列表（管理台） */
+    /** 收件箱列表（管理台）：只返回未进回收站的留言（归档的仍在此列，由前端按 archived 筛选） */
     @GetMapping("/api/messages")
     public List<Message> list() {
-        return repo.findAllByOrderByCreatedAtDesc();
+        return repo.findAllByDeletedFalseOrderByCreatedAtDesc();
     }
 
-    /** 未读数（侧栏徽标） */
+    /** 回收站列表（已软删、可恢复） */
+    @GetMapping("/api/messages/trash")
+    public List<Message> trash() {
+        return repo.findAllByDeletedTrueOrderByDeletedAtDesc();
+    }
+
+    /** 未读数（侧栏徽标）：仅统计未进回收站的未读 */
     @GetMapping("/api/messages/unread")
     public Map<String, Long> unread() {
-        return Map.of("unread", repo.countByReadFalse());
+        return Map.of("unread", repo.countByReadFalseAndDeletedFalse());
+    }
+
+    /** 回收站计数（侧栏徽标） */
+    @GetMapping("/api/messages/trash-count")
+    public Map<String, Long> trashCount() {
+        return Map.of("trash", repo.countByDeletedTrue());
+    }
+
+    /** 软删：移入回收站（可恢复），不真正删库 */
+    @DeleteMapping("/api/messages/{id}")
+    public ResponseEntity<?> softDelete(@PathVariable Long id) {
+        var opt = repo.findById(id);
+        if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "留言不存在"));
+        Message m = opt.get();
+        m.setDeleted(true);
+        m.setDeletedAt(LocalDateTime.now());
+        repo.save(m);
+        return ResponseEntity.ok(Map.of("ok", true));
+    }
+
+    /** 恢复：从回收站取回 */
+    @PostMapping("/api/messages/{id}/restore")
+    public ResponseEntity<?> restore(@PathVariable Long id) {
+        var opt = repo.findById(id);
+        if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "留言不存在"));
+        Message m = opt.get();
+        m.setDeleted(false);
+        m.setDeletedAt(null);
+        repo.save(m);
+        return ResponseEntity.ok(Map.of("ok", true));
+    }
+
+    /** 彻底删除（回收站内才允许）：真正删库，不可恢复 */
+    @DeleteMapping("/api/messages/{id}/purge")
+    public ResponseEntity<?> purge(@PathVariable Long id) {
+        var opt = repo.findById(id);
+        if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "留言不存在"));
+        Message m = opt.get();
+        if (!Boolean.TRUE.equals(m.getDeleted())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "仅回收站内的留言可彻底删除"));
+        }
+        repo.delete(m);
+        return ResponseEntity.ok(Map.of("ok", true));
+    }
+
+    /** 清空回收站：彻底删除全部已软删留言 */
+    @DeleteMapping("/api/messages/trash")
+    public ResponseEntity<?> emptyTrash() {
+        repo.purgeTrash();
+        return ResponseEntity.ok(Map.of("ok", true));
     }
 
     /** 标记已读 */

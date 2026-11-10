@@ -69,8 +69,10 @@ public class PublishService {
             String commitHash = currentCommit();
             // 1. 生成全部数据文件内容（任一生成失败即中止，不碰现有文件）
             List<String[]> files = buildFiles();
-            List<String> slugs = contentService.list().stream().map(ProjectDetail::getSlug).toList();
-            // 清理已删项目的数据文件（DB 之外的 .json）
+            List<String> slugs = contentService.list().stream()
+                    .filter(d -> !Boolean.TRUE.equals(d.getHidden()))
+                    .map(ProjectDetail::getSlug).toList();
+            // 清理已删/已隐藏项目的数据文件（DB 之外的 .json）
             try (var stream = Files.list(projectRoot.resolve("content/projects"))) {
                 stream.filter(p -> p.toString().endsWith(".json"))
                         .filter(p -> slugs.stream().noneMatch(s -> p.getFileName().toString().equals(s + ".json")))
@@ -151,11 +153,17 @@ public class PublishService {
     private List<String[]> buildFiles() throws IOException {
         // 内容层目录（发布写入纯数据 JSON，不碰 src/）；首次发布或 clone 后目录可能不存在
         Files.createDirectories(projectRoot.resolve("content/projects"));
-        List<Photo> photos = photoRepo.findAllByOrderByGroupNameAscSortNoAscIdAsc();
+        List<Photo> allPhotos = photoRepo.findAllByOrderByGroupNameAscSortNoAscIdAsc();
+        // 隐藏照片不进前台：仅把 hidden=false 的传生成器；hero 也从可见集取（隐藏头图会被服务端拒绝）
+        List<Photo> photos = allPhotos.stream()
+                .filter(p -> !Boolean.TRUE.equals(p.getHidden())).toList();
         Photo hero = photos.stream().filter(p -> Boolean.TRUE.equals(p.getIsHero())).findFirst().orElse(null);
         List<PhotoGroup> groups = photoGroupRepo.findAllByOrderBySortNoAscIdAsc();
         String photosJson = photoDataGenerator.generate(photos, hero, groups);
-        List<ProjectDetail> details = contentService.list();
+        List<ProjectDetail> allDetails = contentService.list();
+        // 隐藏项目不进前台：卡片、sitemap、详情文件均只生成可见项
+        List<ProjectDetail> details = allDetails.stream()
+                .filter(d -> !Boolean.TRUE.equals(d.getHidden())).toList();
         String projectsJson = siteDataGenerator.generate(details);
         List<String[]> files = new ArrayList<>(); // [相对路径, 内容]
         files.add(new String[] {"content/photos.json", photosJson});

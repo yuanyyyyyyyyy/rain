@@ -15,10 +15,11 @@
     <nav class="sec-nav">
       <span class="proj">
         <select v-model="slug" @change="load">
-          <option v-for="p in projects" :key="p.slug" :value="p.slug">{{ p.slug }}</option>
+          <option v-for="p in projects" :key="p.slug" :value="p.slug">{{ p.slug }}{{ p.hidden ? '（已隐藏）' : '' }}</option>
         </select>
       </span>
       <button class="mini" @click="createProject" title="新建后会出现在项目下拉中，发布时自动上公网">+ 新建</button>
+      <button class="mini" @click="toggleHidden" :title="currentHidden ? '当前已隐藏：前台卡片与详情页均不展示（留库）；点击恢复' : '点击后前台卡片与详情页均不展示（留库）'">{{ currentHidden ? '显示' : '隐藏' }}</button>
       <button class="mini danger" @click="deleteProject" title="删除详情数据；下次发布后前台卡片同步移除">删除项目</button>
       <span class="sep">|</span>
       <a v-for="(s, i) in form.sections" :key="i" @click="scrollToSec(i)">{{ padNo(i) }} {{ kickerTitle(s).slice(0, 10) }}</a>
@@ -197,7 +198,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch, computed } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { api } from '../api.js'
 
@@ -296,6 +297,21 @@ async function deleteProject() {
     slug.value = projects.value[0]?.slug || ''
     await load()
     say(`项目已删除。点「04 发布」后公网卡片同步移除。`)
+  } catch (e) {
+    say(e.message, true)
+  }
+}
+
+const currentHidden = computed(() => projects.value.find((p) => p.slug === slug.value)?.hidden === true)
+
+async function toggleHidden() {
+  try {
+    const next = !currentHidden.value
+    await api.put(`/api/content/projects/${slug.value}/hidden`, { hidden: next })
+    const item = projects.value.find((p) => p.slug === slug.value)
+    if (item) item.hidden = next
+    await checkPublishDirty()
+    say(next ? `「${slug.value}」已隐藏（前台卡片与详情页均不展示，数据仍保留）；点「04 发布」生效。` : `「${slug.value}」已恢复展示；点「04 发布」生效。`)
   } catch (e) {
     say(e.message, true)
   }

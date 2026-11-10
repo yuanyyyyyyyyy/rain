@@ -316,6 +316,17 @@ public class PhotoService {
         repo.save(target);
     }
 
+    /** 隐藏 / 显示：true = 留库留文件但前台不展示；头图禁止隐藏（生成器需要头图） */
+    @Transactional
+    public Photo setHidden(Long id, boolean hidden) {
+        Photo p = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("照片不存在"));
+        if (hidden && Boolean.TRUE.equals(p.getIsHero())) {
+            throw new IllegalArgumentException("头图不能隐藏，请先设其他照片为头图");
+        }
+        p.setHidden(hidden);
+        return repo.save(p);
+    }
+
     /** 删除记录（事务内）；文件删除由调用方在事务提交后执行，失败不影响记录删除 */
     @Transactional
     public Photo deleteRecord(Long id) {

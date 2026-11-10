@@ -22,6 +22,7 @@ public class ContentController {
                 .map(d -> Map.<String, Object>of(
                         "slug", d.getSlug(),
                         "headline", d.getHeadline(),
+                        "hidden", d.getHidden(),
                         "updatedAt", d.getUpdatedAt().toString()))
                 .toList();
     }
@@ -61,6 +62,19 @@ public class ContentController {
         try {
             service.delete(slug);
             return ResponseEntity.ok(Map.of("ok", true));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** 隐藏 / 显示：true = 前台不展示（留库）；发布后卡片与详情页同步移除 */
+    @PutMapping("/projects/{slug}/hidden")
+    public ResponseEntity<?> setHidden(@PathVariable String slug,
+                                      @RequestBody(required = false) Map<String, Object> body) {
+        try {
+            boolean hidden = body == null || !Boolean.FALSE.equals(body.get("hidden"));
+            ProjectDetail d = service.setHidden(slug, hidden);
+            return ResponseEntity.ok(Map.of("slug", d.getSlug(), "hidden", d.getHidden()));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

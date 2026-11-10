@@ -110,6 +110,15 @@
       ● 有未发布变更——上传/排序只写数据库，点「04 发布」才会更新到公网网站（约 1.5–3 分钟生效）。
     </p>
 
+    <!-- 照片筛选：已隐藏的照片仍留库留文件，仅前台不展示（含直接 URL） -->
+    <div class="filter-tabs">
+      <button class="tab" :class="{ on: photoFilter === 'all' }" @click="photoFilter = 'all'">全部</button>
+      <button class="tab" :class="{ on: photoFilter === 'hidden' }" @click="photoFilter = 'hidden'">
+        已隐藏<span v-if="hiddenList.length" class="n">{{ hiddenList.length }}</span>
+      </button>
+    </div>
+
+    <template v-if="photoFilter === 'all'">
     <section v-for="g in groups" :key="g.key" class="group">
       <h2>
         {{ g.name }}
@@ -120,7 +129,7 @@
           v-for="(p, i) in g.photos"
           :key="p.id"
           class="card"
-          :class="{ dragging: isDragging(g.key, i), hero: p.isHero, editing: editId === p.id }"
+          :class="{ dragging: isDragging(g.key, i), hero: p.isHero, hidden: p.hidden, editing: editId === p.id }"
           draggable="true"
           @dragstart="onDragStart(g.key, i)"
           @dragover.prevent
@@ -129,6 +138,7 @@
         >
           <span class="handle" title="拖拽排序">⠿</span>
           <span v-if="p.isHero" class="hero-badge" title="摄影页页头大图">头图</span>
+          <span v-if="p.hidden" class="hidden-badge" title="已隐藏，前台不展示（含直接 URL）">已隐藏</span>
           <img :src="`/photos/${p.pid}.jpg`" :alt="p.pid" loading="lazy" @click="previewPid = p.pid" />
           <figcaption>
             <span class="pid">{{ p.pid.toUpperCase() }}</span>
@@ -137,6 +147,7 @@
           </figcaption>
 
           <div v-if="editId !== p.id" class="ops">
+            <button v-if="!p.isHero" class="mini" @click="setHidden(p, !p.hidden)">{{ p.hidden ? '显示' : '隐藏' }}</button>
             <button v-if="!p.isHero" class="mini" @click="setHero(p)" title="设为摄影页页头大图（当前头图会自动取消）">设头图</button>
             <button class="mini" @click="startEdit(p)">编辑</button>
             <button class="mini danger" @click="remove(p)">删除</button>
@@ -161,6 +172,29 @@
         </figure>
       </div>
     </section>
+    </template>
+
+    <!-- 已隐藏：留库留文件，仅前台不展示（含直接 URL） -->
+    <template v-else>
+      <section class="group">
+        <h2>已隐藏 <span class="count">{{ hiddenList.length }} 张 — 点「显示」恢复前台展示</span></h2>
+        <div v-if="!hiddenList.length" class="hint">没有隐藏的照片。在「全部」里点照片的「隐藏」即可把照片留库但不展示。</div>
+        <div class="grid hidden-grid">
+          <figure v-for="p in hiddenList" :key="p.id" class="card hidden">
+            <span class="hidden-badge">已隐藏</span>
+            <img :src="`/photos/${p.pid}.jpg`" :alt="p.pid" loading="lazy" @click="previewPid = p.pid" />
+            <figcaption>
+              <span class="pid">{{ p.pid.toUpperCase() }}</span>
+              <span class="meta">{{ p.groupName }} · {{ p.width }}×{{ p.height }}</span>
+            </figcaption>
+            <div class="ops">
+              <button class="mini" @click="setHidden(p, false)">显示</button>
+              <button class="mini danger" @click="remove(p)">删除</button>
+            </div>
+          </figure>
+        </div>
+      </section>
+    </template>
 
     <!-- 大图预览 -->
     <Teleport to="body">
@@ -188,6 +222,10 @@ const SOURCE_LABELS = {
 }
 
 const groups = ref([])
+const photoFilter = ref('all') // all | hidden
+const hiddenList = computed(() =>
+  groups.value.flatMap((g) => g.photos.map((p) => ({ ...p, groupName: g.key }))).filter((p) => p.hidden)
+)
 const fileRef = ref(null)
 const dzOver = ref(false)
 const queue = ref([])
@@ -533,6 +571,16 @@ async function setHero(p) {
   }
 }
 
+async function setHidden(p, hidden) {
+  try {
+    await api.put(`/api/photos/${p.id}/hidden`, { hidden })
+    p.hidden = hidden
+    say(hidden ? `${p.pid.toUpperCase()} 已隐藏（前台不再展示，文件仍保留）` : `${p.pid.toUpperCase()} 已恢复展示`)
+  } catch (e) {
+    say(e.message, true)
+  }
+}
+
 async function remove(p) {
   if (!confirm(`删除 ${p.pid.toUpperCase()}？压缩文件、原始副本与记录将一并删除，不可恢复。`)) return
   try {
@@ -809,6 +857,36 @@ h1 {
   margin: 0 0 14px;
   background: var(--c-blue-faint);
 }
+.filter-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 14px;
+
+  .tab {
+    border: 1px solid var(--c-line);
+    background: var(--c-bg);
+    padding: 6px 14px;
+    font: 10px var(--font-mono);
+    letter-spacing: 0.1em;
+    color: var(--c-ink-soft);
+    cursor: pointer;
+    transition: 0.15s;
+
+    &:hover {
+      border-color: var(--c-blue);
+      color: var(--c-blue);
+    }
+    &.on {
+      border-color: var(--c-blue);
+      color: var(--c-blue);
+      background: var(--c-blue-soft);
+    }
+    .n {
+      margin-left: 5px;
+      color: var(--c-blue);
+    }
+  }
+}
 .msg {
   font: 11px var(--font-mono);
   letter-spacing: 0.06em;
@@ -865,6 +943,10 @@ h2 {
     border-color: var(--c-blue);
     box-shadow: 0 0 0 1px var(--c-blue);
   }
+  &.hidden {
+    opacity: 0.55;
+    filter: grayscale(0.6);
+  }
   .handle {
     position: absolute;
     top: 6px;
@@ -888,6 +970,17 @@ h2 {
     right: 6px;
     z-index: 2;
     background: var(--c-blue);
+    color: #fff;
+    font: 9px var(--font-mono);
+    letter-spacing: 0.1em;
+    padding: 3px 8px;
+  }
+  .hidden-badge {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    z-index: 2;
+    background: var(--c-ink);
     color: #fff;
     font: 9px var(--font-mono);
     letter-spacing: 0.1em;
