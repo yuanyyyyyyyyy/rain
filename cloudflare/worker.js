@@ -6,22 +6,43 @@
  * 部署见同目录 README.md。
  */
 
-const JSON_HEADERS = {
-  "content-type": "application/json; charset=utf-8",
-  "access-control-allow-origin": "*",
-  "access-control-allow-methods": "GET,POST,PUT,OPTIONS",
-  "access-control-allow-headers": "content-type,authorization",
+/**
+ * CORS 白名单（2026-11-10 安全审计：原 ACAO:* 连管理接口一起放开）。
+ * 浏览器调用方只有：GitHub Pages 前台 + 本机前台/管理台 dev；如换域名/新增端口在此追加。
+ * 非浏览器调用（curl、CI 探针）不携带 Origin，不受影响。
+ */
+const ALLOWED_ORIGINS = new Set([
+  "https://yuanyyyyyyyyy.github.io",
+  "http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:5176",
+  "http://127.0.0.1:5173", "http://127.0.0.1:5174", "http://127.0.0.1:5175", "http://127.0.0.1:5176",
+])
+
+/** 基础安全响应头；CORS 头仅在 Origin 命中白名单时回显 */
+function corsHeaders(request) {
+  const origin = request.headers.get("origin") || ""
+  const h = {
+    "content-type": "application/json; charset=utf-8",
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "no-referrer",
+  }
+  if (ALLOWED_ORIGINS.has(origin)) {
+    h["access-control-allow-origin"] = origin
+    h["access-control-allow-methods"] = "GET,POST,PUT,OPTIONS"
+    h["access-control-allow-headers"] = "content-type,authorization"
+    h.vary = "origin"
+  }
+  return h
 }
 
 /** 每日转发上限：防止刷表单烧穿 Brevo 免费配额（300 封/天，留余量） */
 const NOTIFY_DAILY_CAP = 20
 
-function json(body, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS })
+function json(request, body, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: corsHeaders(request) })
 }
 
-function corsPreflight() {
-  return new Response(null, { status: 204, headers: JSON_HEADERS })
+function corsPreflight(request) {
+  return new Response(null, { status: 204, headers: corsHeaders(request) })
 }
 
 async function sha256hex(s) {
@@ -29,11 +50,35 @@ async function sha256hex(s) {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("")
 }
 
-/** 管理台读接口鉴权；未配置 ADMIN_TOKEN 时一律拒绝（防止字面量 "Bearer undefined" 命中） */
-function authorized(request, env) {
+/**
+ * 管理接口鉴权失败限流（isolate 内存表，单 Worker 足够）：同 IP 1 分钟内 ≥10 次失败 → 429。
+ * 原 401 无任何限流，ADMIN_TOKEN 可被高频爆破。
+ */
+const AUTH_FAIL_LIMIT = 10
+const authFails = new Map() // ipHash -> 失败时间戳数组
+
+function recordAuthFail(ipHash) {
+  const now = Date.now()
+  const list = (authFails.get(ipHash) || []).filter((t) => now - t < 60_000)
+  list.push(now)
+  authFails.set(ipHash, list)
+  if (authFails.size > 10_000) authFails.clear() // 兜底防内存增长
+  return list.length
+}
+
+/** 管理台读接口鉴权；未配置 ADMIN_TOKEN 时一律拒绝（防止字面量 "Bearer undefined" 命中）。
+ *  双方哈希后常数时间比较（2026-11-10 审计：原 === 直比，理论可时序侧信道）。 */
+async function authorized(request, env) {
   if (!env.ADMIN_TOKEN) return false
   const h = request.headers.get("authorization") || ""
-  return h === `Bearer ${env.ADMIN_TOKEN}`
+  if (!h.startsWith("Bearer ")) return false
+  const [got, want] = await Promise.all([
+    sha256hex(h),
+    sha256hex(`Bearer ${env.ADMIN_TOKEN}`),
+  ])
+  let diff = 0
+  for (let i = 0; i < want.length; i++) diff |= got.charCodeAt(i) ^ want.charCodeAt(i)
+  return diff === 0
 }
 
 /** 北京时间日期串（统计口径与国内直觉一致） */
@@ -86,15 +131,18 @@ async function notifyOwnerByEmail(env, name, email, text) {
 
 export default {
   async fetch(request, env, ctx) {
-    if (request.method === "OPTIONS") return corsPreflight()
+    if (request.method === "OPTIONS") return corsPreflight(request)
     const url = new URL(request.url)
     try {
       // 前台沿用 Spring 契约的 /api/ 前缀（src/main.js、ContactSection），
       // 管理台用根路径；入口统一剥前缀，两种形态完全等价。
       if (url.pathname.startsWith("/api/")) url.pathname = url.pathname.slice(4)
 
+      // IP 哈希盐走 secret（wrangler secret put IP_SALT）；未配置时退回旧值保持历史数据可去重。
+      // 2026-11-10 审计：原盐 "rain-salt" 公开在源码里，D1 数据一旦外泄，IPv4 全空间可离线爆破反推访客 IP。
+      const salt = env.IP_SALT || "rain-salt"
       const ip = request.headers.get("cf-connecting-ip") || "0.0.0.0"
-      const ipHash = await sha256hex(ip + "|rain-salt")
+      const ipHash = await sha256hex(ip + "|" + salt)
 
       // ---- 前台埋点（公开）----
       if (request.method === "POST" && url.pathname === "/t") {
@@ -105,11 +153,11 @@ export default {
         const recent = await env.DB.prepare(
           "SELECT COUNT(*) n FROM visits WHERE ip_hash = ? AND minute_bucket = ?"
         ).bind(ipHash, bjMinute()).first()
-        if ((recent?.n ?? 0) >= 20) return json({ error: "too many requests" }, 429)
+        if ((recent?.n ?? 0) >= 20) return json(request, { error: "too many requests" }, 429)
         await env.DB.prepare(
           "INSERT OR IGNORE INTO visits (ip_hash, path, minute_bucket, referrer) VALUES (?, ?, ?, ?)"
         ).bind(ipHash, path, bjMinute(), referrer).run()
-        return new Response(null, { status: 204, headers: JSON_HEADERS })
+        return new Response(null, { status: 204, headers: corsHeaders(request) })
       }
 
       // ---- 联系表单（公开，60s 限频）----
@@ -118,18 +166,25 @@ export default {
         const name = String(body.name || "").trim().slice(0, 80)
         const email = String(body.email || "").trim().slice(0, 200)
         const text = String(body.body || "").trim().slice(0, 4000)
-        if (!name || !email || !text) return json({ error: "请填写完整" }, 400)
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: "邮箱格式不正确" }, 400)
+        if (!name || !email || !text) return json(request, { error: "请填写完整" }, 400)
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json(request, { error: "邮箱格式不正确" }, 400)
         const recent = await env.DB.prepare(
           "SELECT id FROM messages WHERE ip_hash = ? AND created_at > datetime('now', '-60 seconds') LIMIT 1"
         ).bind(ipHash).first()
-        if (recent) return json({ error: "发送过于频繁，请稍后再试" }, 429)
+        if (recent) return json(request, { error: "发送过于频繁，请稍后再试" }, 429)
+        // 同 IP 每日上限（2026-11-10 审计补充）：IP 轮换每分钟 1 条仍可日刷 1440 条灌爆收件箱；10 条/天对真实访客绰绰有余
+        const todayCount = await env.DB.prepare(
+          "SELECT COUNT(*) n FROM messages WHERE ip_hash = ? AND created_at > datetime('now', '-1 day')"
+        ).bind(ipHash).first()
+        if ((todayCount?.n ?? 0) >= 10) {
+          return json(request, { error: "今日提交已达上限，请明天再来或直接发邮件" }, 429)
+        }
         await env.DB.prepare(
           "INSERT INTO messages (name, email, body, ip_hash) VALUES (?, ?, ?, ?)"
         ).bind(name, email, text, ipHash).run()
         // 邮件通知（异步，不阻塞响应；失败不影响入库与 200）
         ctx.waitUntil(notifyOwnerByEmail(env, name, email, text))
-        return json({ ok: true })
+        return json(request, { ok: true })
       }
 
       // ---- 简历下载计数（公开 beacon）：前台点击下载时上报，同 ip+分钟去重 ----
@@ -137,12 +192,17 @@ export default {
         await env.DB.prepare(
           "INSERT OR IGNORE INTO downloads (ip_hash, minute_bucket) VALUES (?, ?)"
         ).bind(ipHash, bjMinute()).run()
-        return new Response(null, { status: 204, headers: JSON_HEADERS })
+        return new Response(null, { status: 204, headers: corsHeaders(request) })
       }
 
-      // ---- 以下为管理台读接口（Bearer ADMIN_TOKEN）----
+      // ---- 以下为管理台读接口（Bearer ADMIN_TOKEN + 失败限流）----
       if (url.pathname.startsWith("/stats") || url.pathname.startsWith("/messages")) {
-        if (!authorized(request, env)) return json({ error: "unauthorized" }, 401)
+        if (!(await authorized(request, env))) {
+          const fails = recordAuthFail(ipHash)
+          if (fails >= AUTH_FAIL_LIMIT) return json(request, { error: "too many attempts" }, 429)
+          return json(request, { error: "unauthorized" }, 401)
+        }
+        authFails.delete(ipHash)
       }
 
       if (request.method === "GET" && url.pathname === "/stats/summary") {
@@ -172,7 +232,7 @@ export default {
           const key = `${String(row.d).slice(0, 4)}-${String(row.d).slice(4, 6)}-${String(row.d).slice(6, 8)}`
           if (key in dailyMap) dailyMap[key] = row.n
         }
-        return json({
+        return json(request, {
           pvToday: pvToday?.n ?? 0,
           pvTotal: pvTotal?.n ?? 0,
           uvTotal: uvTotal?.n ?? 0,
@@ -189,18 +249,18 @@ export default {
           "SELECT id, name, email, body, read, archived, created_at FROM messages " +
           "WHERE email != 'verify@actions.dev' ORDER BY id DESC LIMIT 100"
         ).all()
-        return json(r.results || [])
+        return json(request, r.results || [])
       }
 
       if (request.method === "PUT" && url.pathname === "/messages/read-all") {
         await env.DB.prepare("UPDATE messages SET read = 1 WHERE read = 0").run()
-        return json({ ok: true })
+        return json(request, { ok: true })
       }
 
       if (request.method === "PUT" && url.pathname.startsWith("/messages/")) {
         // 兼容 /messages/:id、/messages/:id/read、/messages/:id/archive 三种形态
         const m = url.pathname.match(/^\/messages\/(\d+)(?:\/(read|archive))?$/)
-        if (!m) return json({ error: "not found" }, 404)
+        if (!m) return json(request, { error: "not found" }, 404)
         if (m[2] === "archive") {
           const body = await request.json().catch(() => ({}))
           const v = body.archived === 0 ? 0 : 1
@@ -208,13 +268,13 @@ export default {
         } else {
           await env.DB.prepare("UPDATE messages SET read = 1 WHERE id = ?").bind(Number(m[1])).run()
         }
-        return json({ ok: true })
+        return json(request, { ok: true })
       }
 
-      return json({ error: "not found" }, 404)
+      return json(request, { error: "not found" }, 404)
     } catch (e) {
       console.error("worker error:", e)
-      return json({ error: "internal error" }, 500)
+      return json(request, { error: "internal error" }, 500)
     }
   },
 }
