@@ -27,7 +27,9 @@
     <div v-for="m in shown" :key="m.id" class="msg" :class="{ unread: !m.read, archived: m.archived }" @click="markRead(m)">
       <div class="msg-head">
         <span class="who">{{ m.name }}</span>
-        <a class="mail" :href="`mailto:${m.email}`">{{ m.email }}</a>
+        <!-- 访客可控 email：仅严格邮箱格式才生成 mailto 链接，防止 javascript: 等伪 scheme 存储型 XSS（2026-11-10 审计） -->
+        <a v-if="isSafeEmail(m.email)" class="mail" :href="`mailto:${m.email}`">{{ m.email }}</a>
+        <span v-else class="mail">{{ m.email }}</span>
         <span class="t">{{ fmtTime(m.createdAt) }}</span>
         <span v-if="!m.read" class="dot">未读</span>
         <span v-if="m.archived && filter !== 'trash'" class="tag">已归档</span>
@@ -66,6 +68,11 @@ const tabs = [
 ]
 
 const isWorker = computed(() => source.value.startsWith('Worker'))
+// 严格邮箱格式：Worker 端校验（^[^\s@]+@[^\s@]+\.[^\s@]+$）拦不住 javascript:alert(1)@x.y 这类伪 scheme，
+// 这里用字符白名单兜底，不匹配就降级为纯文本展示
+function isSafeEmail(email) {
+  return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/.test(email || '')
+}
 const unreadCount = computed(() => list.value.filter((m) => !m.read).length)
 const shown = computed(() => {
   if (filter.value === 'trash') return trash.value
