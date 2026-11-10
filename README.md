@@ -71,17 +71,18 @@ cd admin/ui && npm install && npm run dev # 管理台 :5175
 - **摄影页**：对齐行排版（justified rows，flex-grow = 宽高比）、懒加载、自研 Lightbox（键盘翻页）
 - **后台**：Spring Boot 3.3.5 + Spring Security + JPA + MySQL 8 / Vue 3 管理台
 - **公网收集端**：Cloudflare Worker + D1（埋点 / 联系表单 / 简历下载计数，`/api/` 前缀兼容 Spring 契约）→ `cloudflare/`
-- **发布机制**：管理台编辑内容 → 写回 `src/data/*.js` → 触发构建，前台保持纯静态
+- **发布机制**：管理台编辑内容 → 写回 `content/*.json`（内容层，与 `src/` 代码分离）→ 触发构建，前台保持纯静态
 
 ## 内容维护
 
-改文案 / 数据不需要碰组件：
+改文案 / 数据不需要碰组件，也不需要改代码：内容由管理台发布写入 `content/*.json`，
+`src/data/site.js` / `photos.js` 只是稳定的适配层（把 JSON 映射成具名导出 + 派生逻辑），永远不改。
 
 | 想改什么 | 改哪里 |
 |---|---|
-| 导航、联系方式、首页卡片 | `src/data/site.js`（projects 数组是发布产物，勿手改锚点区） |
-| 项目详情页章节 | 管理台「03 项目内容」（发布自动写回 `src/data/projects/<slug>.js`，勿手改） |
-| 摄影分组、顺序、头图、图注 | 管理台「02 照片管理」上传/排序/设头图（发布自动写回 `src/data/photos.js`） |
+| 导航、联系方式 | `content/site.json`（站点级静态配置，人工维护、受版本控制） |
+| 首页项目卡片、项目详情页章节 | 管理台「03 项目内容」（发布自动写回 `content/projects.json` 与 `content/projects/<slug>.json`） |
+| 摄影分组、顺序、头图、图注 | 管理台「02 照片管理」上传/排序/设头图（发布自动写回 `content/photos.json`） |
 | 主题色 / 字体 / 间距 | `src/styles/tokens.scss` |
 | 管理台密码 / 公网数据源 | 管理台「06 / 设置」改密 + 配置 Worker 地址与 ADMIN_TOKEN |
 

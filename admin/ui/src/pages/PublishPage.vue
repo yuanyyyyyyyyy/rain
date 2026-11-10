@@ -31,7 +31,7 @@
         未发布内容：{{ [...(dirty.files || []), ...(dirty.photosUncommitted ? ['public/photos/（新照片或删除未提交）'] : [])].join('、') || '（检测异常，可尝试重新保存）' }}
       </p>
       <p class="hint">
-        发布将：写回 src/data/photos.js 与项目数据文件（原子替换）→ 触发 npm run build → 记录历史。
+        发布将：写回 content/ 下的 JSON 内容文件（原子替换）→ 触发 npm run build → 记录历史。
         公网地址：<a class="site-link" href="https://yuanyyyyyyyyy.github.io/rain/" target="_blank" rel="noopener">yuanyyyyyyyyy.github.io/rain</a>
       </p>
     </section>

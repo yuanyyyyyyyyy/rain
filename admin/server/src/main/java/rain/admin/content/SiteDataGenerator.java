@@ -1,22 +1,23 @@
 package rain.admin.content;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.Comparator;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
 /**
- * project_detail 表 → 前台 src/data/site.js 的 projects 数组（锚点替换）。
- * 只替换 PROJECTS:AUTO-START/END 标记之间的内容；profile/capabilities/apiBase 等手写区原样保留。
+ * project_detail 表 → 前台 content/projects.json（首页项目卡片数组）。
+ * 内容与代码分层：不再往 site.js 的锚点区间拼 JS 字符串，手写配置独立放 content/site.json，
+ * 本生成器只写纯数据 JSON，单引号/反斜杠/换行由 Jackson 负责，不再需要 escape()。
  * 卡片字段映射：title←headline、period←meta["周期"]、tags←meta["技术栈"]按"·"拆分、
  * metrics←metrics 节前 3 条（label/value）、flagship←首个项目。
  */
 @Component
 public class SiteDataGenerator {
-
-    private static final String START = "// === PROJECTS:AUTO-START ===";
-    private static final String END = "// === PROJECTS:AUTO-END ===";
 
     private final ObjectMapper mapper;
 
@@ -24,63 +25,54 @@ public class SiteDataGenerator {
         this.mapper = mapper;
     }
 
-    /** 生成替换后的 site.js 全文；siteContent 为当前文件内容（提供锚点）。锚点行本身必须保留，否则下次写回失去定位。 */
-    public String generate(List<ProjectDetail> details, String siteContent) throws IOException {
-        int start = siteContent.indexOf(START);
-        int end = siteContent.indexOf(END);
-        if (start < 0 || end < 0 || end < start) {
-            throw new IllegalStateException("site.js 缺少 PROJECTS:AUTO 锚点标记，无法写回");
-        }
-        // 卡片顺序：sortNo 升序（null 靠后）→ id 升序稳定收尾（id null 防御：未持久化实体）；不依赖 DB findAll 的未定义顺序
+    public String generate(List<ProjectDetail> details) {
+        // 卡片顺序：sortNo 升序（null 靠后）→ id 升序稳定收尾；不依赖 DB findAll 的未定义顺序
         List<ProjectDetail> ordered = details.stream()
-                .sorted(java.util.Comparator
-                        .comparing(ProjectDetail::getSortNo, java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
-                        .thenComparing(ProjectDetail::getId, java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
+                .sorted(Comparator
+                        .comparing(ProjectDetail::getSortNo, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(ProjectDetail::getId, Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
-        StringBuilder cards = new StringBuilder();
-        cards.append("export const projects = [\n");
+
+        ArrayNode cards = mapper.createArrayNode();
         for (int i = 0; i < ordered.size(); i++) {
-            cards.append(card(ordered.get(i), i)).append(i < ordered.size() - 1 ? ",\n" : "\n");
-        }
-        cards.append("]");
-        return siteContent.substring(0, start) + START + "\n" + cards
-                + "\n" + siteContent.substring(end);
-    }
+            ProjectDetail d = ordered.get(i);
+            try {
+                ObjectNode c = cards.addObject();
+                JsonNode meta = mapper.readTree(d.getMetaJson());
+                String cardTitle = firstNonBlank(metaValue(meta, "项目名"), d.getHeadline());
+                String period = firstNonBlank(metaValue(meta, "卡片周期"), metaValue(meta, "周期"));
+                String tagsRaw = metaValue(meta, "技术栈");
 
-    private String card(ProjectDetail d, int index) throws IOException {
-        JsonNode meta = mapper.readTree(d.getMetaJson());
-        // 卡片标题/周期用专用 meta 键（与详情页 headline/长周期解耦），缺省回退
-        String cardTitle = firstNonBlank(metaValue(meta, "项目名"), d.getHeadline());
-        String period = firstNonBlank(metaValue(meta, "卡片周期"), metaValue(meta, "周期"));
-        String tagsRaw = metaValue(meta, "技术栈");
-        JsonNode metricsItems = findMetricsItems(d);
-
-        StringBuilder c = new StringBuilder("  {\n");
-        c.append("    slug: '").append(d.getSlug()).append("',\n");
-        c.append("    no: '").append(String.format("%03d", index + 1)).append("',\n");
-        if (index == 0) c.append("    flagship: true,\n");
-        if (!period.isBlank()) c.append("    period: '").append(escape(period)).append("',\n");
-        c.append("    title: '").append(escape(cardTitle)).append("',\n");
-        c.append("    summary:\n      '").append(escape(d.getSummary())).append("',\n");
-        if (!tagsRaw.isBlank()) {
-            StringBuilder tags = new StringBuilder();
-            for (String t : tagsRaw.split("·")) {
-                tags.append("'").append(escape(t.trim().toUpperCase())).append("', ");
+                c.put("slug", d.getSlug());
+                c.put("no", String.format("%03d", i + 1));
+                if (i == 0) c.put("flagship", true);
+                if (!period.isBlank()) c.put("period", period);
+                c.put("title", cardTitle);
+                c.put("summary", d.getSummary());
+                if (!tagsRaw.isBlank()) {
+                    ArrayNode tags = c.putArray("tags");
+                    for (String t : tagsRaw.split("·")) tags.add(t.trim().toUpperCase());
+                }
+                JsonNode metricsItems = findMetricsItems(d);
+                if (metricsItems != null && metricsItems.isArray() && metricsItems.size() > 0) {
+                    ArrayNode ms = c.putArray("metrics");
+                    int n = Math.min(3, metricsItems.size());
+                    for (int j = 0; j < n; j++) {
+                        JsonNode it = metricsItems.get(j);
+                        ObjectNode m = ms.addObject();
+                        m.put("label", it.path("label").asText());
+                        m.put("value", it.path("value").asText());
+                    }
+                }
+            } catch (JsonProcessingException e) {
+                throw new IllegalStateException("项目卡片 JSON 序列化失败：" + d.getSlug(), e);
             }
-            c.append("    tags: [").append(tags.toString().replaceAll(", $", "")).append("],\n");
         }
-        if (metricsItems != null && metricsItems.isArray() && metricsItems.size() > 0) {
-            c.append("    metrics: [\n");
-            int n = Math.min(3, metricsItems.size());
-            for (int j = 0; j < n; j++) {
-                JsonNode it = metricsItems.get(j);
-                c.append("      { label: '").append(escape(it.path("label").asText()))
-                        .append("', value: '").append(escape(it.path("value").asText())).append("' },\n");
-            }
-            c.append("    ],\n");
+        try {
+            return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(cards) + "\n";
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("项目卡片 JSON 序列化失败", e);
         }
-        c.append("  }");
-        return c.toString();
     }
 
     private String metaValue(JsonNode meta, String label) {
@@ -97,7 +89,7 @@ public class SiteDataGenerator {
         return a != null && !a.isBlank() ? a : (b == null ? "" : b);
     }
 
-    private JsonNode findMetricsItems(ProjectDetail d) throws IOException {
+    private JsonNode findMetricsItems(ProjectDetail d) throws JsonProcessingException {
         JsonNode sections = mapper.readTree(d.getSectionsJson());
         for (JsonNode s : sections) {
             if ("metrics".equals(s.path("type").asText())) {
@@ -105,10 +97,5 @@ public class SiteDataGenerator {
             }
         }
         return null;
-    }
-
-    /** 单引号转义（生成 JS 单引号字符串） */
-    private static String escape(String s) {
-        return s.replace("\\", "\\\\").replace("'", "\\'");
     }
 }

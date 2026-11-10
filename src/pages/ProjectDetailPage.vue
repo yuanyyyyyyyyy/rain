@@ -189,12 +189,12 @@ function onShotImgError(e, src) {
   el.src = shotSrc(src)
 }
 
-// 详情数据动态收集：管理台新建的项目（发布后生成 src/data/projects/<slug>.js）自动可渲染，
+// 详情数据动态收集：管理台新建的项目（发布后生成 content/projects/<slug>.json）自动可渲染，
 // 无需改此文件注册（此前静态 import 三个项目，新 slug 只能显示占位骨架）
-const detailModules = import.meta.glob('../data/projects/*.js', { eager: true })
+const detailModules = import.meta.glob('../../content/projects/*.json', { eager: true })
 const details = Object.fromEntries(
   Object.entries(detailModules).map(([path, mod]) => {
-    const slug = path.split('/').pop().replace(/\.js$/, '')
+    const slug = path.split('/').pop().replace(/\.json$/, '')
     const value = mod.default || mod[Object.keys(mod)[0]]
     return [slug, value]
   }),

@@ -122,14 +122,14 @@ public class ContentService {
     }
 
     /** 导出 <slug>.js 全文：头注释原样带回，数据部分 JSON 序列化（合法 JS，中文无转义问题） */
+    /** 详情正文 → 纯数据 JSON（内容层 content/projects/&lt;slug&gt;.json），不再包 JS 模块外壳 */
     public String export(ProjectDetail d) {
-        StringBuilder sb = new StringBuilder("// ============================================\n");
-        if (d.getHeaderNote() != null && !d.getHeaderNote().isBlank()) {
-            for (String line : d.getHeaderNote().split("\n")) sb.append("// ").append(line).append('\n');
-        }
-        sb.append("// ============================================\n\n");
         try {
             ObjectNode detail = mapper.createObjectNode();
+            // 管理台里的备注（原生成物头注释）保留为数据字段：JSON 不支持注释，前台不读此键
+            if (d.getHeaderNote() != null && !d.getHeaderNote().isBlank()) {
+                detail.put("_headerNote", d.getHeaderNote());
+            }
             detail.put("slug", d.getSlug());
             detail.put("headline", d.getHeadline());
             detail.put("summary", d.getSummary());
@@ -138,12 +138,10 @@ public class ContentService {
             // 数组同样换行缩进，贴近手写数据文件的可读风格
             DefaultPrettyPrinter printer = new DefaultPrettyPrinter();
             printer.indentArraysWith(new DefaultIndenter("  ", "\n"));
-            sb.append("export const ").append(d.getSlug()).append("Detail = ")
-                    .append(mapper.writer(printer).writeValueAsString(detail)).append('\n');
+            return mapper.writer(printer).writeValueAsString(detail) + "\n";
         } catch (IOException e) {
             throw new IllegalStateException("导出序列化失败", e);
         }
-        return sb.toString();
     }
 
     /** shots 表单的截图选择器：列 public/screenshots/<slug>/ 下的文件名（目录不存在 = 空数组） */

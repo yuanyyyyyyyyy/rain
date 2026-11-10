@@ -70,10 +70,10 @@ public class PublishService {
             // 1. 生成全部数据文件内容（任一生成失败即中止，不碰现有文件）
             List<String[]> files = buildFiles();
             List<String> slugs = contentService.list().stream().map(ProjectDetail::getSlug).toList();
-            // 清理已删项目的数据文件（DB 之外的 .js）
-            try (var stream = Files.list(projectRoot.resolve("src/data/projects"))) {
-                stream.filter(p -> p.toString().endsWith(".js"))
-                        .filter(p -> slugs.stream().noneMatch(s -> p.getFileName().toString().equals(s + ".js")))
+            // 清理已删项目的数据文件（DB 之外的 .json）
+            try (var stream = Files.list(projectRoot.resolve("content/projects"))) {
+                stream.filter(p -> p.toString().endsWith(".json"))
+                        .filter(p -> slugs.stream().noneMatch(s -> p.getFileName().toString().equals(s + ".json")))
                         .forEach(p -> {
                             try {
                                 Files.deleteIfExists(p);
@@ -149,27 +149,28 @@ public class PublishService {
 
     /** 从 DB 生成全部数据文件内容（[相对路径, 内容]）；publish 与 dirty 共用同一生成源 */
     private List<String[]> buildFiles() throws IOException {
+        // 内容层目录（发布写入纯数据 JSON，不碰 src/）；首次发布或 clone 后目录可能不存在
+        Files.createDirectories(projectRoot.resolve("content/projects"));
         List<Photo> photos = photoRepo.findAllByOrderByGroupNameAscSortNoAscIdAsc();
         Photo hero = photos.stream().filter(p -> Boolean.TRUE.equals(p.getIsHero())).findFirst().orElse(null);
         List<PhotoGroup> groups = photoGroupRepo.findAllByOrderBySortNoAscIdAsc();
-        String photosJs = photoDataGenerator.generate(photos, hero, groups);
+        String photosJson = photoDataGenerator.generate(photos, hero, groups);
         List<ProjectDetail> details = contentService.list();
-        Path siteJsPath = projectRoot.resolve("src/data/site.js");
-        String siteJs = siteDataGenerator.generate(details, Files.readString(siteJsPath));
+        String projectsJson = siteDataGenerator.generate(details);
         List<String[]> files = new ArrayList<>(); // [相对路径, 内容]
-        files.add(new String[] {"src/data/photos.js", photosJs});
-        files.add(new String[] {"src/data/site.js", siteJs});
+        files.add(new String[] {"content/photos.json", photosJson});
+        files.add(new String[] {"content/projects.json", projectsJson});
         // sitemap 随发布自动重写（手工维护曾与项目集脱节）；不带 lastmod 防止跨天误报脏
         files.add(new String[] {"public/sitemap.xml", sitemapGenerator.generate(details)});
         for (ProjectDetail d : details) {
-            files.add(new String[] {"src/data/projects/" + d.getSlug() + ".js", contentService.export(d)});
+            files.add(new String[] {"content/projects/" + d.getSlug() + ".json", contentService.export(d)});
         }
         return files;
     }
 
     /**
      * 脏检测：DB 当前内容若立即发布，会有哪些变化。
-     * dirty_files = 生成内容与磁盘不一致的数据文件；dirty_photos = public/photos 有未提交的新增/删除二进制
+     * dirty_files = 生成内容与磁盘不一致的内容文件；dirty_photos = 内容层/二进制有未提交的新增/删除
      * （此前发布 commit 只带 src/data，新照片公网 404 的根因，任务 C P0 修复后由本接口暴露给 UI 角标）。
      */
     public Map<String, Object> dirty() {
@@ -188,8 +189,9 @@ public class PublishService {
         }
         boolean photosUncommitted = false;
         try {
-            // 照片与截图两个二进制目录都在发布 commit 范围内（任务 C/G），任一有未提交改动都算脏
-            Process p = new ProcessBuilder("git", "status", "--porcelain", "public/photos", "public/screenshots")
+            // 内容层与照片/截图二进制都在发布 commit 范围内，任一有未提交改动都算脏
+            Process p = new ProcessBuilder("git", "status", "--porcelain",
+                            "content", "public/photos", "public/screenshots", "public/sitemap.xml")
                     .directory(projectRoot.toFile()).start();
             String out = new String(p.getInputStream().readAllBytes());
             if (p.waitFor(10, TimeUnit.SECONDS) && !out.isBlank()) photosUncommitted = true;
@@ -246,9 +248,9 @@ public class PublishService {
      */
     private String commitAndSync() throws IOException, InterruptedException {
         StringBuilder out = new StringBuilder();
-        // 任务 C P0：照片/截图二进制必须与数据文件一起进发布 commit，否则新上传照片公网 404；
-        // git add <pathspec> 自带删除语义，删除同样入库
-        run(20, "git", "add", "src/data", "public/photos", "public/screenshots");
+        // 内容层 content/ 与二进制资源一起进发布 commit，否则新上传照片公网 404；
+        // git add <pathspec> 自带删除语义，删除同样入库。sitemap.xml 以前漏在 pathspec 外，一并补上。
+        run(20, "git", "add", "content", "public/photos", "public/screenshots", "public/sitemap.xml");
         Process diff = new ProcessBuilder("git", "diff", "--cached", "--quiet")
                 .directory(projectRoot.toFile()).start();
         boolean hasChanges = diff.waitFor(10, TimeUnit.SECONDS) && diff.exitValue() != 0;

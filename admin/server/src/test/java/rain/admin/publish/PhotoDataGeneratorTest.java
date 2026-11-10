@@ -2,18 +2,21 @@ package rain.admin.publish;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import rain.admin.photo.Photo;
 import rain.admin.photo.PhotoGroup;
 
-/** photos.js 生成的结构与前台排版算法的契约：动态分组、每行 4 条、dims 分数表达式、头图 */
+/** content/photos.json 的结构契约：动态分组、组内顺序、图注原样保留、dims 宽高比、头图与孤儿保护 */
 class PhotoDataGeneratorTest {
 
     private final PhotoDataGenerator gen = new PhotoDataGenerator();
+    private static final ObjectMapper M = new ObjectMapper();
 
-    /** 分组来自库表（管理台可增删改排序），不再写死在生成器里 */
     private static final List<PhotoGroup> GROUPS = List.of(
             group("STREET", "STREET / 街道与城市", "电线、塔架、招牌与夜色里的街区。"),
             group("LIGHT", "LIGHT / 光线与氛围", "黄昏、蓝调时刻、灯与影。"),
@@ -24,7 +27,6 @@ class PhotoDataGeneratorTest {
         g.setGroupKey(key);
         g.setName(name);
         g.setDescription(desc);
-        // 生成器按传入列表顺序输出，不读 sortNo（PublishService 已按 sortNo 排好）
         return g;
     }
 
@@ -39,51 +41,61 @@ class PhotoDataGeneratorTest {
         return p;
     }
 
+    private static JsonNode parse(String json) {
+        try {
+            return M.readTree(json);
+        } catch (Exception e) {
+            throw new AssertionError("生成物不是合法 JSON: " + json, e);
+        }
+    }
+
     @Test
-    void generatesFullFileWithGroupOrderAndFractionDims() {
+    void generatesPureJsonWithGroupOrderAndDims() {
         List<Photo> photos = List.of(
                 photo("p01", "STREET", 1, 1600, 902, LocalDate.of(2023, 7, 24)),
-                photo("p02", "LIGHT", 1, 902, 1600, LocalDate.of(2025, 10, 29)),
-                photo("p03", "DAILY", 1, 1600, 902, null));
+                photo("p02", "LIGHT", 2, 902, 1600, LocalDate.of(2025, 10, 29)),
+                photo("p03", "DAILY", 3, 1600, 902, null));
         Photo hero = photos.get(1);
         hero.setIsHero(true);
-        String js = gen.generate(photos, hero, GROUPS);
+        String json = gen.generate(photos, hero, GROUPS);
 
-        assertTrue(js.startsWith("// ============================================"));
-        assertTrue(js.contains("由 rain 管理台发布生成"));
-        assertTrue(js.contains("export const heroPhoto = { id: 'p02', date: '2025-10-29' }"));
-        assertTrue(js.contains("name: 'STREET / 街道与城市'"));
-        assertTrue(js.contains("name: 'LIGHT / 光线与氛围'"));
-        assertTrue(js.contains("name: 'DAILY / 日常与人'"));
-        // dims 保持 W / H 分数表达式（不是小数）
-        assertTrue(js.contains("p01: 1600 / 902,"));
-        assertTrue(js.contains("p02: 902 / 1600,"));
-        // 空日期输出空串；caption 缺省时不带第三参
-        assertTrue(js.contains("P('p03', ''),"));
-        // 每行 4 条 plates（本例每组 1 条，行首缩进 6 空格）
-        assertTrue(js.contains("      P('p01', '2023-07-24'),"));
-        assertTrue(js.contains("const P = (id, date, cap) => ({ id, date, ...(cap ? { cap } : {}) })"));
-        assertTrue(js.endsWith("export const plateNo = (idx) => `PLATE.${String(idx + 1).padStart(3, '0')}`\n"));
+        JsonNode root = parse(json);
+        assertEquals("p02", root.path("heroPhoto").path("id").asText());
+        assertEquals("2025-10-29", root.path("heroPhoto").path("date").asText());
+        JsonNode groups = root.path("photoGroups");
+        assertEquals(3, groups.size());
+        assertEquals("STREET / 街道与城市", groups.get(0).path("name").asText());
+        assertEquals("LIGHT / 光线与氛围", groups.get(1).path("name").asText());
+        assertEquals("DAILY / 日常与人", groups.get(2).path("name").asText());
+        // plates 是对象数组；无图注时不含 cap 键，空日期是空串
+        assertEquals("p01", groups.get(0).path("plates").get(0).path("id").asText());
+        assertEquals("2023-07-24", groups.get(0).path("plates").get(0).path("date").asText());
+        assertFalse(groups.get(0).path("plates").get(0).has("cap"));
+        assertEquals("", groups.get(2).path("plates").get(0).path("date").asText());
+        // 宽高比是数值（JSON 不能写表达式），与 JS 里的 1600 / 902 等价
+        assertEquals(1600.0 / 902.0, root.path("dims").path("p01").asDouble(), 1e-12);
+        assertEquals(902.0 / 1600.0, root.path("dims").path("p02").asDouble(), 1e-12);
+        assertFalse(json.contains("export const"));
     }
 
     @Test
-    void emitsCaptionWithEscaping() {
+    void keepsCaptionVerbatimWithoutManualEscaping() {
         Photo withCap = photo("p01", "STREET", 1, 1600, 902, LocalDate.of(2023, 7, 24));
-        withCap.setCaption("雨后 It's fine, \\涩谷");
-        String js = gen.generate(List.of(withCap), withCap, GROUPS);
-        assertTrue(js.contains("P('p01', '2023-07-24', '雨后 It\\'s fine, \\\\涩谷'),"));
+        withCap.setCaption("雨后 It's fine, \\涩谷\n第二行");
+        JsonNode root = parse(gen.generate(List.of(withCap), withCap, GROUPS));
+        // 引号、反斜杠、换行由 Jackson 转义，解析后原样回来——不再依赖手写 escape()
+        assertEquals("雨后 It's fine, \\涩谷\n第二行",
+                root.path("photoGroups").get(0).path("plates").get(0).path("cap").asText());
     }
 
     @Test
-    void wrapsFourPlatesPerLine() {
-        var photos = new java.util.ArrayList<Photo>();
-        for (int i = 1; i <= 6; i++) {
-            photos.add(photo("p0" + i, "STREET", i, 1600, 902, null));
-        }
-        String js = gen.generate(photos, photos.get(0), GROUPS);
-        String platesBlock = js.substring(js.indexOf("plates: ["), js.indexOf("],"));
-        long lines = platesBlock.lines().filter(l -> l.contains("P('p")).count();
-        assertEquals(2, lines); // 6 条 → 每行 4 条 → 2 行
+    void platesFollowGroupSortOrder() {
+        var photos = new ArrayList<Photo>();
+        for (int i = 1; i <= 6; i++) photos.add(photo("p0" + i, "STREET", i, 1600, 902, null));
+        JsonNode root = parse(gen.generate(photos, photos.get(0), GROUPS));
+        JsonNode plates = root.path("photoGroups").get(0).path("plates");
+        assertEquals(6, plates.size());
+        for (int i = 0; i < 6; i++) assertEquals("p0" + (i + 1), plates.get(i).path("id").asText());
     }
 
     @Test
@@ -102,10 +114,10 @@ class PhotoDataGeneratorTest {
         custom.setDescription("It's 一段含引号的描述");
         custom.setSortNo(1);
         Photo p = photo("p01", "PORTRAIT", 1, 1600, 902, null);
-        String js = gen.generate(List.of(p), p, List.of(custom));
-        assertTrue(js.contains("name: 'PORTRAIT / 人像'"));
-        assertTrue(js.contains("desc: 'It\\'s 一段含引号的描述'"));
-        assertFalse(js.contains("STREET / 街道与城市"));
+        JsonNode root = parse(gen.generate(List.of(p), p, List.of(custom)));
+        assertEquals("PORTRAIT / 人像", root.path("photoGroups").get(0).path("name").asText());
+        assertEquals("It's 一段含引号的描述", root.path("photoGroups").get(0).path("desc").asText());
+        assertFalse(root.toString().contains("STREET / 街道与城市"));
     }
 
     @Test

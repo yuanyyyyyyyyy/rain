@@ -115,12 +115,15 @@ class ContentServiceTest {
     }
 
     @Test
-    void exportKeepsHeaderNoteAsCommentBlock() throws Exception {
+    void exportIsPureJsonKeepingHeaderNote() throws Exception {
         existing.setSectionsJson("[{\"type\":\"text\",\"kicker\":\"02 / 收获\",\"body\":\"x\"}]");
-        String js = service.export(existing);
-        assertTrue(js.startsWith("// ============================================"));
-        assertTrue(js.contains("// note"));
-        assertTrue(js.contains("export const yunshuDetail ="));
-        assertTrue(js.contains("\"sections\""));
+        String json = service.export(existing);
+        JsonNode root = mapper.readTree(json); // 纯数据 JSON，不再是 JS 模块
+        assertEquals("yunshu", root.path("slug").asText());
+        assertEquals("note", root.path("_headerNote").asText()); // 原头注释改存数据字段
+        assertEquals("h", root.path("headline").asText());
+        assertTrue(root.path("sections").isArray());
+        assertEquals("02 / 收获", root.path("sections").get(0).path("kicker").asText());
+        assertFalse(json.contains("export const"));
     }
 }

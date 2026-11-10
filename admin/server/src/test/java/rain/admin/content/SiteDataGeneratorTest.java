@@ -2,26 +2,17 @@ package rain.admin.content;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/** site.js 写回的契约：锚点行必须保留（否则下次写回失去定位）、卡片字段映射、单引号转义 */
+/** content/projects.json 的契约：卡片字段映射、flagship、metrics 截断、排序、文案原样保留 */
 class SiteDataGeneratorTest {
 
-    private final SiteDataGenerator gen = new SiteDataGenerator(new ObjectMapper());
+    private final ObjectMapper mapper = new ObjectMapper();
+    private final SiteDataGenerator gen = new SiteDataGenerator(mapper);
 
-    private static final String SITE = """
-            // 手写区
-            export const apiBase = ''
-            // === PROJECTS:AUTO-START ===（自动生成区）
-            export const projects = [
-              { slug: 'old', no: '001' },
-            ]
-            // === PROJECTS:AUTO-END ===
-            export const capabilities = []""";
-
-    private ProjectDetail detail(String slug, String headline, String metaJson, String sectionsJson) throws Exception {
+    private ProjectDetail detail(String slug, String headline, String metaJson, String sectionsJson) {
         ProjectDetail d = new ProjectDetail();
         d.setSlug(slug);
         d.setHeadline(headline);
@@ -31,36 +22,40 @@ class SiteDataGeneratorTest {
         return d;
     }
 
+    private JsonNode parse(String json) throws Exception {
+        return mapper.readTree(json);
+    }
+
     @Test
-    void replacesBetweenAnchorsAndKeepsBothMarkerLines() throws Exception {
-        String out = gen.generate(java.util.List.of(
-                detail("yunshu", "云枢", "[[\"周期\",\"2026.06 — 至今\"],[\"技术栈\",\"Java · Redis\"]]", "[]")), SITE);
-        assertTrue(out.contains("PROJECTS:AUTO-START"));
-        assertTrue(out.contains("PROJECTS:AUTO-END"));
-        assertFalse(out.contains("'old'"));
-        assertTrue(out.indexOf("PROJECTS:AUTO-START") < out.indexOf("export const projects"));
-        // 锚点外的手写区原样保留
-        assertTrue(out.contains("export const apiBase = ''"));
-        assertTrue(out.contains("export const capabilities = []"));
-        // 连续两次生成结果一致（锚点不丢失 → 可重复写回）
-        String again = gen.generate(java.util.List.of(
-                detail("yunshu", "云枢", "[[\"周期\",\"2026.06 — 至今\"],[\"技术栈\",\"Java · Redis\"]]", "[]")), out);
-        assertEquals(out, again);
+    void generatesJsonArrayWithCardMapping() throws Exception {
+        JsonNode arr = parse(gen.generate(java.util.List.of(
+                detail("yunshu", "云枢", "[[\"周期\",\"2026.06 — 至今\"],[\"技术栈\",\"Java · Redis\"]]", "[]"))));
+        assertTrue(arr.isArray());
+        assertEquals(1, arr.size());
+        JsonNode c = arr.get(0);
+        assertEquals("yunshu", c.path("slug").asText());
+        assertEquals("001", c.path("no").asText());
+        assertTrue(c.path("flagship").asBoolean());
+        assertEquals("云枢", c.path("title").asText()); // 无「项目名」时回退 headline
+        assertEquals("2026.06 — 至今", c.path("period").asText());
+        assertEquals("summary of yunshu", c.path("summary").asText());
+        assertEquals("JAVA", c.path("tags").get(0).asText());
+        assertEquals("REDIS", c.path("tags").get(1).asText());
     }
 
     @Test
     void cardMappingUsesDedicatedMetaKeysWithFallback() throws Exception {
-        // 项目名/卡片周期缺省时回退 headline/周期
-        String out = gen.generate(java.util.List.of(
-                detail("a", "详情大标题A", "[[\"周期\",\"2026.06 — 至今\"],[\"技术栈\",\"Java\"]]", "[]")), SITE);
-        assertTrue(out.contains("title: '详情大标题A'"));
-        assertTrue(out.contains("period: '2026.06 — 至今'"));
+        JsonNode a = parse(gen.generate(java.util.List.of(
+                detail("a", "详情大标题A", "[[\"周期\",\"2026.06 — 至今\"],[\"技术栈\",\"Java\"]]", "[]")))).get(0);
+        assertEquals("详情大标题A", a.path("title").asText());
+        assertEquals("2026.06 — 至今", a.path("period").asText());
 
-        String out2 = gen.generate(java.util.List.of(
-                detail("b", "详情大标题B", "[[\"项目名\",\"卡片名B\"],[\"卡片周期\",\"2025\"],[\"周期\",\"长周期B\"],[\"技术栈\",\"Go\"]]", "[]")), SITE);
-        assertTrue(out2.contains("title: '卡片名B'"));
-        assertTrue(out2.contains("period: '2025'"));
-        assertFalse(out2.contains("长周期B"));
+        JsonNode b = parse(gen.generate(java.util.List.of(
+                detail("b", "详情大标题B",
+                        "[[\"项目名\",\"卡片名B\"],[\"卡片周期\",\"2025\"],[\"周期\",\"长周期B\"],[\"技术栈\",\"Go\"]]", "[]")))).get(0);
+        assertEquals("卡片名B", b.path("title").asText());
+        assertEquals("2025", b.path("period").asText());
+        assertFalse(b.toString().contains("长周期B"));
     }
 
     @Test
@@ -68,39 +63,43 @@ class SiteDataGeneratorTest {
         String metrics = """
                 [{"type":"metrics","kicker":"05 / 性能","items":[
                    {"label":"P99","value":"0.148s"},{"label":"吞吐","value":"2480"},{"label":"均响","value":"19.7ms"},{"label":"多余","value":"x"}]}]""";
-        String out = gen.generate(java.util.List.of(
+        JsonNode arr = parse(gen.generate(java.util.List.of(
                 detail("a", "A", "[[\"技术栈\",\"JAVA · REDIS\"]]", metrics),
-                detail("b", "B", "[]", "[]")), SITE);
-        assertTrue(out.contains("flagship: true"));
-        assertTrue(out.contains("{ label: 'P99', value: '0.148s' }"));
-        assertFalse(out.contains("多余")); // 只取前 3 条
-        assertTrue(out.contains("tags: ['JAVA', 'REDIS']"));
+                detail("b", "B", "[]", "[]"))));
+        assertTrue(arr.get(0).path("flagship").asBoolean());
+        assertFalse(arr.get(1).has("flagship"));
+        JsonNode ms = arr.get(0).path("metrics");
+        assertEquals(3, ms.size()); // 只取前 3 条
+        assertEquals("P99", ms.get(0).path("label").asText());
+        assertEquals("0.148s", ms.get(0).path("value").asText());
+        assertFalse(ms.toString().contains("多余"));
+        assertEquals("JAVA", arr.get(0).path("tags").get(0).asText());
     }
 
     @Test
-    void escapesSingleQuotesAndBackslashes() throws Exception {
-        String out = gen.generate(java.util.List.of(
-                detail("a", "Little's Law 与 \\ 反斜杠", "[]", "[]")), SITE);
-        assertTrue(out.contains("Little\\'s Law 与 \\\\ 反斜杠"));
+    void keepsQuotesAndBackslashesVerbatim() throws Exception {
+        JsonNode arr = parse(gen.generate(java.util.List.of(
+                detail("a", "Little's Law 与 \\ 反斜杠", "[]", "[]"))));
+        // JSON 不需要手写单引号转义，解析后文案原样回来
+        assertEquals("Little's Law 与 \\ 反斜杠", arr.get(0).path("title").asText());
     }
 
     @Test
     void ordersBySortNoWithNullsLast() throws Exception {
-        ProjectDetail a = detail("a", "A-null", "[]", "[]");       // null 排最后
+        ProjectDetail a = detail("a", "A-null", "[]", "[]");
         ProjectDetail b = detail("b", "B-2", "[]", "[]"); b.setSortNo(2);
         ProjectDetail c = detail("c", "C-1", "[]", "[]"); c.setSortNo(1);
-        // 入参故意乱序（b, a, c）→ 产出按 sortNo：c(1), b(2), a(null)
-        String out = gen.generate(java.util.List.of(b, a, c), SITE);
-        assertTrue(out.indexOf("C-1") < out.indexOf("B-2"));
-        assertTrue(out.indexOf("B-2") < out.indexOf("A-null"));
-        // flagship 恒为排序后的第一个（c）
-        int cPos = out.indexOf("'c'");
-        assertTrue(out.indexOf("flagship: true") > cPos && out.indexOf("flagship: true") < out.indexOf("'b'"));
+        JsonNode arr = parse(gen.generate(java.util.List.of(b, a, c)));
+        assertEquals("c", arr.get(0).path("slug").asText());
+        assertEquals("b", arr.get(1).path("slug").asText());
+        assertEquals("a", arr.get(2).path("slug").asText());
+        assertTrue(arr.get(0).path("flagship").asBoolean());
     }
 
     @Test
-    void refusesWithoutAnchors() {
-        assertThrows(IllegalStateException.class,
-                () -> gen.generate(java.util.List.of(), "export const projects = []"));
+    void emptyListProducesEmptyArray() throws Exception {
+        JsonNode arr = parse(gen.generate(java.util.List.of()));
+        assertTrue(arr.isArray());
+        assertEquals(0, arr.size());
     }
 }

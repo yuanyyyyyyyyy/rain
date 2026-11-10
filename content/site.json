@@ -1,0 +1,28 @@
+{
+  "apiBase": "https://rain-collector.yuanyyyyyyyyy.workers.dev",
+  "profile": {
+    "name": "陈雨",
+    "school": "九江学院 · 软件工程 · 2027 届",
+    "focus": "关注 Java 后端开发、AI 应用与系统工程。",
+    "location": "JIUJIANG, CHINA",
+    "email": "m13237097902@163.com",
+    "github": ""
+  },
+  "capabilities": [
+    {
+      "num": "01 — ENGINEERING",
+      "title": "Backend Development",
+      "desc": "Java · Spring Boot · Spring Cloud\nMySQL · Redis · RocketMQ"
+    },
+    {
+      "num": "02 — INTELLIGENCE",
+      "title": "AI Application",
+      "desc": "LLM · RAG · Function Calling\nLangChain · Spring AI"
+    },
+    {
+      "num": "03 — INTEGRATION",
+      "title": "Product Thinking",
+      "desc": "需求拆解 · 系统集成\n方案验证 · 工程协作"
+    }
+  ]
+}

@@ -9,7 +9,7 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
-    // dev 期埋点/表单经 src/data/site.js 的 apiBase 直连线上 Worker；
+    // dev 期埋点/表单经 content/site.json 的 apiBase 直连线上 Worker；
     // 如需本地 Spring 联调：把 apiBase 改为 ''，并在下方临时加 proxy '/api' → 'http://localhost:8081'
   }
 })
