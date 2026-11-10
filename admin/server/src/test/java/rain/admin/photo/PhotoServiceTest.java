@@ -24,15 +24,18 @@ class PhotoServiceTest {
 
     private PhotoService service;
     private PhotoRepo repo;
+    private PhotoGroupRepo groupRepo;
     private Path publicDir;
     private Path origDir;
 
     @BeforeEach
     void setUp() {
         repo = Mockito.mock(PhotoRepo.class);
+        groupRepo = Mockito.mock(PhotoGroupRepo.class);
+        when(groupRepo.existsByGroupKey(anyString())).thenReturn(true);
         publicDir = tmp.resolve("public");
         origDir = tmp.resolve("orig");
-        service = new PhotoService(repo, publicDir.toString(), origDir.toString());
+        service = new PhotoService(repo, groupRepo, publicDir.toString(), origDir.toString());
     }
 
     private static byte[] jpegBytes(int w, int h) throws Exception {
@@ -52,10 +55,11 @@ class PhotoServiceTest {
 
     @Test
     void rejectsInvalidGroup() throws Exception {
+        when(groupRepo.existsByGroupKey("FOO")).thenReturn(false);
         MockMultipartFile file = new MockMultipartFile("file", "x.jpg", "image/jpeg", jpegBytes(100, 80));
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
                 () -> service.upload(file, null, "FOO"));
-        assertTrue(e.getMessage().contains("STREET / LIGHT / DAILY"));
+        assertTrue(e.getMessage().contains("分组不存在"));
     }
 
     @Test
@@ -186,5 +190,63 @@ class PhotoServiceTest {
         // 空白图注 = 清空
         Photo cleared = service.update(1L, new PhotoService.UpdateParams("LIGHT", null, 2, "   "));
         assertNull(cleared.getCaption());
+    }
+
+    @Test
+    void uploadStoresAllDateCandidatesAndHonorsRequestedSource() throws Exception {
+        when(repo.maxPidNumber()).thenReturn(0);
+        when(repo.maxSortNoInGroup(anyString())).thenReturn(0);
+        when(repo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        PhotoService.UploadResult r = service.upload(
+                new MockMultipartFile("file", "plain.jpg", "image/jpeg", jpegBytes(100, 80)),
+                null, "STREET", "upload");
+        assertEquals(java.time.LocalDate.now(), r.photo().getShotDate());
+        assertEquals("upload", r.dateSource());
+        assertEquals(java.time.LocalDate.now(), r.photo().getUploadDate());
+        assertNotNull(r.photo().getFileDate()); // 文件时间候选也留库
+        assertNull(r.photo().getExifDate());    // 该夹具无 EXIF
+    }
+
+    @Test
+    void uploadRejectsUnavailableSourceAndCleansOrphans() throws Exception {
+        when(repo.maxPidNumber()).thenReturn(0);
+        when(repo.maxSortNoInGroup(anyString())).thenReturn(0);
+        when(repo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        MockMultipartFile file = new MockMultipartFile("file", "plain.jpg", "image/jpeg", jpegBytes(100, 80));
+
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> service.upload(file, null, "STREET", "exif"));
+        assertTrue(e.getMessage().contains("没有 EXIF"));
+        assertTrue(Files.notExists(publicDir.resolve("photos").resolve("p01.jpg")));
+    }
+
+    @Test
+    void updateSwitchesSourceWithoutLosingCandidates() {
+        Photo p = new Photo();
+        p.setPid("p01");
+        p.setGroupName("STREET");
+        p.setSortNo(1);
+        p.setWidth(100);
+        p.setHeight(80);
+        p.setExifDate(java.time.LocalDate.of(2024, 5, 1));
+        p.setFileDate(java.time.LocalDate.of(2026, 1, 1));
+        p.setUploadDate(java.time.LocalDate.of(2026, 1, 2));
+        p.setManualDate(java.time.LocalDate.of(2020, 1, 1));
+        p.setShotDate(p.getFileDate());
+        p.setDateSource("mtime");
+        when(repo.findById(1L)).thenReturn(java.util.Optional.of(p));
+        when(repo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Photo exif = service.update(1L,
+                new PhotoService.UpdateParams("STREET", null, 1, null, "exif"));
+        assertEquals(java.time.LocalDate.of(2024, 5, 1), exif.getShotDate());
+        assertEquals("exif", exif.getDateSource());
+        assertEquals(java.time.LocalDate.of(2026, 1, 1), exif.getFileDate()); // 候选不丢
+
+        Photo manual = service.update(1L,
+                new PhotoService.UpdateParams("STREET", java.time.LocalDate.of(2019, 3, 3), 1, null, "manual"));
+        assertEquals(java.time.LocalDate.of(2019, 3, 3), manual.getShotDate());
+        assertEquals("manual", manual.getDateSource());
     }
 }

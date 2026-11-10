@@ -47,6 +47,27 @@ public class Photo {
     @Column(length = 255)
     private String caption;
 
+    // ---- 日期来源（2026-11-10）：四种候选都留库，切换来源时重算 shotDate ----
+    /** EXIF DateTimeOriginal 拍摄日期 */
+    @Column(name = "exif_date")
+    private LocalDate exifDate;
+
+    /** 原始文件修改时间（无 EXIF 时的旧兜底） */
+    @Column(name = "file_date")
+    private LocalDate fileDate;
+
+    /** 上传当天 */
+    @Column(name = "upload_date")
+    private LocalDate uploadDate;
+
+    /** 手填日期 */
+    @Column(name = "manual_date")
+    private LocalDate manualDate;
+
+    /** 当前采用的来源：exif / mtime / upload / manual；legacy = 存量照片未标注来源 */
+    @Column(name = "date_source", length = 16)
+    private String dateSource;
+
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -69,5 +90,15 @@ public class Photo {
     public void setIsHero(Boolean isHero) { this.isHero = isHero; }
     public String getCaption() { return caption; }
     public void setCaption(String caption) { this.caption = caption; }
+    public LocalDate getExifDate() { return exifDate; }
+    public void setExifDate(LocalDate exifDate) { this.exifDate = exifDate; }
+    public LocalDate getFileDate() { return fileDate; }
+    public void setFileDate(LocalDate fileDate) { this.fileDate = fileDate; }
+    public LocalDate getUploadDate() { return uploadDate; }
+    public void setUploadDate(LocalDate uploadDate) { this.uploadDate = uploadDate; }
+    public LocalDate getManualDate() { return manualDate; }
+    public void setManualDate(LocalDate manualDate) { this.manualDate = manualDate; }
+    public String getDateSource() { return dateSource; }
+    public void setDateSource(String dateSource) { this.dateSource = dateSource; }
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

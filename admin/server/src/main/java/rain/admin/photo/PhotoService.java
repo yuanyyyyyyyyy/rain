@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import javax.imageio.ImageIO;
 import net.coobird.thumbnailator.Thumbnails;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,16 +34,17 @@ public class PhotoService {
     // q85（2026-11-10 由 q70 提升）：q70 单张仅 0.5~1.7 bit/px，夜景渐变出现明显涂抹与色带。
     // 该档只服务窄视口 / 小屏，桌面由前台 srcset 直接取 1600px 原图，画质不打折。
     private static final double THUMB_QUALITY = 0.85;
-    private static final Set<String> GROUPS = Set.of("STREET", "LIGHT", "DAILY");
 
     private final PhotoRepo repo;
+    private final PhotoGroupRepo groupRepo;
     private final Path frontendPublicDir;
     private final Path origDir;
 
-    public PhotoService(PhotoRepo repo,
+    public PhotoService(PhotoRepo repo, PhotoGroupRepo groupRepo,
                         @Value("${app.storage.frontend-public-dir}") String frontendPublicDir,
                         @Value("${app.storage.orig-dir}") String origDir) {
         this.repo = repo;
+        this.groupRepo = groupRepo;
         this.frontendPublicDir = Path.of(frontendPublicDir);
         this.origDir = Path.of(origDir);
     }
@@ -52,14 +52,21 @@ public class PhotoService {
     /** dateSource：manual（表单手填）/ exif（EXIF 拍摄时间）/ mtime（文件修改时间兜底） */
     public record UploadResult(Photo photo, String dateSource) {}
 
-    @Transactional
+    /** 兼容旧调用（未指定来源 = 自动识别链：手填 > EXIF > 文件时间） */
     public UploadResult upload(MultipartFile file, LocalDate shotDate, String groupName) throws IOException {
+        return upload(file, shotDate, groupName, null);
+    }
+
+    /**
+     * dateSource：auto（默认）/ exif / mtime / upload / manual。
+     * 四种候选日期都落库，之后可在管理台编辑里随时切换来源，切换时重算 shotDate。
+     */
+    @Transactional
+    public UploadResult upload(MultipartFile file, LocalDate shotDate, String groupName, String dateSource) throws IOException {
         if (file == null || file.isEmpty()) throw new IllegalArgumentException("文件为空");
         String ct = file.getContentType();
         if (ct == null || !ct.startsWith("image/")) throw new IllegalArgumentException("仅支持图片文件");
-        if (groupName == null || !GROUPS.contains(groupName)) {
-            throw new IllegalArgumentException("分组必须是 STREET / LIGHT / DAILY 之一");
-        }
+        requireGroup(groupName);
 
         // pid：现有最大编号 +1（单管理员场景无并发竞争）
         String pid = String.format("p%02d", repo.maxPidNumber() + 1);
@@ -98,22 +105,43 @@ public class PhotoService {
 
         // 入库；失败则删除两个文件补偿
         try {
-            LocalDate date;
+            LocalDate exifDate = exif.shotDate();
+            LocalDate fileDate = lastModifiedLocalDate(origTarget);
+            LocalDate uploadDate = LocalDate.now();
+            LocalDate manualDate = shotDate;
+
             String source;
-            if (shotDate != null) {
-                date = shotDate;
+            LocalDate date;
+            String requested = dateSource == null ? "auto" : dateSource.trim().toLowerCase();
+            if (!"auto".equals(requested)) {
+                source = requested;
+                date = switch (requested) {
+                    case "exif" -> requireCandidate(exifDate, "该照片没有 EXIF 拍摄日期，请改选其它来源");
+                    case "mtime" -> requireCandidate(fileDate, "该照片没有可用的文件时间，请改选其它来源");
+                    case "upload" -> uploadDate;
+                    case "manual" -> requireCandidate(manualDate, "手填来源需要填写日期");
+                    default -> throw new IllegalArgumentException("未知日期来源：" + requested);
+                };
+            } else if (manualDate != null) {
+                date = manualDate;
                 source = "manual";
-            } else if (exif.shotDate() != null) {
-                date = exif.shotDate();
+            } else if (exifDate != null) {
+                date = exifDate;
                 source = "exif";
             } else {
-                date = lastModifiedLocalDate(origTarget);
+                date = fileDate;
                 source = "mtime";
             }
+
             Photo p = new Photo();
             p.setPid(pid);
             p.setOrigName(file.getOriginalFilename());
             p.setShotDate(date);
+            p.setExifDate(exifDate);
+            p.setFileDate(fileDate);
+            p.setUploadDate(uploadDate);
+            p.setManualDate(manualDate);
+            p.setDateSource(source);
             p.setWidth(scaled.getWidth());
             p.setHeight(scaled.getHeight());
             p.setGroupName(groupName);
@@ -136,6 +164,18 @@ public class PhotoService {
         } catch (IOException e) {
             return LocalDate.now();
         }
+    }
+
+    /** 分组改为查库：管理台可自由增删改排序，后端不再写死三组 */
+    private void requireGroup(String groupKey) {
+        if (groupKey == null || !groupRepo.existsByGroupKey(groupKey)) {
+            throw new IllegalArgumentException("分组不存在：" + groupKey + "（请在「分组管理」中先创建）");
+        }
+    }
+
+    private static LocalDate requireCandidate(LocalDate value, String message) {
+        if (value == null) throw new IllegalArgumentException(message);
+        return value;
     }
 
     /** 缩略图输出目录：public/photos/thumbs/（在发布 commit 范围 public/photos 内） */
@@ -199,20 +239,43 @@ public class PhotoService {
         return dst;
     }
 
-    public record UpdateParams(String groupName, LocalDate shotDate, Integer sortNo, String caption) {}
+    public record UpdateParams(String groupName, LocalDate shotDate, Integer sortNo, String caption, String dateSource) {
+        /** 兼容旧调用：不带来源时按原有「直接改日期」语义处理 */
+        public UpdateParams(String groupName, LocalDate shotDate, Integer sortNo, String caption) {
+            this(groupName, shotDate, sortNo, caption, null);
+        }
+    }
 
-    /** 更新分组/日期/排序号/图注（管理台表单总是提交全字段；shotDate 可空 = 清空日期） */
+    /** 更新分组/日期来源/排序号/图注（管理台表单总是提交全字段） */
     @Transactional
     public Photo update(Long id, UpdateParams params) {
         Photo p = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("照片不存在"));
-        if (params.groupName() == null || !GROUPS.contains(params.groupName())) {
-            throw new IllegalArgumentException("分组必须是 STREET / LIGHT / DAILY 之一");
-        }
+        requireGroup(params.groupName());
         if (params.sortNo() == null || params.sortNo() < 0) throw new IllegalArgumentException("排序号无效");
         p.setGroupName(params.groupName());
-        p.setShotDate(params.shotDate());
         p.setSortNo(params.sortNo());
         p.setCaption(params.caption() == null || params.caption().isBlank() ? null : params.caption().trim());
+
+        String src = params.dateSource();
+        if (src == null || src.isBlank()) {
+            // 旧调用：直接改展示日期，并记为手填，保证后续仍可切来源
+            p.setShotDate(params.shotDate());
+            p.setManualDate(params.shotDate());
+            p.setDateSource("manual");
+        } else {
+            String s = src.trim().toLowerCase();
+            LocalDate date = switch (s) {
+                case "exif" -> requireCandidate(p.getExifDate(), "该照片没有 EXIF 拍摄日期");
+                case "mtime" -> requireCandidate(p.getFileDate(), "该照片没有文件时间记录");
+                case "upload" -> requireCandidate(p.getUploadDate(), "该照片没有上传日期记录");
+                case "manual" -> requireCandidate(params.shotDate(), "手填来源需要填写日期");
+                case "legacy" -> p.getShotDate(); // 存量照片：保持原记录
+                default -> throw new IllegalArgumentException("未知日期来源：" + s);
+            };
+            if ("manual".equals(s)) p.setManualDate(params.shotDate());
+            p.setShotDate(date);
+            p.setDateSource(s);
+        }
         return repo.save(p);
     }
 
@@ -231,9 +294,7 @@ public class PhotoService {
         for (ReorderItem it : items) {
             Photo p = repo.findById(it.id()).orElseThrow(() -> new IllegalArgumentException("照片不存在：" + it.id()));
             if (it.groupName() != null) {
-                if (!GROUPS.contains(it.groupName())) {
-                    throw new IllegalArgumentException("分组必须是 STREET / LIGHT / DAILY 之一");
-                }
+                requireGroup(it.groupName());
                 p.setGroupName(it.groupName());
             }
             p.setSortNo(it.sortNo());

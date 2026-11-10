@@ -16,6 +16,8 @@ import rain.admin.content.ContentService;
 import rain.admin.content.ProjectDetail;
 import rain.admin.content.SiteDataGenerator;
 import rain.admin.photo.Photo;
+import rain.admin.photo.PhotoGroup;
+import rain.admin.photo.PhotoGroupRepo;
 import rain.admin.photo.PhotoRepo;
 
 /**
@@ -28,6 +30,7 @@ public class PublishService {
     private static final long BUILD_TIMEOUT_SECONDS = 300;
 
     private final PhotoRepo photoRepo;
+    private final PhotoGroupRepo photoGroupRepo;
     private final PhotoDataGenerator photoDataGenerator;
     private final ContentService contentService;
     private final SiteDataGenerator siteDataGenerator;
@@ -36,11 +39,13 @@ public class PublishService {
     private final Path projectRoot;
     private final AtomicBoolean running = new AtomicBoolean(false);
 
-    public PublishService(PhotoRepo photoRepo, PhotoDataGenerator photoDataGenerator,
+    public PublishService(PhotoRepo photoRepo, PhotoGroupRepo photoGroupRepo,
+                          PhotoDataGenerator photoDataGenerator,
                           ContentService contentService, SiteDataGenerator siteDataGenerator,
                           SitemapGenerator sitemapGenerator, PublishLogRepo logRepo,
                           @Value("${app.storage.frontend-public-dir}") String frontendPublicDir) {
         this.photoRepo = photoRepo;
+        this.photoGroupRepo = photoGroupRepo;
         this.photoDataGenerator = photoDataGenerator;
         this.contentService = contentService;
         this.siteDataGenerator = siteDataGenerator;
@@ -146,7 +151,8 @@ public class PublishService {
     private List<String[]> buildFiles() throws IOException {
         List<Photo> photos = photoRepo.findAllByOrderByGroupNameAscSortNoAscIdAsc();
         Photo hero = photos.stream().filter(p -> Boolean.TRUE.equals(p.getIsHero())).findFirst().orElse(null);
-        String photosJs = photoDataGenerator.generate(photos, hero);
+        List<PhotoGroup> groups = photoGroupRepo.findAllByOrderBySortNoAscIdAsc();
+        String photosJs = photoDataGenerator.generate(photos, hero, groups);
         List<ProjectDetail> details = contentService.list();
         Path siteJsPath = projectRoot.resolve("src/data/site.js");
         String siteJs = siteDataGenerator.generate(details, Files.readString(siteJsPath));

@@ -25,13 +25,14 @@ public class PhotoController {
         return repo.findAllByOrderByGroupNameAscSortNoAscIdAsc();
     }
 
-    /** 上传：multipart 字段 file + groupName（必填）+ shotDate（可空；缺省时自动提取 EXIF→mtime） */
+    /** 上传：file + groupName（必填）+ shotDate / dateSource（可空，缺省走自动识别链） */
     @PostMapping("/upload")
     public ResponseEntity<?> upload(@RequestParam("file") MultipartFile file,
                                     @RequestParam("groupName") String groupName,
-                                    @RequestParam(value = "shotDate", required = false) LocalDate shotDate) {
+                                    @RequestParam(value = "shotDate", required = false) LocalDate shotDate,
+                                    @RequestParam(value = "dateSource", required = false) String dateSource) {
         try {
-            PhotoService.UploadResult r = service.upload(file, shotDate, groupName);
+            PhotoService.UploadResult r = service.upload(file, shotDate, groupName, dateSource);
             Photo p = r.photo();
             Map<String, Object> body = new java.util.LinkedHashMap<>();
             body.put("id", p.getId());

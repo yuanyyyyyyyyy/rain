@@ -21,6 +21,41 @@
       <div class="dz-sub">拍摄日期自动从 EXIF 识别，识别不到用文件时间兜底；上传后仍可逐张修改</div>
     </div>
 
+    <!-- 分组管理：可增删、改名、改描述、排序；发布后同步到网站摄影页 -->
+    <details class="group-admin">
+      <summary>
+        分组管理 · {{ groups.length }} 组
+        <span>展示名 / 描述 / 顺序都会同步到网站摄影页；非空分组需先移走照片才能删除</span>
+      </summary>
+      <div class="ga-body">
+        <div v-for="(g, i) in groups" :key="g.id" class="ga-row">
+          <template v-if="gaEditId === g.id">
+            <span class="ga-key">{{ g.groupKey }}</span>
+            <input v-model="gaName" placeholder="显示名" />
+            <input v-model="gaDesc" placeholder="分组描述" />
+            <button class="mini" @click="saveGroup(g)">保存</button>
+            <button class="mini" @click="gaEditId = null">取消</button>
+          </template>
+          <template v-else>
+            <span class="ga-key">{{ g.groupKey }}</span>
+            <span class="ga-name">{{ g.name }}</span>
+            <span class="ga-desc">{{ g.description || '—' }}</span>
+            <span class="ga-count">{{ g.photos.length }} 张</span>
+            <button class="mini" :disabled="i === 0" title="上移" @click="moveGroup(i, -1)">↑</button>
+            <button class="mini" :disabled="i === groups.length - 1" title="下移" @click="moveGroup(i, 1)">↓</button>
+            <button class="mini" @click="startGroupEdit(g)">编辑</button>
+            <button class="mini danger" @click="removeGroup(g)">删除</button>
+          </template>
+        </div>
+        <div class="ga-row ga-new">
+          <input v-model="newKey" placeholder="KEY（大写）" class="ga-key" />
+          <input v-model="newName" placeholder="显示名，如 PORTRAIT / 人像" />
+          <input v-model="newDesc" placeholder="分组描述（可空）" />
+          <button class="mini" :disabled="!newKey || !newName" @click="createGroup">新建分组</button>
+        </div>
+      </div>
+    </details>
+
     <!-- 待上传队列：逐张可改分组/日期 -->
     <div v-if="queue.length" class="queue">
       <div class="queue-head">
@@ -28,7 +63,7 @@
         <div class="bulk">
           <span>全部应用为</span>
           <select v-model="bulkGroup" @change="applyBulkGroup">
-            <option v-for="g in GROUP_DEFS" :key="g.key" :value="g.key">{{ g.key }} / {{ g.label }}</option>
+            <option v-for="g in groups" :key="g.key" :value="g.key">{{ g.name }}</option>
           </select>
           <button :disabled="uploading || !queue.some((i) => i.status === 'pending' || i.status === 'fail')" @click="doUpload">
             {{ uploading ? '上传中…' : `上传 ${queue.filter((i) => i.status !== 'done').length} 张` }}
@@ -39,12 +74,19 @@
         <div v-for="(it, idx) in queue" :key="it.uid" class="qcard" :class="it.status">
           <img :src="it.url" :alt="it.name" />
           <select v-model="it.group" :disabled="it.status === 'uploading' || it.status === 'done'">
-            <option v-for="g in GROUP_DEFS" :key="g.key" :value="g.key">{{ g.key }}</option>
+            <option v-for="g in groups" :key="g.key" :value="g.key">{{ g.key }}</option>
           </select>
-          <input v-model="it.date" type="date" :disabled="it.status === 'uploading' || it.status === 'done'" @input="it.touched = true" />
+          <select v-model="it.source" :disabled="it.status === 'uploading' || it.status === 'done'" @change="onSourceChange(it)">
+            <option value="auto">自动识别</option>
+            <option value="exif" :disabled="!it.exifDate">EXIF 拍摄{{ it.exifDate ? '' : '（无）' }}</option>
+            <option value="mtime">文件时间</option>
+            <option value="upload">上传日期</option>
+            <option value="manual">手填</option>
+          </select>
+          <input v-model="it.date" type="date" :disabled="it.status === 'uploading' || it.status === 'done'" @input="onDateInput(it)" />
           <div class="q-status">
             <template v-if="it.status === 'done'">
-              <span class="ok">✓ {{ it.result?.dateSource === 'exif' ? 'EXIF' : it.result?.dateSource === 'manual' ? '手填' : '文件时间' }} · {{ it.result?.shotDate || '—' }}</span>
+              <span class="ok">✓ {{ SOURCE_LABELS[it.result?.dateSource] || '已识别' }} · {{ it.result?.shotDate || '—' }}</span>
             </template>
             <template v-else-if="it.status === 'fail'">
               <span class="err">{{ it.error }}</span>
@@ -70,7 +112,7 @@
 
     <section v-for="g in groups" :key="g.key" class="group">
       <h2>
-        {{ g.key }} / {{ g.label }}
+        {{ g.name }}
         <span class="count">{{ g.photos.length }} 张 — 拖拽卡片排序（可跨组） · 点击图片看大图</span>
       </h2>
       <div class="grid" @dragover.prevent @drop="onDropAppend(g.key, $event)">
@@ -90,7 +132,7 @@
           <img :src="`/photos/${p.pid}.jpg`" :alt="p.pid" loading="lazy" @click="previewPid = p.pid" />
           <figcaption>
             <span class="pid">{{ p.pid.toUpperCase() }}</span>
-            <span class="meta">{{ p.width }}×{{ p.height }} · {{ p.shotDate || '日期—' }}</span>
+            <span class="meta">{{ p.width }}×{{ p.height }} · {{ p.shotDate || '日期—' }}<template v-if="p.dateSource"> · {{ SOURCE_LABELS[p.dateSource] || p.dateSource }}</template></span>
             <span v-if="p.caption" class="cap" :title="p.caption">{{ p.caption }}</span>
           </figcaption>
 
@@ -101,9 +143,16 @@
           </div>
 
           <div v-else class="edit">
-            <input v-model="editDate" type="date" />
+            <select v-model="editSource" @change="onEditSourceChange(p)">
+              <option v-if="p.dateSource === 'legacy'" value="legacy">原记录（未标注）</option>
+              <option value="exif" :disabled="!p.exifDate">EXIF 拍摄</option>
+              <option value="mtime" :disabled="!p.fileDate">文件时间</option>
+              <option value="upload" :disabled="!p.uploadDate">上传日期</option>
+              <option value="manual">手填</option>
+            </select>
+            <input v-model="editDate" type="date" :disabled="editSource !== 'manual'" />
             <select v-model="editGroup">
-              <option v-for="gd in GROUP_DEFS" :key="gd.key" :value="gd.key">{{ gd.key }}</option>
+              <option v-for="gd in groups" :key="gd.key" :value="gd.key">{{ gd.key }}</option>
             </select>
             <input v-model="editCaption" type="text" placeholder="图注（可空）" class="cap-input" />
             <button class="mini" @click="saveEdit(p)">保存</button>
@@ -129,11 +178,14 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import exifr from 'exifr'
 import { api } from '../api.js'
 
-const GROUP_DEFS = [
-  { key: 'STREET', label: '街道与城市' },
-  { key: 'LIGHT', label: '光线与氛围' },
-  { key: 'DAILY', label: '日常与人' },
-]
+const SOURCE_LABELS = {
+  auto: '自动识别',
+  exif: 'EXIF 拍摄',
+  mtime: '文件时间',
+  upload: '上传日期',
+  manual: '手填',
+  legacy: '原记录（未标注）',
+}
 
 const groups = ref([])
 const fileRef = ref(null)
@@ -147,7 +199,16 @@ const editId = ref(null)
 const editDate = ref('')
 const editGroup = ref('')
 const editCaption = ref('')
+const editSource = ref('')
 const previewPid = ref(null)
+
+// 分组管理表单
+const gaEditId = ref(null)
+const gaName = ref('')
+const gaDesc = ref('')
+const newKey = ref('')
+const newName = ref('')
+const newDesc = ref('')
 
 let uidSeq = 0
 
@@ -161,15 +222,82 @@ function applyBulkGroup() {
   })
 }
 
-function groupPhotos(list) {
-  groups.value = GROUP_DEFS.map((g) => ({
-    ...g,
-    photos: list.filter((p) => p.groupName === g.key),
+async function load() {
+  const [photos, defs] = await Promise.all([
+    api.get('/api/photos'),
+    api.get('/api/photo-groups'),
+  ])
+  groups.value = defs.map((d) => ({
+    ...d,
+    key: d.groupKey,
+    photos: photos.filter((p) => p.groupName === d.groupKey),
   }))
+  if (!groups.value.some((g) => g.key === bulkGroup.value)) {
+    bulkGroup.value = groups.value[0]?.key || ''
+  }
 }
 
-async function load() {
-  groupPhotos(await api.get('/api/photos'))
+// ---- 分组管理（发布后才会同步到网站） ----
+
+function startGroupEdit(g) {
+  gaEditId.value = g.id
+  gaName.value = g.name
+  gaDesc.value = g.description || ''
+}
+
+async function saveGroup(g) {
+  try {
+    await api.put(`/api/photo-groups/${g.id}`, { name: gaName.value, description: gaDesc.value || null })
+    gaEditId.value = null
+    say(`分组「${g.groupKey}」已更新，点「04 发布」后同步到网站`)
+    await load()
+    await checkPublishDirty()
+  } catch (e) {
+    say(e.message, true)
+  }
+}
+
+async function createGroup() {
+  try {
+    await api.post('/api/photo-groups', {
+      groupKey: newKey.value,
+      name: newName.value,
+      description: newDesc.value || null,
+    })
+    newKey.value = newName.value = newDesc.value = ''
+    say('分组已创建，可在上传队列里选用；发布后同步到网站')
+    await load()
+    await checkPublishDirty()
+  } catch (e) {
+    say(e.message, true)
+  }
+}
+
+async function removeGroup(g) {
+  if (!confirm(`删除分组「${g.name}」？组内必须已清空照片。`)) return
+  try {
+    await api.delete(`/api/photo-groups/${g.id}`)
+    say(`分组「${g.groupKey}」已删除`)
+    await load()
+    await checkPublishDirty()
+  } catch (e) {
+    say(e.message, true)
+  }
+}
+
+async function moveGroup(i, delta) {
+  const arr = groups.value.slice()
+  const j = i + delta
+  if (j < 0 || j >= arr.length) return
+  ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  try {
+    await api.put('/api/photo-groups/reorder', arr.map((g) => g.id))
+    await load()
+    say('分组顺序已保存，发布后同步到网站')
+    await checkPublishDirty()
+  } catch (e) {
+    say(e.message, true)
+  }
 }
 
 function say(text, isErr = false) {
@@ -198,8 +326,9 @@ function addFiles(files) {
       file,
       url: URL.createObjectURL(file),
       name: file.name,
-      group: 'STREET',
+      group: bulkGroup.value || groups.value[0]?.key || '',
       date: '',
+      source: 'auto',
       touched: false,
       exifDate: false,
       status: 'pending',
@@ -269,16 +398,28 @@ async function uploadOne(it) {
     const fd = new FormData()
     fd.append('file', it.file)
     fd.append('groupName', it.group)
-    if (it.date && it.touched) fd.append('shotDate', it.date)
+    fd.append('dateSource', it.source)
+    if (it.date && (it.touched || it.source === 'manual')) fd.append('shotDate', it.date)
     const r = await api.postForm('/api/photos/upload', fd)
     it.result = r
     it.status = 'done'
-    // 未手动改过日期 → 展示后端权威解析结果（来源标注）
-    if (!it.touched) it.date = r.shotDate || ''
+    // 自动识别时用后端权威结果回填日期（来源标注一并返回）
+    if (!it.touched && it.source === 'auto') it.date = r.shotDate || ''
   } catch (e) {
     it.status = 'fail'
     it.error = e.message
   }
+}
+
+/** 手动改日期 = 切到「手填」，避免用户以为改的是别的来源的值 */
+function onDateInput(it) {
+  it.touched = true
+  it.source = 'manual'
+}
+
+/** 切回自动/其它来源时，之前的手填值不再随表单提交 */
+function onSourceChange(it) {
+  if (it.source !== 'manual') it.touched = false
 }
 
 async function clearQueue() {
@@ -348,6 +489,19 @@ function startEdit(p) {
   editDate.value = p.shotDate || ''
   editGroup.value = p.groupName
   editCaption.value = p.caption || ''
+  editSource.value = p.dateSource || 'legacy'
+}
+
+/** 切换来源时把日期框填成该来源的候选值；只有「手填」允许继续编辑 */
+function onEditSourceChange(p) {
+  const candidates = {
+    exif: p.exifDate,
+    mtime: p.fileDate,
+    upload: p.uploadDate,
+    manual: p.manualDate,
+    legacy: p.shotDate,
+  }
+  editDate.value = candidates[editSource.value] || ''
 }
 
 async function saveEdit(p) {
@@ -355,6 +509,7 @@ async function saveEdit(p) {
     await api.put(`/api/photos/${p.id}`, {
       groupName: editGroup.value,
       shotDate: editDate.value || null,
+      dateSource: editSource.value,
       sortNo: p.sortNo,
       caption: editCaption.value || null,
     })
@@ -452,6 +607,68 @@ h1 {
     letter-spacing: 0.06em;
     color: var(--c-muted);
     margin-top: 6px;
+  }
+}
+.group-admin {
+  border: 1px solid var(--c-line);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+
+  summary {
+    cursor: pointer;
+    font: 11px var(--font-mono);
+    letter-spacing: 0.08em;
+    color: var(--c-blue);
+
+    span {
+      color: var(--c-muted);
+      margin-left: 10px;
+      letter-spacing: 0.02em;
+    }
+  }
+  .ga-body {
+    margin-top: 12px;
+    display: grid;
+    gap: 8px;
+  }
+  .ga-row {
+    display: grid;
+    grid-template-columns: 90px minmax(140px, 1.1fr) minmax(160px, 1.6fr) 54px repeat(4, auto);
+    gap: 8px;
+    align-items: center;
+    font: 11px var(--font-sans);
+    color: var(--c-ink-soft);
+
+    .ga-key {
+      font: 10px var(--font-mono);
+      color: var(--c-blue);
+      letter-spacing: 0.08em;
+    }
+    .ga-desc,
+    .ga-count {
+      color: var(--c-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    input {
+      border: 1px solid var(--c-line);
+      font: 11px var(--font-sans);
+      padding: 5px 7px;
+      min-width: 0;
+    }
+    .mini {
+      padding: 4px 8px;
+      &:disabled {
+        opacity: 0.35;
+        cursor: default;
+      }
+    }
+    &.ga-new {
+      border-top: 1px dashed var(--c-line);
+      padding-top: 10px;
+      margin-top: 2px;
+    }
   }
 }
 .queue {

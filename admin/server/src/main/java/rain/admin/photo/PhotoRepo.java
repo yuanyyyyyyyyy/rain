@@ -22,4 +22,7 @@ public interface PhotoRepo extends JpaRepository<Photo, Long> {
 
     /** 当前头图（0 或 1 条） */
     List<Photo> findByIsHeroTrue();
+
+    /** 分组内照片数（删除分组前校验，非空分组禁止删除） */
+    long countByGroupName(String groupName);
 }
