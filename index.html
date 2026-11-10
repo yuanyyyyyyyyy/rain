@@ -17,6 +17,11 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="https://yuanyyyyyyyyy.github.io/rain/og-image.png" />
     <link rel="canonical" href="https://yuanyyyyyyyyy.github.io/rain/" />
+    <!-- CSP（2026-11-10 审计加固；GitHub Pages 无法配响应头，用 meta 兜底）：
+         站点零内联脚本、字体/图片全自托管，唯一外呼是 Worker 收集端。
+         style-src 需 'unsafe-inline'（Vue 的 :style 内联样式属性）；dev 的 HMR ws 与 'self' 同源，现代浏览器可匹配。 -->
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://rain-collector.yuanyyyyyyyyy.workers.dev; object-src 'none'; base-uri 'self'; form-action 'self'" />
     <title>YUAN — Personal Archive</title>
   </head>
   <body>
