@@ -2,7 +2,7 @@
   "_headerNote" : "IntelNexus — 详情页正文数据\n证据基线：D:/Improve/Project/Python/IntelNexus/（素材回答-IntelNexus-20261108.md 逐条核对）\n诚实口径：功能代码以 AI 生成为主，本人负责需求定义/方案决策/集成/验证/迭代；无 QPS 类实测数据故不写",
   "slug" : "intelnexus",
   "headline" : "让每一条情报结论都可评分、可溯源、可核验",
-  "summary" : "AI 驱动的多源网络情报分析平台：以可信度评估、证据链追溯与冲突检测为分析内核，上接 15 类信息源的多源采集，下接定时简报与可导出的结构化报告。我独立完成需求定义、方案决策、集成与验证；功能代码以 AI 生成为主，由我负责设计约束、逐轮审查、测试与迭代修正。",
+  "summary" : "AI 驱动的多源网络情报分析平台：以可信度评估、证据链追溯与冲突检测为分析内核，上接 12 类信息源 · 15+ 检索渠道的多源采集，下接定时简报与可导出的结构化报告。我独立完成需求定义、方案决策、集成与验证；功能代码以 AI 生成为主，由我负责设计约束、逐轮审查、测试与迭代修正。",
   "meta" : [
     [
       "角色",
@@ -42,15 +42,33 @@
     {
       "type" : "shots",
       "kicker" : "03 / INTERFACE",
-      "wanted" : [
-        "多源采集 / 源管理界面（15 类源）",
-        "情报条目可信度评分详情（M-SCORE 四因子）",
-        "冲突检测结果页（CIDAR 三类冲突标注）",
-        "证据链 / 快照追溯视图",
-        "知识图谱可视化（pyvis 关系网络）",
-        "定时简报 / 导出报告样例"
-      ],
-      "pending" : true
+      "note" : "截图为真实界面实录（历史检索快照回放），未做样式美化；数据为公开网络信息演示。",
+      "items" : [
+        {
+          "src" : "screenshots/intelnexus/intelnexus-01.png",
+          "caption" : "多源采集与源健康 — 今日概览 + 数据源状态面板：12 类信息源 10 正常 · 2 待复核，失败源附原因明细（OTX 未配 key / TechCommunity 超时）"
+        },
+        {
+          "src" : "screenshots/intelnexus/intelnexus-02.png",
+          "caption" : "来源可信度评估（M-SCORE）— 平均可信度 0.47 等指标卡 + 五维雷达 + 逐源评分表（等级与原因；四因子加权在引擎侧计算）"
+        },
+        {
+          "src" : "screenshots/intelnexus/intelnexus-03.png",
+          "caption" : "跨源信息冲突（CIDAR）— temporal 冲突逐条展开：严重度 0.90，双方原始表述并排呈现，不做抹平"
+        },
+        {
+          "src" : "screenshots/intelnexus/intelnexus-04.png",
+          "caption" : "证据链追溯（STREAM）— 证据覆盖率 80%，claim 逐条带置信度 0.40–0.81 与查看原文链接"
+        },
+        {
+          "src" : "screenshots/intelnexus/intelnexus-05.png",
+          "caption" : "知识图谱 — pyvis 交互画布：81 节点 / 311 边，实体带语义标签，按主聚类取景"
+        },
+        {
+          "src" : "screenshots/intelnexus/intelnexus-06.png",
+          "caption" : "定时简报 — 简报中心历史记录：《AI 与网络安全每日情报简报》预览头部（概览 / 来源可信度概览 / 分级摘要）"
+        }
+      ]
     },
     {
       "type" : "impl",
