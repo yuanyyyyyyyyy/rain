@@ -228,34 +228,50 @@ public class PublishService {
     }
 
     /**
-     * 4. 数据文件 commit + 推送公网。推送策略：git push（代理开启时最快）失败则回退
-     * tools/sync-via-api.py（API 通道，github.com 被墙时可用）。失败不阻断发布，日志留痕可手动补。
+     * 4. 数据文件 commit + 推送公网。
+     *
+     * 并发护栏（2026-11-10 事故）：多会话/多工作区同时发布时，push 会因非快进被拒，
+     * 旧逻辑随即回退 tools/sync-via-api.py 全量重放本地历史，把线上整棵树回退成旧版；
+     * 且异常被本方法吞掉，publish() 仍把 publish_log 记成 SUCCESS，界面显示「发布成功」。
+     *
+     * 现在：推送前先 fetch + 确认 origin/main 是 HEAD 的祖先（即本次发布基于同一基线），
+     * 不满足就直接抛出，由 publish() 记为 FAILED 并把原因返回给管理台。
+     * 只有基线一致、push 因网络失败时才允许 API 续传兜底（脚本 v3 会再做 message+tree 双匹配校验）。
      */
-    private String commitAndSync() {
+    private String commitAndSync() throws IOException, InterruptedException {
         StringBuilder out = new StringBuilder();
+        // 任务 C P0：照片/截图二进制必须与数据文件一起进发布 commit，否则新上传照片公网 404；
+        // git add <pathspec> 自带删除语义，删除同样入库
+        run(20, "git", "add", "src/data", "public/photos", "public/screenshots");
+        Process diff = new ProcessBuilder("git", "diff", "--cached", "--quiet")
+                .directory(projectRoot.toFile()).start();
+        boolean hasChanges = diff.waitFor(10, TimeUnit.SECONDS) && diff.exitValue() != 0;
+        if (hasChanges) {
+            run(20, "git", "commit", "-m", "publish: content update from admin console");
+            out.append("数据文件已 commit；");
+        } else {
+            out.append("数据无变化，跳过 commit；");
+        }
+
+        run(30, "git", "fetch", "origin");
+        Process ancestor = new ProcessBuilder("git", "merge-base", "--is-ancestor", "origin/main", "HEAD")
+                .directory(projectRoot.toFile()).start();
+        boolean basedOnRemote = ancestor.waitFor(20, TimeUnit.SECONDS) && ancestor.exitValue() == 0;
+        if (!basedOnRemote) {
+            throw new IllegalStateException(
+                    "检测到本地 main 与 origin/main 分叉（另一个会话已发布过内容）。为保护线上，已中止推送。"
+                            + "请先执行 git fetch origin && git pull --rebase origin main，"
+                            + "确认 git merge-base --is-ancestor origin/main HEAD 通过后再发布；"
+                            + "禁止 force push，也不要运行 tools/sync-via-api.py 做全量重放。");
+        }
+
         try {
-            // 任务 C P0：照片/截图二进制必须与数据文件一起进发布 commit，否则新上传照片公网 404；
-            // git add <pathspec> 自带删除语义，删除同样入库
-            run(20, "git", "add", "src/data", "public/photos", "public/screenshots");
-            Process diff = new ProcessBuilder("git", "diff", "--cached", "--quiet")
-                    .directory(projectRoot.toFile()).start();
-            boolean hasChanges = diff.waitFor(10, TimeUnit.SECONDS) && diff.exitValue() != 0;
-            if (hasChanges) {
-                run(20, "git", "commit", "-m", "publish: content update from admin console");
-                out.append("数据文件已 commit；");
-            } else {
-                out.append("数据无变化，跳过 commit；");
-            }
-            try {
-                run(20, "git", "push");
-                out.append("git push 成功（公网约 1 分钟后更新）");
-            } catch (Exception proxyDown) {
-                run(240, "python", "tools/sync-via-api.py");
-                out.append("经 API 通道推送成功（公网约 1 分钟后更新）");
-            }
-        } catch (Exception e) {
-            out.append("推送失败，可稍后手动执行 python tools/sync-via-api.py：")
-                    .append(e.getMessage() == null ? e.toString() : e.getMessage());
+            // 显式写 origin HEAD:main，不依赖本地 upstream 配置（本机曾未配置，push 无条件失败）
+            run(120, "git", "push", "origin", "HEAD:main");
+            out.append("git push 成功（公网约 1 分钟后更新）");
+        } catch (Exception networkDown) {
+            run(240, "python", "tools/sync-via-api.py");
+            out.append("经 API 通道推送成功（公网约 1 分钟后更新）");
         }
         return out.toString();
     }
