@@ -21,7 +21,7 @@
   "no" : "002",
   "period" : "2026",
   "title" : "IntelNexus",
-  "summary" : "AI 驱动的多源网络情报分析平台：以可信度评估、证据链追溯与冲突检测为分析内核，上接 15 类信息源的多源采集，下接定时简报与可导出的结构化报告。我独立完成需求定义、方案决策、集成与验证；功能代码以 AI 生成为主，由我负责设计约束、逐轮审查、测试与迭代修正。",
+  "summary" : "AI 驱动的多源网络情报分析平台：以可信度评估、证据链追溯与冲突检测为分析内核，上接 12 类信息源 · 15+ 检索渠道的多源采集，下接定时简报与可导出的结构化报告。我独立完成需求定义、方案决策、集成与验证；功能代码以 AI 生成为主，由我负责设计约束、逐轮审查、测试与迭代修正。",
   "tags" : [ "PYTHON", "LANGCHAIN", "STREAMLIT", "NETWORKX/PYVIS", "SENTENCE-TRANSFORMERS" ],
   "metrics" : [ {
     "label" : "测试文件",
@@ -71,7 +71,17 @@
   "slug" : "shimmer",
   "no" : "005",
   "period" : "COURSE PROJECT",
-  "title" : "照片光影展示平台",
-  "summary" : "围绕照片展示与视觉表达构建的全栈项目，结合图片处理、对象存储与 AI 能力。",
-  "tags" : [ "VUE 3", "EXPRESS", "MYSQL", "AI API" ]
+  "title" : "光影手记 Shimmer",
+  "summary" : "围绕照片「存储 → 理解 → 叙事」的全栈课程项目：Sharp 双档图片管线 + EXIF 自动提取，AI 元数据生成 / 智能搜索 / 故事线叙事（每条链路带超时与降级，上传永不因 AI 失败而中断），暗房印相与四模板分享卡片。AI 接入层为 OpenAI 兼容的多提供商设计，适配智谱 GLM-4；演示环境使用本地 Ollama 视觉模型。",
+  "tags" : [ "VUE 3", "PINIA", "EXPRESS", "MYSQL 8", "SHARP", "OLLAMA / GLM-4" ],
+  "metrics" : [ {
+    "label" : "数据表",
+    "value" : "13 个"
+  }, {
+    "label" : "API 端点",
+    "value" : "80 个"
+  }, {
+    "label" : "AI 能力",
+    "value" : "6 类"
+  } ]
 } ]
