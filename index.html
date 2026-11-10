@@ -20,9 +20,9 @@
     <!-- CSP（2026-11-10 审计加固；GitHub Pages 无法配响应头，用 meta 兜底）：
          站点零内联脚本、字体/图片全自托管，唯一外呼是 Worker 收集端。
          challenges.cloudflare.com 为 Turnstile 预留（灰度：site.json 的 turnstileSiteKey 非空才实际加载其脚本与 iframe）。
-         style-src 需 'unsafe-inline'（Vue 的 :style 内联样式属性）；dev 的 HMR ws 与 'self' 同源，现代浏览器可匹配。 -->
+         style-src 需 'unsafe-inline'（Vue 的 :style 内联样式属性）；dev 的 HMR ws 与 'self' 同源，现代浏览器可匹配。font-src 需 data:（Vite 对 <4KB 字体子集做内联，@fontsource 小包走 data: URL，2026-11-11 实测被 CSP 拦截）。 -->
     <meta http-equiv="Content-Security-Policy"
-          content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://rain-collector.yuanyyyyyyyyy.workers.dev https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'" />
+          content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://rain-collector.yuanyyyyyyyyy.workers.dev https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'" />
     <title>YUAN — Personal Archive</title>
   </head>
   <body>
