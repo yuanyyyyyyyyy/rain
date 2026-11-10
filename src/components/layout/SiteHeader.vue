@@ -5,10 +5,10 @@
         <span class="mark">Y</span>
         <span>YUAN / PERSONAL ARCHIVE</span>
       </RouterLink>
-      <button class="menu-btn" aria-label="打开菜单" @click="open = !open">
+      <button class="menu-btn" :aria-expanded="open" :aria-label="open ? '关闭菜单' : '打开菜单'" @click="open = !open" @keydown.esc="open = false">
         <span></span><span></span>
       </button>
-      <nav :class="{ open }">
+      <nav :class="{ open }" @keydown.esc="open = false">
         <RouterLink to="/#work" @click="open = false">WORK</RouterLink>
         <RouterLink to="/#capabilities" @click="open = false">CAPABILITIES</RouterLink>
         <RouterLink to="/about" @click="open = false">ABOUT</RouterLink>

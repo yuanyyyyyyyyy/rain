@@ -69,7 +69,7 @@
       <!-- Visual Notes：通往摄影页 -->
       <RouterLink class="project" to="/photography">
         <div class="ptop">
-          <span>PERSONAL / 004</span>
+          <span>PERSONAL / {{ String(projects.length + 1).padStart(3, '0') }}</span>
           <span>ONGOING</span>
         </div>
         <h3>Visual Notes</h3>
@@ -88,7 +88,8 @@
 import { computed } from 'vue'
 import { projects } from '../../data/site.js'
 
-const flagship = computed(() => projects.find((p) => p.flagship))
+// 兜底：数据漏标 flagship 时退回首个项目，避免模板直接抛错白屏
+const flagship = computed(() => projects.find((p) => p.flagship) || projects[0])
 const regular = computed(() => projects.filter((p) => !p.flagship))
 </script>
 

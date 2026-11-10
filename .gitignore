@@ -3,7 +3,6 @@ node_modules/
 dist/
 target/
 
-# 本地环境与凭据（application-local.yml 双保险，勿删）
 *.local
 .env
 .env.*
@@ -25,3 +24,11 @@ Desktop.ini
 
 # ZCode 会话工作目录
 .zcode/
+
+.dev.vars
+
+# wrangler 本地状态
+.wrangler/
+
+# 其他 agent 会话的工作目录
+.workbuddy/

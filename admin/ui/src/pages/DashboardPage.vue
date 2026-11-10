@@ -7,9 +7,14 @@
       <div class="card"><span class="v">{{ s.pvToday ?? '—' }}</span><span class="k">今日 PV</span></div>
       <div class="card"><span class="v">{{ s.pvTotal ?? '—' }}</span><span class="k">累计 PV</span></div>
       <div class="card"><span class="v">{{ s.uvTotal ?? '—' }}</span><span class="k">访客数（IP 去重）</span></div>
+      <div v-if="s.resumeDownloads != null" class="card"><span class="v">{{ s.resumeDownloads }}</span><span class="k">简历下载</span></div>
       <div class="card"><span class="v">{{ photos ?? '—' }}</span><span class="k">照片</span></div>
       <div class="card"><span class="v">{{ projects ?? '—' }}</span><span class="k">项目</span></div>
     </div>
+    <p class="gloss">
+      PV：页面访问次数（同一访客同一页面 1 分钟内去重，不是原始刷新数）；访客数：全部历史去重访客（按 IP 哈希，NAT 出口多人会计 1）。
+      时间口径为北京时间。<span v-if="!s.resumeDownloads">简历下载 / 来源统计仅公网数据源（Worker）可用，当前读本地后端不可见。</span>
+    </p>
 
     <section class="panel">
       <h2>近 14 天访问趋势</h2>
@@ -30,6 +35,15 @@
         <span class="pv">{{ t.pv }} PV</span>
       </div>
     </section>
+
+    <section class="panel">
+      <h2>来源 Top 5（referrer）</h2>
+      <p v-if="!refs.length" class="hint">{{ s.resumeDownloads != null ? '暂无外部来源数据。' : '仅公网数据源（Worker）提供来源统计，当前读本地后端。' }}</p>
+      <div v-for="(n, r) in refs" :key="r" class="top-row">
+        <span class="path">{{ r }}</span>
+        <span class="pv">{{ n }}</span>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -46,6 +60,7 @@ const days = computed(() =>
   Object.entries(s.value.daily14 || {}).map(([day, pv]) => ({ day, pv })))
 const top = computed(() =>
   Object.entries(s.value.topPaths || {}).map(([path, pv]) => ({ path, pv })))
+const refs = computed(() => s.value.topReferrers || {})
 
 const barH = (pv) => {
   const max = Math.max(...days.value.map((d) => d.pv), 1)
@@ -53,21 +68,30 @@ const barH = (pv) => {
 }
 
 onMounted(async () => {
-  // 数据源：配置了 Worker（公网 collector）优先，失败回退本地 Spring
+  // 数据源：配置了 Worker（公网 collector）优先，失败回退本地 Spring；
+  // 双源都失败时保持空态（显示 —），不产生 unhandled rejection
   const { base } = getWorkerCfg()
-  if (base) {
-    try {
-      s.value = await workerGet('/stats/summary')
-      source.value = 'Worker（公网）'
-    } catch {
+  try {
+    if (base) {
+      try {
+        s.value = await workerGet('/stats/summary')
+        source.value = 'Worker（公网）'
+      } catch {
+        s.value = await api.get('/api/stats/summary')
+      }
+    } else {
       s.value = await api.get('/api/stats/summary')
     }
-  } else {
-    s.value = await api.get('/api/stats/summary')
+  } catch {
+    source.value = '本地（不可用）'
   }
-  const st = await api.get('/api/publish/status')
-  photos.value = st.photos
-  projects.value = st.projects
+  try {
+    const st = await api.get('/api/publish/status')
+    photos.value = st.photos
+    projects.value = st.projects
+  } catch {
+    /* 照片/项目计数保持 — */
+  }
 })
 </script>
 
@@ -105,6 +129,11 @@ h1 {
     letter-spacing: 0.1em;
     color: var(--c-muted);
   }
+}
+.gloss {
+  font: 10px/1.9 var(--font-mono);
+  color: var(--c-muted);
+  margin: 0 0 18px;
 }
 .panel {
   border: 1px solid var(--c-line);

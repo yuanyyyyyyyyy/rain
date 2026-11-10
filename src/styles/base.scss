@@ -8,6 +8,20 @@ html {
   scroll-behavior: smooth;
 }
 
+// 动效敏感用户：关闭平滑滚动与过渡动画
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
 body {
   margin: 0;
   background: var(--c-bg);

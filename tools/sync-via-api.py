@@ -41,33 +41,39 @@ def ls_tree(sha):
         cur[path] = (mode, bsha)
     return cur
 
-lines = git_text("log", "--reverse", "--format=%H%x01%an%x01%ae%x01%aI%x01%s").strip().split("\n")
-commits = [l.split("\x01", 4) for l in lines]
+lines = git_text("log", "--reverse", "--format=%H%x01%T%x01%an%x01%ae%x01%aI%x01%s").strip().split("\n")
+# [sha, tree, an, ae, ad, msg]：tree sha 由文件内容决定，重放（内容等价）后保持一致
+commits = [l.split("\x01", 5) for l in lines]
 
 br = api("GET", "/branches/main")
 parent_sha = br["commit"]["sha"]
 parent_tree = br["commit"]["commit"]["tree"]["sha"]
 head_msg = br["commit"]["commit"]["message"].strip()
+remote_tree = parent_tree
 
-# 并发护栏（2026-11-10）：message 相同的 publish commit 有很多个，只按消息匹配断点会把
-# 远程 HEAD 误判成「本地很早的状态」，随后全量重放把线上文件树回退成旧版
-# （事故：画质修复与照片排序被静默覆盖）。找不到可信断点时必须停下，绝不重放。
+# 断点：远端 HEAD 对应本地序列中的位置。必须「message + tree」双匹配：
+# publish commit 消息固定重复，而重放通道会使本地/远端 hash 分叉——只按消息匹配会把
+# 未推送的同名 publish commit 误判为已推送（2026-11-10 事故：任务 C/F 与截图静默丢失）。
 start_idx = 0
-for i, (sha, an, ae, ad, msg) in enumerate(commits):
-    if msg.strip() == head_msg:
+prev_files = {}
+for i in range(len(commits) - 1, -1, -1):  # 从最新往回：取最新一个真正等价的断点
+    if commits[i][5].strip() == head_msg and commits[i][1] == remote_tree:
         start_idx = i + 1
-        prev_files = ls_tree(sha)
+        prev_files = ls_tree(commits[i][0])
         break
-else:
+if start_idx == 0 and head_msg:
+    # 并发护栏（2026-11-10）：多会话/多工作区同时发布时，远端 HEAD 可能在本地历史里
+    # 找不到等价断点。此时全量重放会把线上文件树回退成本地旧状态（事故：画质修复、
+    # 照片排序被静默覆盖），且发布界面仍显示成功。宁可让同步明确失败，也不重放历史。
     raise SystemExit(
         "ABORT: 远端 HEAD 在本地历史里找不到可信断点，已禁止全量重放历史。"
         " 通常是另一个会话/工作区更新过 main。请先 git fetch origin main，"
-        " 把本地提交 rebase 到 origin/main 之后再发布。"
+        " 确认本地基于 origin/main 之后再发布；不要用 force push 绕过。"
     )
 print(f"remote HEAD: {head_msg[:40]!r} -> resume from #{start_idx + 1}/{len(commits)}", flush=True)
 
 for i in range(start_idx, len(commits)):
-    sha, an, ae, ad, msg = commits[i]
+    sha, ltree, an, ae, ad, msg = commits[i]
     cur = ls_tree(sha)
     changes = []
     uploaded = 0
@@ -95,3 +101,8 @@ for i in range(start_idx, len(commits)):
     print(f"[{i+1}/{len(commits)}] {msg[:40]}  (+{uploaded} blobs)", flush=True)
 
 print(f"DONE: main -> {parent_sha[:10]}")
+
+# API ref 更新不保证触发 push event：显式触发部署 workflow
+import subprocess as sp
+r = sp.run(["gh", "workflow", "run", "deploy.yml", "--repo", f"{OWNER}/{REPO}"], capture_output=True, text=True)
+print("deploy triggered" if r.returncode == 0 else f"deploy trigger failed: {r.stderr}")

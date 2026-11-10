@@ -92,15 +92,53 @@ export function getWorkerCfg() {
 export function setWorkerCfg(base, token) {
   localStorage.setItem(WORKER_BASE_KEY, base.replace(/\/$/, ''))
   localStorage.setItem(WORKER_TOKEN_KEY, token)
+  // localStorage 非响应式：广播变更，让 LayoutPage 的状态徽标/未读数即时刷新（免手动刷新页面）
+  window.dispatchEvent(new CustomEvent('rain-worker-cfg'))
 }
 
-export async function workerGet(path) {
+/** 测试 Worker 连通性（用尚未保存的输入值也行）：区分 地址错/需代理、token 错、成功三种结果 */
+export async function testWorkerConnection(base, token) {
+  const b = (base || '').trim().replace(/\/$/, '')
+  if (!b) return { ok: false, kind: 'empty', message: 'Worker 地址为空' }
+  if (!/^https:\/\/.+/.test(b)) {
+    return { ok: false, kind: 'format', message: '地址格式不对：应以 https:// 开头（形如 https://rain-collector.<子域>.workers.dev）' }
+  }
+  let res
+  try {
+    res = await fetch(`${b}/stats/summary`, {
+      headers: { Authorization: `Bearer ${token || ''}` },
+      signal: AbortSignal.timeout(8000),
+    })
+  } catch {
+    return {
+      ok: false,
+      kind: 'network',
+      message: '连接失败：地址不可达，或需代理（国内直连 workers.dev 常受限，8 秒超时）',
+    }
+  }
+  if (res.status === 401) {
+    return { ok: false, kind: 'auth', message: '鉴权失败（401）：ADMIN_TOKEN 不正确，或 Worker 端没有配置该 token' }
+  }
+  if (!res.ok) return { ok: false, kind: 'http', message: `请求失败（HTTP ${res.status}）` }
+  const d = await res.json().catch(() => ({}))
+  return { ok: true, kind: 'ok', message: `连接成功：累计 PV ${d.pvTotal ?? '—'} · 访客 ${d.uvTotal ?? '—'} · 简历下载 ${d.resumeDownloads ?? '—'}` }
+}
+
+export async function workerSend(path, method = 'GET', body) {
   const { base, token } = getWorkerCfg()
+  const headers = { Authorization: `Bearer ${token}` }
+  if (body !== undefined) headers['Content-Type'] = 'application/json'
   const res = await fetch(`${base}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
     // workers.dev 国内直连可能受限：8 秒未响应即回退本地后端，不让页面干等
     signal: AbortSignal.timeout(8000),
   })
   if (!res.ok) throw new Error(`Worker ${res.status}`)
   return res.json()
+}
+
+export function workerGet(path) {
+  return workerSend(path, 'GET')
 }

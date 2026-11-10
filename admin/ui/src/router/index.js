@@ -14,6 +14,7 @@ const router = createRouter({
         { path: 'content', component: () => import('../pages/ContentPage.vue') },
         { path: 'publish', component: () => import('../pages/PublishPage.vue') },
         { path: 'inbox', component: () => import('../pages/InboxPage.vue') },
+        { path: 'settings', component: () => import('../pages/SettingsPage.vue') },
       ],
     },
   ],

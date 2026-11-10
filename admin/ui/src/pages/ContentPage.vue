@@ -6,15 +6,30 @@
         <h1>项目内容</h1>
       </div>
       <div class="actions">
-        <select v-model="slug" @change="load">
-          <option v-for="p in projects" :key="p.slug" :value="p.slug">{{ p.slug }}</option>
-        </select>
-        <button @click="openExport">导出 JS</button>
+        <span v-if="dirty" class="dirty-tag">● 未保存</span>
+        <button class="mini" @click="preview" title="打开公网项目页（显示的是已发布内容，未发布的改动发布后生效）">预览 ↗</button>
         <button class="primary" :disabled="saving" @click="save">{{ saving ? '保存中…' : '保存' }}</button>
       </div>
     </div>
 
+    <nav class="sec-nav">
+      <span class="proj">
+        <select v-model="slug" @change="load">
+          <option v-for="p in projects" :key="p.slug" :value="p.slug">{{ p.slug }}</option>
+        </select>
+      </span>
+      <button class="mini" @click="createProject" title="新建后会出现在项目下拉中，发布时自动上公网">+ 新建</button>
+      <button class="mini danger" @click="deleteProject" title="删除详情数据；下次发布后前台卡片同步移除">删除项目</button>
+      <span class="sep">|</span>
+      <a v-for="(s, i) in form.sections" :key="i" @click="scrollToSec(i)">{{ padNo(i) }} {{ kickerTitle(s).slice(0, 10) }}</a>
+      <button class="mini" @click="scrollToSec(-1)" title="页面顶部">↑ 顶部</button>
+    </nav>
+
     <p v-if="msg" class="msg" :class="{ err: msgIsErr }">{{ msg }}</p>
+
+    <p v-if="publishDirty && !dirty" class="pub-dirty">
+      ● 有未发布变更——保存只写数据库，点「04 发布」才会更新到公网网站（约 1.5–3 分钟生效）。
+    </p>
 
     <section class="panel">
       <h2>基本信息 — 01 / OVERVIEW</h2>
@@ -50,7 +65,7 @@
           :value="kickerTitle(s)"
           @input="s.kicker = padNo(i) + ' / ' + $event.target.value"
         />
-        <span class="type-tag">{{ s.type }}</span>
+        <span class="type-tag">{{ TYPE_LABEL[s.type] || s.type }}</span>
         <button class="mini" :disabled="i === 0" @click="move(i, -1)">↑</button>
         <button class="mini" :disabled="i === form.sections.length - 1" @click="move(i, 1)">↓</button>
         <button v-if="s.type !== 'arch'" class="mini danger" @click="removeSection(i)">删</button>
@@ -140,33 +155,63 @@
     <div class="add-sec">
       <span>新增节：</span>
       <select v-model="newType">
-        <option v-for="t in EDITABLE_TYPES" :key="t" :value="t">{{ t }}</option>
+        <option v-for="(desc, t) in TYPE_DESC" :key="t" :value="t">{{ desc }}</option>
       </select>
-      <button class="mini" @click="addSection">+ 添加（编号自动顺延）</button>
+      <button class="mini" @click="addSection">+ 添加</button>
     </div>
+    <p class="add-sec-guide">
+      「01 概述」由页面自动渲染（headline + summary），不需要新增；新增节的编号自动顺延（02 起）并按位置重排，标题只需填文字。
+      想让数据上首页卡片：加「数据指标」节，前 3 条会自动进 Works 卡片。
+    </p>
 
-    <Teleport to="body">
-      <div v-if="exportText !== null" class="modal" @click.self="exportText = null">
-        <div class="box">
-          <div class="kicker">
-            {{ slug }}.js — 整文件替换 src/data/projects/{{ slug }}.js，然后 npm run build
-          </div>
-          <pre>{{ exportText }}</pre>
-          <div class="modal-ops">
-            <button class="mini" @click="copyExport">复制全文</button>
-            <button class="mini" @click="exportText = null">关闭</button>
-          </div>
+    <!-- 新建项目模态框 -->
+    <div v-if="creating" class="modal" @click.self="creating = false">
+      <div class="box create">
+        <h2>新建项目</h2>
+        <label class="field">
+          <span>slug（路由标识，小写字母/数字/连字符，创建后不可改）</span>
+          <input v-model="newSlug" placeholder="如 my-project" spellcheck="false" />
+        </label>
+        <label class="field">
+          <span>项目名称（首页卡片与详情页大标题）</span>
+          <input v-model="newHeadline" placeholder="如 My Project — 一句话定位" />
+        </label>
+        <label class="field">
+          <span>一句话简介（首页卡片描述 + 详情页概述）</span>
+          <textarea v-model="newSummary" rows="3" placeholder="它是什么、你做了什么、亮点是什么"></textarea>
+        </label>
+        <p class="hint">
+          创建后是空骨架：在下方「+ 添加」节填充正文；「04 发布」后卡片与详情页自动上公网（详情页正文由发布自动写回，无需改代码）。
+        </p>
+        <p v-if="createErr" class="err">{{ createErr }}</p>
+        <div class="modal-ops">
+          <button class="primary" :disabled="creatingBusy" @click="submitCreate">
+            {{ creatingBusy ? '创建中…' : '创建' }}
+          </button>
+          <button class="mini" @click="creating = false">取消</button>
         </div>
       </div>
-    </Teleport>
+    </div>
+
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { api } from '../api.js'
 
 const EDITABLE_TYPES = ['shots', 'impl', 'metrics', 'pits', 'text']
+
+// 类型中文化（任务 F）：下拉与节标签可读，说明讲清各类型用途
+const TYPE_LABEL = { arch: '架构图', shots: '界面截图', impl: '核心实现', metrics: '数据指标', pits: '踩坑复盘', text: '正文段落' }
+const TYPE_DESC = {
+  shots: '界面截图 — 上传截图，或先列 wanted 占位待补',
+  impl: '核心实现 — 问题 / 方案 / 效果 三段式条目',
+  metrics: '数据指标 — 数值 + 变化（前 3 条自动进首页卡片）',
+  pits: '踩坑复盘 — 坑标题 + 经过与解决',
+  text: '正文段落 — 纯文本（换行会保留）',
+}
 
 const projects = ref([])
 const slug = ref('')
@@ -175,8 +220,86 @@ const screenshots = ref([])
 const saving = ref(false)
 const msg = ref('')
 const msgIsErr = ref(false)
-const exportText = ref(null)
+const dirty = ref(false)
 const newType = ref('text')
+// 新建项目模态框（任务 F：替代 3 连原生 prompt）
+const creating = ref(false)
+const creatingBusy = ref(false)
+const newSlug = ref('')
+const newHeadline = ref('')
+const newSummary = ref('')
+const createErr = ref('')
+
+// 未保存跟踪：任何编辑置 dirty；保存/切换成功后清除
+watch(form, () => { dirty.value = true }, { deep: true })
+
+window.addEventListener('beforeunload', (e) => {
+  if (dirty.value) { e.preventDefault(); e.returnValue = '' }
+})
+
+onBeforeRouteLeave(() => {
+  if (dirty.value && !confirm('有未保存的修改，确定离开？')) return false
+  dirty.value = false
+})
+
+function scrollToSec(i) {
+  if (i < 0) { window.scrollTo({ top: 0, behavior: 'smooth' }); return }
+  const el = document.querySelectorAll('section.panel.sec')[i]
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+async function createProject() {
+  newSlug.value = newHeadline.value = newSummary.value = ''
+  createErr.value = ''
+  creating.value = true
+}
+
+async function submitCreate() {
+  const s = newSlug.value.trim()
+  const headline = newHeadline.value.trim()
+  const summary = newSummary.value.trim()
+  createErr.value = ''
+  if (!/^[a-z0-9][a-z0-9-]{1,40}$/.test(s)) {
+    createErr.value = 'slug 需为 2-41 位小写字母/数字/连字符（字母开头），如 my-project'
+    return
+  }
+  if (!headline || !summary) {
+    createErr.value = '项目名称与一句话简介必填'
+    return
+  }
+  creatingBusy.value = true
+  try {
+    await api.post('/api/content/projects', { slug: s, headline, summary })
+    projects.value = await api.get('/api/content/projects')
+    slug.value = s
+    creating.value = false
+    await load()
+    say(`项目 ${s} 已创建（空骨架）。填好内容后点「04 发布」即上公网首页卡片；详情页正文随发布自动渲染。`)
+    await checkPublishDirty()
+  } catch (e) {
+    createErr.value = e.message
+  } finally {
+    creatingBusy.value = false
+  }
+}
+
+// 公网预览：打开项目详情页（显示已发布内容；未发布改动需先发布）
+function preview() {
+  window.open(`https://yuanyyyyyyyyy.github.io/rain/projects/${slug.value}`, '_blank', 'noopener')
+}
+
+async function deleteProject() {
+  if (!confirm(`删除项目 ${slug.value}？详情数据将删除；下次发布后前台卡片同步移除。`)) return
+  try {
+    await api.delete(`/api/content/projects/${slug.value}`)
+    projects.value = await api.get('/api/content/projects')
+    slug.value = projects.value[0]?.slug || ''
+    await load()
+    say(`项目已删除。点「04 发布」后公网卡片同步移除。`)
+  } catch (e) {
+    say(e.message, true)
+  }
+}
 
 function say(text, isErr = false) {
   msg.value = text
@@ -193,6 +316,7 @@ async function load() {
     sections: d.sections,
   }
   screenshots.value = await api.get(`/api/content/screenshots/${slug.value}`)
+  dirty.value = false
 }
 
 const padNo = (i) => String(i + 2).padStart(2, '0')
@@ -240,8 +364,9 @@ async function save() {
   saving.value = true
   try {
     await api.put(`/api/content/projects/${slug.value}`, form.value)
-    say('已保存到数据库。前台生效：导出 JS → 替换数据文件 → npm run build')
-    await load()
+    dirty.value = false
+    say('已保存。公网生效：点「04 发布」。')
+    await checkPublishDirty()
   } catch (e) {
     say(e.message, true)
   } finally {
@@ -249,27 +374,72 @@ async function save() {
   }
 }
 
-async function openExport() {
+// 未发布变更检测（保存落库 ≠ 公网生效）：有变更时页头横幅提示去发布
+const publishDirty = ref(false)
+async function checkPublishDirty() {
   try {
-    exportText.value = await api.getText(`/api/content/projects/${slug.value}/export`)
-  } catch (e) {
-    say(e.message, true)
+    publishDirty.value = (await api.get('/api/publish/dirty')).dirty
+  } catch {
+    publishDirty.value = false
   }
-}
-
-async function copyExport() {
-  await navigator.clipboard.writeText(exportText.value)
-  say('已复制到剪贴板')
 }
 
 onMounted(async () => {
   projects.value = await api.get('/api/content/projects')
   slug.value = projects.value[0]?.slug || ''
   await load()
+  await checkPublishDirty()
 })
 </script>
 
 <style lang="scss" scoped>
+.sec-nav {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding: 9px 12px;
+  border: 1px solid var(--c-line);
+  background: var(--c-blue-faint);
+  // 长表单滚动时节锚点导航吸顶（配合 scrollToSec 平滑滚动）
+  position: sticky;
+  top: 0;
+  z-index: 20;
+
+  .proj select {
+    width: 130px;
+    padding: 6px 8px;
+  }
+  a {
+    font: 10px var(--font-mono);
+    letter-spacing: 0.06em;
+    color: var(--c-ink-soft);
+    cursor: pointer;
+    padding: 4px 7px;
+
+    &:hover {
+      color: var(--c-blue);
+      background: #fff;
+    }
+  }
+  .mini {
+    margin-left: auto;
+  }
+  .sep {
+    color: var(--c-line);
+  }
+  .mini.danger:hover {
+    border-color: var(--c-danger);
+    color: var(--c-danger);
+  }
+}
+.dirty-tag {
+  font: 10px var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--c-danger);
+  align-self: center;
+}
 .head {
   display: flex;
   justify-content: space-between;
@@ -347,6 +517,14 @@ h2 {
     border-left-color: var(--c-danger);
     background: #fbf1f1;
   }
+}
+.pub-dirty {
+  font: 11px var(--font-mono);
+  color: var(--c-ink-soft);
+  border-left: 2px solid var(--c-aux);
+  padding: 6px 12px;
+  margin: 0 0 14px;
+  background: var(--c-blue-faint);
 }
 .panel {
   border: 1px solid var(--c-line);
@@ -504,27 +682,44 @@ textarea {
   z-index: 50;
 
   .box {
-    width: min(860px, 92vw);
+    width: min(560px, 92vw);
     max-height: 86vh;
+    overflow: auto;
     display: grid;
-    grid-template-rows: auto 1fr auto;
-    gap: 10px;
+    gap: 12px;
     background: var(--c-bg);
     border: 1px solid var(--c-line);
     padding: 18px 20px;
 
-    pre {
+    h2 {
+      font: 11px var(--font-mono);
+      letter-spacing: 0.14em;
+      color: var(--c-ink-soft);
       margin: 0;
-      overflow: auto;
-      font: 11px/1.7 var(--font-mono);
-      border: 1px solid var(--c-line);
-      padding: 12px;
-      background: var(--c-blue-faint);
+    }
+    .hint {
+      font: 11px/1.8 var(--font-sans);
+      color: var(--c-muted);
+      margin: 0;
+    }
+    .err {
+      color: var(--c-danger);
+      font-size: 12px;
+      margin: 0;
     }
     .modal-ops {
       display: flex;
       gap: 8px;
+
+      .primary {
+        padding: 9px 18px;
+      }
     }
   }
+}
+.add-sec-guide {
+  font: 10px/1.9 var(--font-mono);
+  color: var(--c-muted);
+  margin: 10px 0 0;
 }
 </style>

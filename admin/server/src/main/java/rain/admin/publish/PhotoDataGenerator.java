@@ -36,7 +36,7 @@ public class PhotoDataGenerator {
         sb.append("// 原图 → 网页版对应关系见 docs/素材/照片清单-photos-manifest-20261108.json\n");
         sb.append("// 分组依据 2026-11-08 拼图审阅：街道与城市 / 光线与氛围 / 日常与人\n");
         sb.append("// ============================================\n\n");
-        sb.append("const P = (id, date) => ({ id, date })\n\n");
+        sb.append("const P = (id, date, cap) => ({ id, date, ...(cap ? { cap } : {}) })\n\n");
         sb.append("export const heroPhoto = { id: '").append(hero.getPid())
                 .append("', date: '").append(hero.getShotDate() == null ? "" : hero.getShotDate()).append("' }\n\n");
         sb.append("export const photoGroups = [\n");
@@ -73,6 +73,11 @@ public class PhotoDataGenerator {
 
     private static String plateEntry(Photo p) {
         String date = p.getShotDate() == null ? "" : p.getShotDate().toString();
-        return "P('" + p.getPid() + "', '" + date + "'),";
+        // 图注可空；引号转义保证生成物是合法 JS（' 与 \ 之外的其他字符原样输出）
+        if (p.getCaption() == null || p.getCaption().isBlank()) {
+            return "P('" + p.getPid() + "', '" + date + "'),";
+        }
+        String cap = p.getCaption().replace("\\", "\\\\").replace("'", "\\'");
+        return "P('" + p.getPid() + "', '" + date + "', '" + cap + "'),";
     }
 }
