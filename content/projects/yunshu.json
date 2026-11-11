@@ -40,28 +40,28 @@
       "component" : "yunshu"
     },
     {
-      "note" : "截图为演示机构/演示数据（张三/李四/王五、doc-001、W-DEMO）；不含真实患者、医护、机构与内网信息。",
+      "note" : "截图为真实界面实录（本地全栈实测），未做样式美化；数据为演示机构样例（张三/李四/王五、演示医院），无真实患者与医护人员信息。",
       "type" : "shots",
       "items" : [
         {
           "src" : "screenshots/yunshu/yunshu-01.png",
-          "caption" : "排班设置——日排班模板列表：JPA 分页与启停状态，专家/普通/急诊多模式"
+          "caption" : "排班设置 · 日排班——条件查询 + 模板列表 + 分页控件，机构过滤生效"
         },
         {
           "src" : "screenshots/yunshu/yunshu-02.png",
-          "caption" : "周排班模板编辑——周明细绑定日模板（演示数据 W-DEMO-2026）"
+          "caption" : "周排班编辑——5 条周明细绑定日模板；顶部红色提示为乐观锁拦截并发保存的真实拒绝"
         },
         {
           "src" : "screenshots/yunshu/yunshu-03.png",
-          "caption" : "节假日例外——日历停诊标记与例外清单，停诊原因可追溯到具体模板"
+          "caption" : "节假日例外——日历停诊标记 + 停诊例外行（原因可追溯到具体模板，参与放号生成）"
         },
         {
           "src" : "screenshots/yunshu/yunshu-04.png",
-          "caption" : "AI 排班助手——自然语言查询启用的模板，返回结构化清单"
+          "caption" : "AI 排班助手——自然语言查询，经 Function Calling 返回数据库实时模板清单并引导多轮操作"
         },
         {
           "src" : "screenshots/yunshu/yunshu-05.png",
-          "caption" : "接口文档总览——Knife4j 分组与接口统计"
+          "caption" : "接口文档总览——Knife4j 六组 Controller 共 25 个接口（GET 9 / POST 6 / PUT 5 / DELETE 5）"
         }
       ],
       "kicker" : "03 / INTERFACE",
