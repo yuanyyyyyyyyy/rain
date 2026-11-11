@@ -45,30 +45,31 @@
       "items" : [
         {
           "src" : "screenshots/intelnexus/intelnexus-01.png",
-          "caption" : "多源采集与源健康 — 今日概览 + 数据源状态面板：12 类信息源 10 正常 · 2 待复核，失败源附原因明细（OTX 未配 key / TechCommunity 超时）"
+          "caption" : "源管理——15 类内置信息源与自定义订阅"
         },
         {
           "src" : "screenshots/intelnexus/intelnexus-02.png",
-          "caption" : "来源可信度评估（M-SCORE）— 平均可信度 0.47 等指标卡 + 五维雷达 + 逐源评分表（等级与原因；四因子加权在引擎侧计算）"
+          "caption" : "M-SCORE 可信度评分——域名权威/时效/深度/跨源一致四因子加权"
         },
         {
           "src" : "screenshots/intelnexus/intelnexus-03.png",
-          "caption" : "跨源信息冲突（CIDAR）— temporal 冲突逐条展开：严重度 0.90，双方原始表述并排呈现，不做抹平"
+          "caption" : "冲突识别——数值/立场/时间线三类分歧如实呈现"
         },
         {
           "src" : "screenshots/intelnexus/intelnexus-04.png",
-          "caption" : "证据链追溯（STREAM）— 证据覆盖率 80%，claim 逐条带置信度 0.40–0.81 与查看原文链接"
+          "caption" : "证据链追溯——结论逐句对齐原文与快照"
         },
         {
           "src" : "screenshots/intelnexus/intelnexus-05.png",
-          "caption" : "知识图谱 — pyvis 交互画布：81 节点 / 311 边，实体带语义标签，按主聚类取景"
+          "caption" : "知识图谱——实体共现网络与语义关系"
         },
         {
           "src" : "screenshots/intelnexus/intelnexus-06.png",
-          "caption" : "定时简报 — 简报中心历史记录：《AI 与网络安全每日情报简报》预览头部（概览 / 来源可信度概览 / 分级摘要）"
+          "caption" : "结构化报告——事实/分析/推测三级拆分与整体置信度"
         }
       ],
-      "kicker" : "03 / INTERFACE"
+      "kicker" : "03 / INTERFACE",
+      "pending" : false
     },
     {
       "type" : "impl",
