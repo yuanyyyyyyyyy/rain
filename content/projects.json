@@ -67,4 +67,21 @@
     "label" : "发布生效",
     "value" : "1.5–3 min"
   } ]
+}, {
+  "slug" : "shimmer",
+  "no" : "005",
+  "period" : "COURSE PROJECT",
+  "title" : "光影手记 Shimmer",
+  "summary" : "围绕照片「存储 → 理解 → 叙事」的全栈课程项目：Sharp 双档图片管线 + EXIF 自动提取，AI 元数据生成 / 智能搜索 / 故事线叙事（每条链路带超时与降级，上传永不因 AI 失败而中断），暗房印相与四模板分享卡片。AI 接入层为 OpenAI 兼容的多提供商设计，适配智谱 GLM-4；演示环境使用本地 Ollama 视觉模型。",
+  "tags" : [ "VUE 3", "PINIA", "EXPRESS", "MYSQL 8", "SHARP", "OLLAMA / GLM-4" ],
+  "metrics" : [ {
+    "label" : "数据表",
+    "value" : "13 个"
+  }, {
+    "label" : "API 端点",
+    "value" : "80 个"
+  }, {
+    "label" : "AI 能力",
+    "value" : "6 类"
+  } ]
 } ]
