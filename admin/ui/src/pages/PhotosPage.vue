@@ -116,6 +116,19 @@
       <button class="tab" :class="{ on: photoFilter === 'hidden' }" @click="photoFilter = 'hidden'">
         已隐藏<span v-if="hiddenList.length" class="n">{{ hiddenList.length }}</span>
       </button>
+      <button class="tab" :class="{ on: batchMode }" @click="toggleBatch">批量操作</button>
+    </div>
+
+    <!-- 批量工具条（2026-11-11 F5）：跨 Tab 通用，循环调用既有单张端点 -->
+    <div v-if="batchMode" class="batch-bar">
+      <span class="sel">已选 <b>{{ selected.size }}</b> 张</span>
+      <button class="tab" :disabled="!selected.size || batchBusy" @click="batchSetHidden(true)">批量隐藏</button>
+      <button class="tab" :disabled="!selected.size || batchBusy" @click="batchSetHidden(false)">批量显示</button>
+      <span class="sep">|</span>
+      <input v-model="batchDate" type="date" :disabled="!selected.size || batchBusy" />
+      <button class="tab" :disabled="!selected.size || !batchDate || batchBusy" @click="batchSetDate" title="统一设为该拍摄日期（来源记为手填）">批量设日期</button>
+      <button class="tab" :disabled="batchBusy || !selected.size" @click="selected = new Set()">全不选</button>
+      <span class="bhint">批量模式下点击图片 = 选中/取消</span>
     </div>
 
     <template v-if="photoFilter === 'all'">
@@ -139,7 +152,10 @@
           <span class="handle" title="拖拽排序">⠿</span>
           <span v-if="p.isHero" class="hero-badge" title="摄影页页头大图">头图</span>
           <span v-if="p.hidden" class="hidden-badge" title="已隐藏，前台不展示（含直接 URL）">已隐藏</span>
-          <img :src="`/photos/${p.pid}.jpg`" :alt="p.pid" loading="lazy" @click="previewPid = p.pid" />
+          <label v-if="batchMode" class="pick" @click.stop.prevent>
+            <input type="checkbox" :checked="selected.has(p.id)" @change="togglePick(p.id)" />
+          </label>
+          <img :src="`/photos/${p.pid}.jpg`" :alt="p.pid" loading="lazy" @click="onImgClick(p)" />
           <figcaption>
             <span class="pid">{{ p.pid.toUpperCase() }}</span>
             <span class="meta">{{ p.width }}×{{ p.height }} · {{ p.shotDate || '日期—' }}<template v-if="p.dateSource"> · {{ SOURCE_LABELS[p.dateSource] || p.dateSource }}</template></span>
@@ -182,7 +198,10 @@
         <div class="grid hidden-grid">
           <figure v-for="p in hiddenList" :key="p.id" class="card hidden">
             <span class="hidden-badge">已隐藏</span>
-            <img :src="`/photos/${p.pid}.jpg`" :alt="p.pid" loading="lazy" @click="previewPid = p.pid" />
+            <label v-if="batchMode" class="pick" @click.stop.prevent>
+              <input type="checkbox" :checked="selected.has(p.id)" @change="togglePick(p.id)" />
+            </label>
+            <img :src="`/photos/${p.pid}.jpg`" :alt="p.pid" loading="lazy" @click="onImgClick(p)" />
             <figcaption>
               <span class="pid">{{ p.pid.toUpperCase() }}</span>
               <span class="meta">{{ p.groupName }} · {{ p.width }}×{{ p.height }}</span>
@@ -571,6 +590,95 @@ async function setHero(p) {
   }
 }
 
+// ---- 批量操作（2026-11-11 F5）：勾选卡片选择，循环调用既有单张端点（30 张量级足够） ----
+const batchMode = ref(false)
+const selected = ref(new Set())
+const batchDate = ref('')
+const batchBusy = ref(false)
+
+function toggleBatch() {
+  batchMode.value = !batchMode.value
+  if (!batchMode.value) selected.value = new Set()
+}
+function togglePick(id) {
+  const next = new Set(selected.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selected.value = next
+}
+function onImgClick(p) {
+  if (batchMode.value) togglePick(p.id)
+  else previewPid.value = p.pid
+}
+function findPhoto(id) {
+  return groups.value.flatMap((g) => g.photos).find((x) => x.id === id)
+}
+
+async function batchSetHidden(hidden) {
+  const ids = [...selected.value]
+  if (!ids.length || batchBusy.value) return
+  if (!confirm(`把选中的 ${ids.length} 张照片${hidden ? '隐藏（前台不再展示，含直接 URL）' : '恢复显示'}？`)) return
+  batchBusy.value = true
+  let ok = 0
+  let fail = 0
+  let lastErr = ''
+  try {
+    for (const id of ids) {
+      try {
+        await api.put(`/api/photos/${id}/hidden`, { hidden })
+        ok++
+      } catch (e) {
+        fail++
+        lastErr = e.message
+      }
+    }
+  } finally {
+    batchBusy.value = false
+  }
+  say(`批量${hidden ? '隐藏' : '恢复'}：${ok} 成功${fail ? `，${fail} 失败（${lastErr}）` : ''}`, !!fail)
+  selected.value = new Set()
+  await load()
+  await checkPublishDirty()
+}
+
+async function batchSetDate() {
+  const ids = [...selected.value]
+  if (!ids.length || !batchDate.value || batchBusy.value) return
+  if (!confirm(`把选中的 ${ids.length} 张照片的拍摄日期统一设为 ${batchDate.value}（来源记为手填）？`)) return
+  batchBusy.value = true
+  let ok = 0
+  let fail = 0
+  let lastErr = ''
+  try {
+    for (const id of ids) {
+      const p = findPhoto(id)
+      if (!p) {
+        fail++
+        continue
+      }
+      try {
+        await api.put(`/api/photos/${id}`, {
+          groupName: p.groupName,
+          shotDate: batchDate.value,
+          dateSource: 'manual',
+          sortNo: p.sortNo,
+          caption: p.caption || null,
+        })
+        ok++
+      } catch (e) {
+        fail++
+        lastErr = e.message
+      }
+    }
+  } finally {
+    batchBusy.value = false
+  }
+  say(`批量设日期：${ok} 成功${fail ? `，${fail} 失败（${lastErr}）` : ''}`, !!fail)
+  selected.value = new Set()
+  await load()
+  await checkPublishDirty()
+}
+
 async function setHidden(p, hidden) {
   try {
     await api.put(`/api/photos/${p.id}/hidden`, { hidden })
@@ -856,6 +964,49 @@ h1 {
   padding: 6px 12px;
   margin: 0 0 14px;
   background: var(--c-blue-faint);
+}
+.batch-bar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  border: 1px solid var(--c-blue);
+  background: var(--c-blue-faint);
+  padding: 9px 12px;
+  margin-bottom: 14px;
+  font: 11px var(--font-mono);
+
+  .sel b {
+    color: var(--c-blue);
+  }
+  .sep {
+    color: var(--c-line);
+  }
+  input[type='date'] {
+    border: 1px solid var(--c-line);
+    background: var(--c-bg);
+    padding: 5px 8px;
+    font: 11px var(--font-mono);
+  }
+  .bhint {
+    color: var(--c-muted);
+  }
+}
+.pick {
+  position: absolute;
+  top: 30px;
+  right: 6px;
+  z-index: 3;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--c-line);
+  padding: 3px 5px;
+  display: grid;
+  place-items: center;
+
+  input {
+    width: auto;
+    cursor: pointer;
+  }
 }
 .filter-tabs {
   display: flex;
