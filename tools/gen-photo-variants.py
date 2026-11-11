@@ -23,8 +23,8 @@ def main():
         w, h = img.size
 
         for target in WIDTHS:
-            if target >= w:
-                continue  # 不放大
+            if target > w:
+                continue  # 不放大（=原宽的档保留，srcset 最大档必须真实存在）
             tw = target
             th = round(h * tw / w)
             out = os.path.join(PHOTOS, f"{pid}-{tw}.webp")
@@ -32,11 +32,11 @@ def main():
                 continue
             img.resize((tw, th), Image.LANCZOS).save(out, "WEBP", quality=QUALITY, method=6)
             made += 1
-        if w != 1600:
-            out = os.path.join(PHOTOS, f"{pid}-{w}.webp")
-            if not os.path.exists(out):
-                img.save(out, "WEBP", quality=QUALITY, method=6)
-                made += 1
+        # 原宽档（横图 w=1600 时即 1600 档本身）：srcset 最大档缺失会让高 DPR 浏览器选中 404 → 空白
+        out = os.path.join(PHOTOS, f"{pid}-{w}.webp")
+        if not os.path.exists(out):
+            img.save(out, "WEBP", quality=QUALITY, method=6)
+            made += 1
 
         # thumbs 轻量档（长边 ≤640，等比）：srcset 的 jpg 源
         thumb = os.path.join(THUMBS, f)

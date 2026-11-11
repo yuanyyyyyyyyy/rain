@@ -137,11 +137,13 @@ function markPlateReady(id) {
   next.add(id)
   loadedPlates.value = next
 }
-// 缩略图缺失（新照片发布时漏带 thumbs）→ 清空 srcset 后回退原图，只回退一次
+// 图片加载失败（如 webp 变体缺失）→ 移除 <picture> 里的 webp source 并清 srcset，
+// 回退原图 jpg，只回退一次。注意：picture 内仅清 img 的 srcset 无效（source 仍会命中 404）。
 function onPlateImgError(e, id) {
   const el = e.target
   if (el.dataset.fallback) return
   el.dataset.fallback = '1'
+  el.closest('picture')?.querySelectorAll('source').forEach((s) => s.remove())
   el.removeAttribute('srcset')
   el.src = `${BASE}photos/${id}.jpg`
 }
