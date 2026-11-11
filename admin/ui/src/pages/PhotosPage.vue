@@ -922,7 +922,7 @@ h2 {
 }
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 14px;
 }
 .card {
@@ -1024,6 +1024,16 @@ h2 {
     padding: 6px 10px 10px;
     align-items: center;
   }
+  .ops {
+    flex-wrap: wrap; // 兜底：实在放不下时整颗按钮换行，不许文字断行
+
+    .mini {
+      flex: 1 1 auto; // 按内容均分剩余宽度，整行填满、等高对齐
+      padding-left: 6px;
+      padding-right: 6px;
+      text-align: center;
+    }
+  }
   .edit {
     flex-wrap: wrap;
 
@@ -1079,6 +1089,7 @@ h2 {
   letter-spacing: 0.08em;
   padding: 5px 9px;
   cursor: pointer;
+  white-space: nowrap; // 按钮文字永不逐字断行（「设头图」竖排事故的根因）
 
   &:hover {
     border-color: var(--c-blue);
