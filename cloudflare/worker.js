@@ -226,6 +226,9 @@ export default {
       if (request.method === "GET" && url.pathname === "/stats/summary") {
         // verify-collector.yml 的端到端探针（/verify-actions 前缀）不计入真实统计
         const NOT_VERIFY = "path NOT LIKE '/verify-actions%'"
+        // ?days=N 趋势范围（2026-11-11 F4，默认 14，钳 1..60）；响应带 daily+range，daily14 兼容旧 UI
+        const daysParam = Number(url.searchParams.get("days"))
+        const range = Number.isFinite(daysParam) && daysParam > 0 ? Math.min(60, Math.floor(daysParam)) : 14
         const today = bjDay()
         const pvToday = await env.DB.prepare(
           `SELECT COUNT(*) n FROM visits WHERE ${NOT_VERIFY} AND substr(minute_bucket, 1, 8) = ?`
@@ -235,7 +238,7 @@ export default {
         const daily = await env.DB.prepare(
           "SELECT substr(minute_bucket, 1, 8) d, COUNT(*) n FROM visits " +
           `WHERE ${NOT_VERIFY} AND minute_bucket >= ? GROUP BY d`
-        ).bind(bjDay(-13).replaceAll("-", "")).all()
+        ).bind(bjDay(-(range - 1)).replaceAll("-", "")).all()
         const top = await env.DB.prepare(
           `SELECT path, COUNT(*) n FROM visits WHERE ${NOT_VERIFY} GROUP BY path ORDER BY n DESC LIMIT 5`
         ).all()
@@ -245,17 +248,22 @@ export default {
         ).all()
         const resume = await env.DB.prepare("SELECT COUNT(*) n FROM downloads").first()
         const dailyMap = {}
-        for (let i = -13; i <= 0; i++) dailyMap[bjDay(i)] = 0
+        for (let i = -(range - 1); i <= 0; i++) dailyMap[bjDay(i)] = 0
         for (const row of daily.results || []) {
           const key = `${String(row.d).slice(0, 4)}-${String(row.d).slice(4, 6)}-${String(row.d).slice(6, 8)}`
           if (key in dailyMap) dailyMap[key] = row.n
         }
+        // daily14 = 请求范围内的近 14 天子集（旧管理台只读这个键）
+        const cutoff14 = bjDay(-13)
+        const daily14 = Object.fromEntries(Object.entries(dailyMap).filter(([k]) => k >= cutoff14))
         return json(request, {
           pvToday: pvToday?.n ?? 0,
           pvTotal: pvTotal?.n ?? 0,
           uvTotal: uvTotal?.n ?? 0,
           resumeDownloads: resume?.n ?? 0,
-          daily14: dailyMap,
+          daily: dailyMap,
+          range,
+          daily14,
           topPaths: Object.fromEntries((top.results || []).map((r) => [r.path, r.n])),
           topReferrers: Object.fromEntries((refs.results || []).map((r) => [r.r, r.n])),
         })

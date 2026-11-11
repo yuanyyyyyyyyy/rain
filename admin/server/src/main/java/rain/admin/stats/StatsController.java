@@ -68,27 +68,35 @@ public class StatsController {
         return ResponseEntity.noContent().build();
     }
 
-    /** 管理台概览：今日/累计 PV、UV、按天趋势（近 14 天）、热门页面 Top 5 */
+    /**
+     * 管理台概览：今日/累计 PV、UV、按天趋势（默认 14 天，?days=N 支持 7/30，2026-11-11 F4）、热门页面 Top 5。
+     * 响应带 daily（请求范围）+ range；daily14 保留（固定 14 天，兼容旧 UI/旧管理台）。
+     */
     @GetMapping("/api/stats/summary")
-    public Map<String, Object> summary() {
+    public Map<String, Object> summary(@RequestParam(name = "days", required = false) Integer days) {
+        int range = days == null ? 14 : Math.max(1, Math.min(60, days));
         LocalDateTime todayStart = LocalDate.now().atStartOfDay();
-        LocalDateTime since14 = LocalDate.now().minusDays(13).atStartOfDay();
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("pvToday", repo.countByCreatedAtBetween(todayStart, LocalDateTime.now()));
         m.put("pvTotal", repo.count());
         m.put("uvTotal", repo.countUvSince(LocalDateTime.of(1970, 1, 1, 0, 0)));
 
         Map<String, Long> daily = new LinkedHashMap<>();
-        LocalDate.now().minusDays(13).datesUntil(LocalDate.now().plusDays(1))
+        LocalDate.now().minusDays(range - 1L).datesUntil(LocalDate.now().plusDays(1))
                 .forEach(d -> daily.put(d.toString(), 0L));
-        DateTimeFormatter f = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        for (Object[] row : repo.countByDaySince(since14)) {
+        for (Object[] row : repo.countByDaySince(LocalDate.now().minusDays(range - 1L).atStartOfDay())) {
             String day = String.valueOf(row[0]);
             // MySQL date_format 返回字符串；防御其他驱动返回类型
             if (day.length() > 10) day = day.substring(0, 10);
             if (daily.containsKey(day)) daily.put(day, ((Number) row[1]).longValue());
         }
-        m.put("daily14", daily);
+        m.put("daily", daily);
+        m.put("range", range);
+        // 兼容：daily14 恒为近 14 天（旧管理台只读这个键）
+        m.put("daily14", daily.entrySet().stream()
+                .filter(e -> e.getKey().compareTo(LocalDate.now().minusDays(13).toString()) >= 0)
+                .collect(java.util.stream.Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
+                        (a, b) -> a, LinkedHashMap::new)));
 
         Map<String, Long> top = new LinkedHashMap<>();
         repo.topPaths().stream().limit(5)
