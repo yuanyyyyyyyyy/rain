@@ -112,4 +112,17 @@ public class ContentController {
     public List<String> screenshots(@PathVariable String slug) {
         return service.listScreenshots(slug);
     }
+
+    /** shots 表单截图直传（2026-11-11 F2）：落 public/screenshots/<slug>/，发布随 git add 上公网 */
+    @PostMapping(value = "/screenshots/{slug}", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadScreenshot(@PathVariable String slug,
+                                              @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        try {
+            return ResponseEntity.ok(Map.of("files", service.uploadScreenshot(slug, file)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
 }

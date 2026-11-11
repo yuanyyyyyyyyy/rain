@@ -150,6 +150,18 @@
             <option v-for="f in screenshots" :key="f" :value="f"></option>
           </datalist>
           <button class="mini" @click="s.items.push({ src: '', caption: '' })">+ 加截图</button>
+          <!-- 截图直传（2026-11-11 F2）：落 public/screenshots/<slug>/，发布随 git add 上公网 -->
+          <label class="mini up" :class="{ busy: uploadingShot }">
+            {{ uploadingShot ? '上传中…' : '上传截图' }}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              multiple
+              hidden
+              :disabled="uploadingShot"
+              @change="uploadShots($event, s)"
+            />
+          </label>
         </template>
         <textarea v-model="s.note" rows="2" placeholder="note（如打码提醒）"></textarea>
       </template>
@@ -418,6 +430,39 @@ async function save() {
     say(e.message, true)
   } finally {
     saving.value = false
+  }
+}
+
+// 截图直传（2026-11-11 F2）：逐张 POST，成功后刷新 datalist 并把新文件自动追加为图注行
+const uploadingShot = ref(false)
+async function uploadShots(e, sec) {
+  const files = [...(e.target.files || [])]
+  e.target.value = ''
+  if (!files.length || !slug.value) return
+  uploadingShot.value = true
+  const before = new Set(screenshots.value)
+  const added = []
+  try {
+    for (const f of files) {
+      const fd = new FormData()
+      fd.append('file', f)
+      try {
+        const r = await api.postForm(`/api/content/screenshots/${slug.value}`, fd)
+        screenshots.value = r.files
+        added.push(...r.files.filter((x) => !before.has(x) && !added.includes(x)))
+      } catch (ex) {
+        say(`${f.name} 上传失败：${ex.message}`, true)
+        break
+      }
+    }
+  } finally {
+    uploadingShot.value = false
+  }
+  if (added.length) {
+    for (const f of added) {
+      if (!sec.items.some((it) => it.src === f)) sec.items.push({ src: f, caption: '' })
+    }
+    say(`已上传 ${added.length} 张截图（图注待填）；点「04 发布」随内容一起上公网。`)
   }
 }
 
@@ -718,6 +763,21 @@ textarea {
   &.danger:hover {
     border-color: var(--c-danger);
     color: var(--c-danger);
+  }
+  // 上传截图入口（label 承载 hidden file input）
+  &.up {
+    display: inline-block;
+    user-select: none;
+    cursor: pointer;
+
+    &:hover {
+      border-color: var(--c-blue);
+      color: var(--c-blue);
+    }
+    &.busy {
+      opacity: 0.6;
+      cursor: default;
+    }
   }
 }
 .modal {

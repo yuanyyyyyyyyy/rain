@@ -188,6 +188,45 @@ public class ContentService {
         }
     }
 
+    /** 截图规格与任务 G 自动截图管线一致：单张 ≤2MB；格式 png/jpg/webp */
+    private static final long SCREENSHOT_MAX_BYTES = 2 * 1024 * 1024;
+    private static final Set<String> SCREENSHOT_EXTS = Set.of("png", "jpg", "jpeg", "webp");
+
+    /**
+     * shots 表单截图直传（2026-11-11 F2）：管理台上传 → public/screenshots/&lt;slug&gt;/，
+     * 发布时随 git add public/screenshots 上公网。slug 复用列表接口的同一正则（防路径穿越）。
+     */
+    public List<String> uploadScreenshot(String slug, org.springframework.web.multipart.MultipartFile file) {
+        if (slug == null || !slug.matches("[a-z0-9][a-z0-9-]{1,40}")) {
+            throw bad("slug 非法（只能小写字母/数字/连字符）");
+        }
+        if (file == null || file.isEmpty()) throw bad("文件为空");
+        if (file.getSize() > SCREENSHOT_MAX_BYTES) throw bad("截图超过 2MB（前台截图规格单张 ≤2MB），请压缩后再传");
+
+        String original = file.getOriginalFilename() == null ? "" : file.getOriginalFilename();
+        int dot = original.lastIndexOf('.');
+        String ext = dot < 0 ? "" : original.substring(dot + 1).toLowerCase();
+        if (!SCREENSHOT_EXTS.contains(ext)) throw bad("仅支持 png / jpg / webp 截图，收到：" + original);
+
+        // 文件名 sanitize：保留安全字符其余替换为 _，过长取尾部；空/点开头统一兜底名
+        String stem = original.substring(0, dot < 0 ? original.length() : dot)
+                .replaceAll("[^A-Za-z0-9._-]", "_");
+        if (stem.isBlank() || stem.startsWith(".")) stem = "shot";
+        if (stem.length() > 60) stem = stem.substring(stem.length() - 60);
+        String filename = stem + "." + ext;
+
+        Path dir = frontendPublicDir.resolve("screenshots").resolve(slug);
+        Path target = dir.resolve(filename);
+        if (Files.exists(target)) throw bad("同名文件已存在：" + filename + "，请重命名后再传");
+        try {
+            Files.createDirectories(dir);
+            Files.copy(file.getInputStream(), target);
+        } catch (IOException e) {
+            throw new IllegalStateException("截图落盘失败：" + e.getMessage(), e);
+        }
+        return listScreenshots(slug);
+    }
+
     /** 逐节校验 + kicker 编号重排（就地修改数组） */
     private void validateAndRenumber(JsonNode sections) {
         for (int i = 0; i < sections.size(); i++) {
