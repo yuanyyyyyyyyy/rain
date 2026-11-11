@@ -8,6 +8,7 @@
       <div class="card"><span class="v">{{ s.pvTotal ?? '—' }}</span><span class="k">累计 PV</span></div>
       <div class="card"><span class="v">{{ s.uvTotal ?? '—' }}</span><span class="k">访客数（IP 去重）</span></div>
       <div v-if="s.resumeDownloads != null" class="card"><span class="v">{{ s.resumeDownloads }}</span><span class="k">简历下载</span></div>
+      <div v-if="msgsToday != null" class="card"><span class="v">{{ msgsToday }}</span><span class="k">今日留言</span></div>
       <div class="card"><span class="v">{{ photos ?? '—' }}</span><span class="k">照片</span></div>
       <div class="card"><span class="v">{{ projects ?? '—' }}</span><span class="k">项目</span></div>
     </div>
@@ -16,8 +17,26 @@
       时间口径为北京时间。<span v-if="!s.resumeDownloads">简历下载 / 来源统计仅公网数据源（Worker）可用，当前读本地后端不可见。</span>
     </p>
 
+    <section class="panel" v-if="latest">
+      <h2>最近留言</h2>
+      <div class="recent">
+        <div class="recent-head">
+          <b>{{ latest.name }}</b>
+          <span class="mail">{{ latest.email }}</span>
+          <span class="t">{{ fmtTime(latest.createdAt) }}</span>
+          <router-link to="/inbox" class="go">去收件箱 →</router-link>
+        </div>
+        <p class="recent-body">{{ latest.body.length > 140 ? latest.body.slice(0, 140) + '…' : latest.body }}</p>
+      </div>
+    </section>
+
     <section class="panel">
-      <h2>近 14 天访问趋势</h2>
+      <div class="panel-head">
+        <h2>近 {{ range }} 天访问趋势</h2>
+        <div class="range">
+          <button v-for="n in [7, 14, 30]" :key="n" class="rbtn" :class="{ on: range === n }" @click="setRange(n)">{{ n }}天</button>
+        </div>
+      </div>
       <div class="chart" v-if="days.length">
         <div v-for="d in days" :key="d.day" class="bar-col" :title="`${d.day} · ${d.pv} PV`">
           <div class="bar" :style="{ height: barH(d.pv) + 'px' }"></div>
@@ -49,15 +68,68 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { api, getWorkerCfg, workerGet } from '../api.js'
+import { api, getWorkerCfg, workerSend } from '../api.js'
 
 const s = ref({})
 const photos = ref(null)
 const projects = ref(null)
 const source = ref('本地')
+// 趋势范围（2026-11-11 F4）：7/14/30 天，?days=N 向后端取数
+const range = ref(14)
+// 最近留言（数据源感知；仅用于概览预览卡与今日计数）
+const messages = ref(null)
 
 const days = computed(() =>
-  Object.entries(s.value.daily14 || {}).map(([day, pv]) => ({ day, pv })))
+  Object.entries(s.value.daily ?? s.value.daily14 ?? {}).map(([day, pv]) => ({ day, pv })))
+const latest = computed(() => (messages.value || [])[0] || null)
+const msgsToday = computed(() => {
+  if (!messages.value) return null
+  const today = new Date()
+  const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  return messages.value.filter((m) => String(m.createdAt || '').slice(0, 10) === key).length
+})
+const fmtTime = (t) => String(t || '').replace('T', ' ').slice(0, 16)
+
+function setRange(n) {
+  range.value = n
+  loadSummary()
+}
+
+async function loadSummary() {
+  const qs = `?days=${range.value}`
+  const { base } = getWorkerCfg()
+  try {
+    if (base) {
+      try {
+        s.value = await workerSend(`/stats/summary${qs}`, 'GET')
+        source.value = 'Worker（公网）'
+      } catch {
+        s.value = await api.get(`/api/stats/summary${qs}`)
+      }
+    } else {
+      s.value = await api.get(`/api/stats/summary${qs}`)
+    }
+  } catch {
+    source.value = '本地（不可用）'
+  }
+}
+
+async function loadMessages() {
+  const { base } = getWorkerCfg()
+  try {
+    if (base) {
+      try {
+        messages.value = await workerSend('/messages', 'GET')
+        return
+      } catch {
+        // 回退本地
+      }
+    }
+    messages.value = await api.get('/api/messages')
+  } catch {
+    messages.value = null
+  }
+}
 const top = computed(() =>
   Object.entries(s.value.topPaths || {}).map(([path, pv]) => ({ path, pv })))
 const refs = computed(() => s.value.topReferrers || {})
@@ -70,21 +142,8 @@ const barH = (pv) => {
 onMounted(async () => {
   // 数据源：配置了 Worker（公网 collector）优先，失败回退本地 Spring；
   // 双源都失败时保持空态（显示 —），不产生 unhandled rejection
-  const { base } = getWorkerCfg()
-  try {
-    if (base) {
-      try {
-        s.value = await workerGet('/stats/summary')
-        source.value = 'Worker（公网）'
-      } catch {
-        s.value = await api.get('/api/stats/summary')
-      }
-    } else {
-      s.value = await api.get('/api/stats/summary')
-    }
-  } catch {
-    source.value = '本地（不可用）'
-  }
+  await loadSummary()
+  loadMessages()
   try {
     const st = await api.get('/api/publish/status')
     photos.value = st.photos
@@ -139,6 +198,74 @@ h1 {
   border: 1px solid var(--c-line);
   padding: 16px 18px;
   margin-bottom: 16px;
+}
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+
+  h2 {
+    margin: 0;
+  }
+}
+.range {
+  display: flex;
+  gap: 6px;
+}
+.rbtn {
+  border: 1px solid var(--c-line);
+  background: var(--c-bg);
+  padding: 4px 10px;
+  font: 10px var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--c-muted);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--c-blue);
+    color: var(--c-blue);
+  }
+  &.on {
+    border-color: var(--c-blue);
+    color: var(--c-blue);
+    background: var(--c-blue-soft);
+  }
+}
+.recent {
+  .recent-head {
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    font: 11px var(--font-mono);
+    flex-wrap: wrap;
+
+    b {
+      color: var(--c-ink);
+      font-weight: 600;
+    }
+    .mail {
+      color: var(--c-blue);
+    }
+    .t {
+      color: var(--c-muted);
+    }
+    .go {
+      margin-left: auto;
+      color: var(--c-blue);
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+  .recent-body {
+    margin: 8px 0 0;
+    font: 12px/1.8 var(--font-sans);
+    color: var(--c-ink-soft);
+    white-space: pre-wrap;
+  }
 }
 h2 {
   font: 11px var(--font-mono);
