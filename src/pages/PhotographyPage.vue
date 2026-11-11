@@ -15,14 +15,17 @@
         @click="openAt(flatIndex(heroPhoto.id))"
         @keydown.enter.prevent="openAt(flatIndex(heroPhoto.id))"
       >
-        <img
-          :src="heroSrc"
-          :alt="`Field Notes 页头照片，${heroPhoto.date} 摄`"
-          fetchpriority="high"
-          decoding="async"
-          :class="{ ready: heroReady }"
-          @load="heroReady = true"
-        />
+        <picture>
+          <source type="image/webp" :srcset="webpSrcset(heroPhoto.id)" :sizes="'100vw'" />
+          <img
+            :src="heroSrc"
+            :alt="`Field Notes 页头照片，${heroPhoto.date} 摄`"
+            fetchpriority="high"
+            decoding="async"
+            :class="{ ready: heroReady }"
+            @load="heroReady = true"
+          />
+        </picture>
         <figcaption class="ph-label">FIG. 000 — {{ heroPhoto.date }} · 点击任意照片查看大图</figcaption>
       </figure>
     </div>
@@ -50,21 +53,28 @@
             @keydown.enter.prevent="openAt(flatIndex(it.p.id))"
           >
             <div class="ph" :style="{ height: row.h + 'px' }">
-              <!-- 网格按显示宽度选档：桌面（单张约 571px 宽）自动取 1600px 原图 = 最初的高清观感；
-                   小屏/窄视口才用 640px 轻量档。绝不让高分屏把 640px 图放大显示。
+              <!-- 网格按显示宽度选档：webp 变体（400/800/1600，tools/gen-photo-variants.py 生成）优先，
+                   jpg thumbs 640/原图 1600 作为不支持 webp 的回退。绝不让高分屏把轻量档放大显示。
                    Lightbox 与头图永远加载 1600px 原图。首组首行 eager，其余 lazy 避免同域排队。 -->
-              <img
-                :src="`${BASE}photos/${it.p.id}.jpg`"
-                :srcset="`${BASE}photos/thumbs/${it.p.id}.jpg ${wOf(it.p.id, 640)}w, ${BASE}photos/${it.p.id}.jpg ${wOf(it.p.id, 1600)}w`"
-                sizes="(max-width: 760px) 50vw, 48vw"
-                :alt="plateAlt(g, it.p)"
-                :loading="gi === 0 && ri === 0 ? 'eager' : 'lazy'"
-                :fetchpriority="gi === 0 && ri === 0 ? 'high' : undefined"
-                decoding="async"
-                :class="{ ready: loadedPlates.has(it.p.id) }"
-                @load="markPlateReady(it.p.id)"
-                @error="onPlateImgError($event, it.p.id)"
-              />
+              <picture>
+                <source
+                  type="image/webp"
+                  :srcset="webpSrcset(it.p.id)"
+                  sizes="(max-width: 760px) 50vw, 48vw"
+                />
+                <img
+                  :src="`${BASE}photos/${it.p.id}.jpg`"
+                  :srcset="`${BASE}photos/thumbs/${it.p.id}.jpg ${wOf(it.p.id, 640)}w, ${BASE}photos/${it.p.id}.jpg ${wOf(it.p.id, 1600)}w`"
+                  sizes="(max-width: 760px) 50vw, 48vw"
+                  :alt="plateAlt(g, it.p)"
+                  :loading="gi === 0 && ri === 0 ? 'eager' : 'lazy'"
+                  :fetchpriority="gi === 0 && ri === 0 ? 'high' : undefined"
+                  decoding="async"
+                  :class="{ ready: loadedPlates.has(it.p.id) }"
+                  @load="markPlateReady(it.p.id)"
+                  @error="onPlateImgError($event, it.p.id)"
+                />
+              </picture>
             </div>
             <figcaption>{{ plateLabel(it.p.id) }} — {{ it.p.date }}<template v-if="it.p.cap"> · {{ it.p.cap }}</template></figcaption>
           </figure>
@@ -95,6 +105,16 @@ import { heroPhoto, photoGroups, flatPlates, plateNo, dims } from '../data/photo
 
 const BASE = import.meta.env.BASE_URL
 const heroSrc = `${BASE}photos/${heroPhoto.id}.jpg`
+
+// 响应式 webp：tools/gen-photo-variants.py 生成的 <pid>-<width>.webp 变体，
+// 档位 400/800/1600 + 原宽（竖图原宽 <1600 时跳过放大档）。灯箱仍用原 jpg（最高画质）。
+function webpSrcset(id) {
+  const r = dims[id] || 1.5
+  const origW = r >= 1 ? 1600 : Math.round(1600 * r)
+  const widths = [400, 800, 1600].filter((w) => w < origW)
+  widths.push(origW)
+  return widths.map((w) => `${BASE}photos/${id}-${w}.webp ${w}w`).join(', ')
+}
 
 // 组件 chunk 一就绪就发起头图请求：不等 Vue 挂载、不等模板渲染，缩短首屏空白。
 // href 与 <img src> 完全一致，浏览器复用同一请求，不会重复下载。
