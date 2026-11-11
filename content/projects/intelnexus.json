@@ -40,9 +40,8 @@
       "component" : "intelnexus"
     },
     {
-      "type" : "shots",
-      "kicker" : "03 / INTERFACE",
       "note" : "截图为真实界面实录（历史检索快照回放），未做样式美化；数据为公开网络信息演示。",
+      "type" : "shots",
       "items" : [
         {
           "src" : "screenshots/intelnexus/intelnexus-01.png",
@@ -68,7 +67,8 @@
           "src" : "screenshots/intelnexus/intelnexus-06.png",
           "caption" : "定时简报 — 简报中心历史记录：《AI 与网络安全每日情报简报》预览头部（概览 / 来源可信度概览 / 分级摘要）"
         }
-      ]
+      ],
+      "kicker" : "03 / INTERFACE"
     },
     {
       "type" : "impl",
