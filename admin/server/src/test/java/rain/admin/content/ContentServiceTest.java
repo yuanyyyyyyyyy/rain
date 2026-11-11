@@ -6,11 +6,14 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
+import org.springframework.mock.web.MockMultipartFile;
 
 /** 校验器是 M3 的核心卖点：非法数据必须在落库前被拦下，报错精确到节与字段 */
 class ContentServiceTest {
@@ -173,5 +176,69 @@ class ContentServiceTest {
         assertTrue(service.listScreenshots("..").isEmpty());
         assertTrue(service.listScreenshots("..%2Fetc").isEmpty());
         assertTrue(service.listScreenshots("A_UPPER").isEmpty());
+    }
+
+    // ---- 截图直传（2026-11-11 F2）----
+
+    @TempDir
+    Path tempDir;
+
+    private ContentService serviceWithTempDir() {
+        return new ContentService(repo, mapper, tempDir.toString());
+    }
+
+    private MockMultipartFile png(String name, byte[] bytes) {
+        return new MockMultipartFile("file", name, "image/png", bytes);
+    }
+
+    @Test
+    void uploadScreenshotWritesFileAndLists() throws Exception {
+        ContentService s = serviceWithTempDir();
+        List<String> files = s.uploadScreenshot("yunshu", png("forge-05.png", new byte[]{1, 2, 3}));
+        assertTrue(files.contains("forge-05.png"));
+        assertTrue(java.nio.file.Files.exists(
+                tempDir.resolve("screenshots").resolve("yunshu").resolve("forge-05.png")));
+    }
+
+    @Test
+    void uploadScreenshotRejectsBadExtension() {
+        ContentService s = serviceWithTempDir();
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> s.uploadScreenshot("yunshu", new MockMultipartFile("file", "a.gif", "image/gif", new byte[]{1})));
+        assertTrue(e.getMessage().contains("仅支持"));
+        assertThrows(IllegalArgumentException.class,
+                () -> s.uploadScreenshot("yunshu", new MockMultipartFile("file", "a.exe", "application/octet-stream", new byte[]{1})));
+    }
+
+    @Test
+    void uploadScreenshotRejectsOversize() {
+        ContentService s = serviceWithTempDir();
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> s.uploadScreenshot("yunshu", png("big.png", new byte[2 * 1024 * 1024 + 1])));
+        assertTrue(e.getMessage().contains("2MB"));
+    }
+
+    @Test
+    void uploadScreenshotRejectsUnsafeSlug() {
+        ContentService s = serviceWithTempDir();
+        assertThrows(IllegalArgumentException.class, () -> s.uploadScreenshot("..%2Fetc", png("a.png", new byte[]{1})));
+        assertThrows(IllegalArgumentException.class, () -> s.uploadScreenshot("A_UPPER", png("a.png", new byte[]{1})));
+    }
+
+    @Test
+    void uploadScreenshotRejectsDuplicateName() throws Exception {
+        ContentService s = serviceWithTempDir();
+        s.uploadScreenshot("yunshu", png("dup.png", new byte[]{1}));
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> s.uploadScreenshot("yunshu", png("dup.png", new byte[]{2})));
+        assertTrue(e.getMessage().contains("同名文件已存在"));
+    }
+
+    @Test
+    void uploadScreenshotSanitizesFilename() throws Exception {
+        ContentService s = serviceWithTempDir();
+        List<String> files = s.uploadScreenshot("yunshu", png("my 截图 (1).png", new byte[]{1}));
+        // 非白名单字符替换为 _，不保留路径分隔符与空格
+        assertEquals("my_____1_.png", files.get(0)); // space+截+图+space+( 共 5 个非白名单字符
     }
 }
