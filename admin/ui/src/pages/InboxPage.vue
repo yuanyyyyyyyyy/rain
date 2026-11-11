@@ -4,6 +4,7 @@
     <div class="head">
       <h1>收件箱</h1>
       <div class="ops">
+        <input v-model="q" class="search" type="search" placeholder="搜姓名 / 邮箱 / 正文" spellcheck="false" />
         <button
           v-for="t in tabs"
           :key="t.key"
@@ -89,11 +90,18 @@ function isSafeEmail(email) {
   return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/.test(email || '')
 }
 const unreadCount = computed(() => list.value.filter((m) => !m.read).length)
+// 搜索（2026-11-11 F3）：姓名/邮箱/正文包含匹配，与 Tab 筛选叠加；列表 ≤100 条，纯内存过滤足够
+const q = ref('')
 const shown = computed(() => {
-  if (filter.value === 'trash') return trash.value
-  if (filter.value === 'unread') return list.value.filter((m) => !m.read && !m.archived)
-  if (filter.value === 'archived') return list.value.filter((m) => m.archived)
-  return list.value
+  let arr
+  if (filter.value === 'trash') arr = trash.value
+  else if (filter.value === 'unread') arr = list.value.filter((m) => !m.read && !m.archived)
+  else if (filter.value === 'archived') arr = list.value.filter((m) => m.archived)
+  else arr = list.value
+  const k = q.value.trim().toLowerCase()
+  if (!k) return arr
+  return arr.filter((m) =>
+    [m.name, m.email, m.body].some((x) => String(x || '').toLowerCase().includes(k)))
 })
 const emptyText = computed(() => {
   if (filter.value === 'trash') return '回收站是空的。删除的留言会先进回收站，可在此恢复或彻底删除。'
@@ -257,6 +265,18 @@ onMounted(load)
   display: flex;
   gap: 8px;
   align-items: center;
+}
+.search {
+  border: 1px solid var(--c-line);
+  background: var(--c-bg);
+  padding: 6px 10px;
+  font: 11px var(--font-sans);
+  width: 180px;
+  outline: none;
+
+  &:focus {
+    border-color: var(--c-blue);
+  }
 }
 .tab,
 .op {

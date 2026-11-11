@@ -8,6 +8,7 @@
       <div class="actions">
         <span v-if="dirty" class="dirty-tag">● 未保存</span>
         <button class="mini" @click="preview" title="打开公网项目页（显示的是已发布内容，未发布的改动发布后生效）">预览 ↗</button>
+        <button class="mini" @click="exportJson" title="复制并下载该项目的纯数据 JSON（content/projects/<slug>.json 的内容）">导出</button>
         <button class="primary" :disabled="saving" @click="save">{{ saving ? '保存中…' : '保存' }}</button>
       </div>
     </div>
@@ -311,6 +312,23 @@ async function submitCreate() {
 // 公网预览：打开项目详情页（显示已发布内容；未发布改动需先发布）
 function preview() {
   window.open(`https://yuanyyyyyyyyy.github.io/rain/projects/${slug.value}`, '_blank', 'noopener')
+}
+
+// 导出纯数据 JSON（2026-11-11 F6）：复制到剪贴板 + 触发下载 <slug>.json
+async function exportJson() {
+  try {
+    const txt = await api.getText(`/api/content/projects/${slug.value}/export`)
+    try { await navigator.clipboard.writeText(txt) } catch { /* 剪贴板权限受限时仅下载 */ }
+    const blob = new Blob([txt], { type: 'application/json' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `${slug.value}.json`
+    a.click()
+    URL.revokeObjectURL(a.href)
+    say(`已导出 ${slug.value}.json（剪贴板 + 下载）。`)
+  } catch (e) {
+    say(e.message, true)
+  }
 }
 
 async function deleteProject() {

@@ -16,10 +16,11 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { api, setToken } from '../api.js'
 
 const router = useRouter()
+const route = useRoute()
 const username = ref('')
 const password = ref('')
 const err = ref('')
@@ -34,7 +35,9 @@ async function submit() {
       password: password.value,
     })
     setToken(data.token)
-    router.push('/')
+    // 登录后回跳来源页（仅接受站内相对路径，防 open redirect）
+    const target = route.query.redirect
+    router.push(typeof target === 'string' && target.startsWith('/') && !target.startsWith('//') ? target : '/')
   } catch (e) {
     err.value = e.message
   } finally {
