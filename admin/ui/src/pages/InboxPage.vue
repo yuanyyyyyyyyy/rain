@@ -18,8 +18,9 @@
       </div>
     </div>
 
-    <div v-if="filter !== 'trash' && isWorker" class="hint warn">
-      当前数据源为 Worker（公网 D1），删除 / 回收站仅对<b>本地 MySQL</b>生效。切到本地数据源后这里才能管理删除与回收站。
+    <div v-if="workerUnsupported" class="hint warn">
+      当前 Worker 版本不支持删除/回收站（接口 404）。请部署最新 worker.js 并执行
+      <code>npx wrangler d1 migrations apply rain-collector --remote</code>（0002）后重试。
     </div>
 
     <div v-if="!shown.length" class="hint">{{ emptyText }}</div>
@@ -35,11 +36,11 @@
         <span v-if="m.archived && filter !== 'trash'" class="tag">已归档</span>
         <template v-if="filter !== 'trash'">
           <button class="arc" @click.stop="setArchived(m)">{{ m.archived ? '取消归档' : '归档' }}</button>
-          <button class="arc danger" v-if="!isWorker" @click.stop="softDelete(m)">删除</button>
+          <button class="arc danger" @click.stop="softDelete(m)">删除</button>
         </template>
         <template v-else>
           <button class="arc" @click.stop="restore(m)">恢复</button>
-          <button class="arc danger" v-if="!isWorker" @click.stop="purge(m)">彻底删除</button>
+          <button class="arc danger" @click.stop="purge(m)">彻底删除</button>
         </template>
       </div>
       <p class="body">{{ m.body }}</p>
@@ -68,6 +69,20 @@ const tabs = [
 ]
 
 const isWorker = computed(() => source.value.startsWith('Worker'))
+// Worker 端删除接口 404 = 版本旧（未含 0002 migration / 新路由），提示部署而不是裸报错
+const workerUnsupported = ref(false)
+/** Worker 管理写操作统一走这里：404 时置 workerUnsupported 并给出部署指引 */
+async function workerManage(path, method, body) {
+  try {
+    return await workerSend(path, method, body)
+  } catch (e) {
+    if (String(e.message || '').includes('404')) {
+      workerUnsupported.value = true
+      throw new Error('当前 Worker 版本不支持该操作：请部署最新 worker.js + 0002 migration')
+    }
+    throw e
+  }
+}
 // 严格邮箱格式：Worker 端校验（^[^\s@]+@[^\s@]+\.[^\s@]+$）拦不住 javascript:alert(1)@x.y 这类伪 scheme，
 // 这里用字符白名单兜底，不匹配就降级为纯文本展示
 function isSafeEmail(email) {
@@ -110,27 +125,28 @@ async function load() {
       const r = await workerSend('/messages', 'GET')
       list.value = r.map(normalize)
       source.value = 'Worker（公网）'
+      // 回收站与本地源同能力（2026-11-11 F1）；旧版 Worker 无此接口 → 保持空并在操作时提示部署
+      try {
+        trash.value = (await workerSend('/messages/trash', 'GET')).map(normalize)
+      } catch {
+        trash.value = []
+      }
+      trashCount.value = trash.value.length
       return
     } catch {
       source.value = '本地（Worker 失败回退）'
     }
   }
   list.value = (await api.get('/api/messages')).map(normalize)
-  // 回收站 / 计数仅本地 MySQL 源有意义（Worker/D1 删除暂未实现）
-  if (!isWorker.value) {
-    trash.value = (await api.get('/api/messages/trash')).map(normalize)
-    trashCount.value = (await api.get('/api/messages/trash-count')).trash || 0
-  } else {
-    trash.value = []
-    trashCount.value = 0
-  }
+  trash.value = (await api.get('/api/messages/trash')).map(normalize)
+  trashCount.value = (await api.get('/api/messages/trash-count')).trash || 0
 }
 
-// 软删：移入回收站（可恢复）
+// 软删：移入回收站（可恢复）。Worker/本地两数据源同能力（2026-11-11 F1）
 async function softDelete(m) {
-  if (isWorker.value) return
   try {
-    await api.delete(`/api/messages/${m.id}`)
+    if (isWorker.value) await workerManage(`/messages/${m.id}`, 'DELETE')
+    else await api.delete(`/api/messages/${m.id}`)
     await load()
   } catch (e) {
     alert(e.message || '删除失败')
@@ -139,9 +155,9 @@ async function softDelete(m) {
 
 // 恢复：从回收站取回
 async function restore(m) {
-  if (isWorker.value) return
   try {
-    await api.post(`/api/messages/${m.id}/restore`)
+    if (isWorker.value) await workerManage(`/messages/${m.id}/restore`, 'POST')
+    else await api.post(`/api/messages/${m.id}/restore`)
     await load()
   } catch (e) {
     alert(e.message || '恢复失败')
@@ -150,10 +166,10 @@ async function restore(m) {
 
 // 彻底删除：真正删库，不可恢复
 async function purge(m) {
-  if (isWorker.value) return
   if (!confirm('彻底删除该留言？此操作不可恢复。')) return
   try {
-    await api.delete(`/api/messages/${m.id}/purge`)
+    if (isWorker.value) await workerManage(`/messages/${m.id}/purge`, 'DELETE')
+    else await api.delete(`/api/messages/${m.id}/purge`)
     await load()
   } catch (e) {
     alert(e.message || '彻底删除失败')
@@ -162,10 +178,10 @@ async function purge(m) {
 
 // 清空回收站：彻底删除全部已软删留言
 async function emptyTrash() {
-  if (isWorker.value) return
   if (!confirm('清空回收站？全部已删除留言将彻底移除，不可恢复。')) return
   try {
-    await api.delete('/api/messages/trash')
+    if (isWorker.value) await workerManage('/messages/trash', 'DELETE')
+    else await api.delete('/api/messages/trash')
     await load()
   } catch (e) {
     alert(e.message || '清空失败')

@@ -41,3 +41,60 @@ jobs:
           curl -s --max-time 15 https://rain-collector.yuanyyyyyyyyy.workers.dev/api/stats/summary \
             -H "Authorization: Bearer $TOKEN" | tee /tmp/summary.json
           python3 -c "import json; d=json.load(open('/tmp/summary.json')); assert d['pvTotal'] > 0; print('summary ok, pvTotal =', d['pvTotal'])"
+      # 软删回收站 round-trip（2026-11-11 F1）。失败通常 = 线上 Worker 未部署最新版
+      # 或未执行 0002 migration（npx wrangler d1 migrations apply rain-collector --remote）。
+      # 用独立邮箱 verify-rm@actions.dev（verify@actions.dev 被收件箱过滤，无法回读 id）；
+      # roundtrip 结尾彻底删除，不在公网留言里留痕。
+      - name: Soft-delete roundtrip (authed)
+        env:
+          TOKEN: ${{ secrets.COLLECTOR_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request
+
+          BASE = "https://rain-collector.yuanyyyyyyyyy.workers.dev"
+          TOKEN = __import__("os").environ["TOKEN"]
+          EMAIL = "verify-rm@actions.dev"
+
+          def call(method, path, body=None):
+              req = urllib.request.Request(BASE + path, method=method, headers={
+                  "Authorization": "Bearer " + TOKEN, "content-type": "application/json"})
+              data = None
+              if body is not None:
+                  data = json.dumps(body).encode()
+              try:
+                  with urllib.request.urlopen(req, data=data, timeout=15) as r:
+                      raw = r.read()
+                      return r.status, json.loads(raw) if raw else {}
+              except urllib.error.HTTPError as e:
+                  return e.code, {}
+
+          # 残留清理：上一轮失败可能留下同邮箱留言
+          for path in ("/messages", "/messages/trash"):
+              st, items = call("GET", path)
+              if st != 200:
+                  continue
+              for m in items:
+                  if isinstance(m, dict) and m.get("email") == EMAIL:
+                      call("DELETE", f"/messages/{m['id']}")
+                      call("DELETE", f"/messages/{m['id']}/purge")
+
+          assert call("POST", "/messages", {"name": "actions-verify", "email": EMAIL,
+                                            "body": "soft-delete roundtrip"})[0] == 200, "submit failed"
+          st, items = call("GET", "/messages")
+          mine = [m for m in items if m.get("email") == EMAIL]
+          assert len(mine) == 1, f"expect exactly 1 message, got {len(mine)}"
+          mid = mine[0]["id"]
+
+          assert call("DELETE", f"/messages/{mid}")[0] == 200, "soft delete failed"
+          assert all(m["id"] != mid for m in call("GET", "/messages")[1]), "still in list after delete"
+          assert any(m["id"] == mid for m in call("GET", "/messages/trash")[1]), "not in trash after delete"
+
+          assert call("POST", f"/messages/{mid}/restore")[0] == 200, "restore failed"
+          assert any(m["id"] == mid for m in call("GET", "/messages")[1]), "not back in list after restore"
+
+          assert call("DELETE", f"/messages/{mid}")[0] == 200
+          assert call("DELETE", f"/messages/{mid}/purge")[0] == 200, "purge failed"
+          assert all(m["id"] != mid for m in call("GET", "/messages/trash")[1]), "still in trash after purge"
+          print("soft-delete roundtrip ok")
+          PY

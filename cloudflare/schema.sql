@@ -18,10 +18,13 @@ CREATE TABLE IF NOT EXISTS messages (
   body TEXT NOT NULL,
   read INTEGER NOT NULL DEFAULT 0,
   archived INTEGER NOT NULL DEFAULT 0,
+  deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT,
   ip_hash TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_messages_ip_created ON messages (ip_hash, created_at);
+CREATE INDEX IF NOT EXISTS idx_messages_deleted ON messages (deleted, deleted_at);
 
 CREATE TABLE IF NOT EXISTS downloads (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

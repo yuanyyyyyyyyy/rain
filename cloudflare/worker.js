@@ -102,8 +102,9 @@ async function notifyOwnerByEmail(env, name, email, text) {
     const key = env.BREVO_API_KEY
     const owner = env.OWNER_EMAIL
     if (!key || !owner) return
+    // 每日帽只统计未读（2026-11-11 F1）：被刷爆后站长读完即恢复通知，不必等 24h
     const recent = await env.DB.prepare(
-      "SELECT COUNT(*) n FROM messages WHERE created_at > datetime('now', '-1 day')"
+      "SELECT COUNT(*) n FROM messages WHERE read = 0 AND created_at > datetime('now', '-1 day')"
     ).first()
     if ((recent?.n ?? 0) > NOTIFY_DAILY_CAP) {
       console.error("notify skipped: daily cap exceeded")
@@ -264,9 +265,56 @@ export default {
         const r = await env.DB.prepare(
           // 收件箱不显示 CI 探针留言（verify-collector 每次运行都会插入一条）
           "SELECT id, name, email, body, read, archived, created_at FROM messages " +
-          "WHERE email != 'verify@actions.dev' ORDER BY id DESC LIMIT 100"
+          "WHERE deleted = 0 AND email != 'verify@actions.dev' ORDER BY id DESC LIMIT 100"
         ).all()
         return json(request, r.results || [])
+      }
+
+      // ---- 回收站（2026-11-11 F1：对齐本地 Spring 软删契约）----
+      if (request.method === "GET" && url.pathname === "/messages/trash") {
+        const r = await env.DB.prepare(
+          "SELECT id, name, email, body, read, archived, created_at, deleted_at FROM messages " +
+          "WHERE deleted = 1 AND email != 'verify@actions.dev' ORDER BY deleted_at DESC LIMIT 100"
+        ).all()
+        return json(request, r.results || [])
+      }
+
+      // DELETE /messages/trash 要在 :id 之前精确匹配（"trash" 非数字，正则本身也不会命中，先写更清晰）
+      if (request.method === "DELETE" && url.pathname === "/messages/trash") {
+        await env.DB.prepare("DELETE FROM messages WHERE deleted = 1").run()
+        return json(request, { ok: true })
+      }
+
+      if (request.method === "DELETE" && url.pathname === "/messages/read-all") {
+        return json(request, { error: "not found" }, 404) // 防御性 404（PUT 才是 read-all）
+      }
+
+      if (request.method === "DELETE" && url.pathname.startsWith("/messages/")) {
+        // /messages/:id（软删）与 /messages/:id/purge（彻底删，仅回收站内）
+        const m = url.pathname.match(/^\/messages\/(\d+)(?:\/(purge))?$/)
+        if (!m) return json(request, { error: "not found" }, 404)
+        if (m[2] === "purge") {
+          const r = await env.DB.prepare("DELETE FROM messages WHERE id = ? AND deleted = 1")
+            .bind(Number(m[1])).run()
+          if (!r.meta.changes) return json(request, { error: "仅回收站内的留言可彻底删除" }, 400)
+          return json(request, { ok: true })
+        }
+        const r = await env.DB.prepare(
+          "UPDATE messages SET deleted = 1, deleted_at = datetime('now') WHERE id = ? AND deleted = 0"
+        ).bind(Number(m[1])).run()
+        if (!r.meta.changes) return json(request, { error: "留言不存在" }, 400)
+        return json(request, { ok: true })
+      }
+
+      if (request.method === "POST" && url.pathname.startsWith("/messages/")) {
+        // /messages/:id/restore（从回收站取回）
+        const m = url.pathname.match(/^\/messages\/(\d+)\/restore$/)
+        if (!m) return json(request, { error: "not found" }, 404)
+        const r = await env.DB.prepare(
+          "UPDATE messages SET deleted = 0, deleted_at = NULL WHERE id = ? AND deleted = 1"
+        ).bind(Number(m[1])).run()
+        if (!r.meta.changes) return json(request, { error: "留言不在回收站" }, 400)
+        return json(request, { ok: true })
       }
 
       if (request.method === "PUT" && url.pathname === "/messages/read-all") {
