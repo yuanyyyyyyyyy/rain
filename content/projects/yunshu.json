@@ -40,17 +40,32 @@
       "component" : "yunshu"
     },
     {
-      "note" : "截图注意：打码或使用演示机构的样例数据，避免出现真实患者/医护个人信息。",
+      "note" : "截图为演示机构/演示数据（张三/李四/王五、doc-001、W-DEMO）；不含真实患者、医护、机构与内网信息。",
       "type" : "shots",
-      "kicker" : "03 / INTERFACE",
-      "wanted" : [
-        "排班模板列表页（分页 + 多机构切换）",
-        "周排班模板编辑页（乐观锁版本冲突提示）",
-        "日历例外 / 停诊设置界面",
-        "AI 排班助手对话界面",
-        "Swagger 接口文档总览（25 个接口）"
+      "items" : [
+        {
+          "src" : "screenshots/yunshu/yunshu-01.png",
+          "caption" : "排班设置——日排班模板列表：JPA 分页与启停状态，专家/普通/急诊多模式"
+        },
+        {
+          "src" : "screenshots/yunshu/yunshu-02.png",
+          "caption" : "周排班模板编辑——周明细绑定日模板（演示数据 W-DEMO-2026）"
+        },
+        {
+          "src" : "screenshots/yunshu/yunshu-03.png",
+          "caption" : "节假日例外——日历停诊标记与例外清单，停诊原因可追溯到具体模板"
+        },
+        {
+          "src" : "screenshots/yunshu/yunshu-04.png",
+          "caption" : "AI 排班助手——自然语言查询启用的模板，返回结构化清单"
+        },
+        {
+          "src" : "screenshots/yunshu/yunshu-05.png",
+          "caption" : "接口文档总览——Knife4j 分组与接口统计"
+        }
       ],
-      "pending" : true
+      "kicker" : "03 / INTERFACE",
+      "pending" : false
     },
     {
       "type" : "impl",
