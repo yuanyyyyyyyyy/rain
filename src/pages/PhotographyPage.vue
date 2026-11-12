@@ -48,7 +48,7 @@
             role="button"
             tabindex="0"
             :aria-label="`查看 ${plateLabel(it.p.id)} 大图`"
-            :style="{ flex: `${it.r} 1 0px` }"
+            :style="row.natural ? { flex: `0 0 ${Math.round(row.h * it.r)}px` } : { flex: `${it.r} 1 0px` }"
             @click="openAt(flatIndex(it.p.id))"
             @keydown.enter.prevent="openAt(flatIndex(it.p.id))"
           >
@@ -82,7 +82,7 @@
       </div>
     </div>
 
-    <p class="wrap note">* 对齐行排版：每行等高，宽度按原始比例分配，仅微量裁切对齐行缘；点击查看原比例大图（长边 1600px）。</p>
+    <p class="wrap note">* 对齐行排版：每行等高，宽度按原始比例分配，仅微量裁切对齐行缘；末行不满时按原始比例排列、右侧留白，不做拉伸；点击查看原比例大图（长边 1600px）。</p>
 
     <!-- Lightbox -->
     <Teleport to="body">
@@ -189,11 +189,20 @@ const rowsFor = (group) => {
     }
   }
   if (cur.length) rows.push(cur)
-  return rows.map((items) => {
+  const built = rows.map((items) => {
     const s = items.reduce((a, x) => a + x.r, 0)
-    const h = Math.min((w - gap * (items.length - 1)) / s, maxH)
-    return { h, items }
+    return { items, s, h: Math.min((w - gap * (items.length - 1)) / s, maxH) }
   })
+  // 末行不满（贪心装行剩下的零头，常见是单张）：不再强行铺满行宽——
+  // 高度对齐本组上一行（整组仅一行时用常规行基准 w/target，同样封顶），
+  // 图按原始比例排，右侧留白；否则单图会被拉成通栏横幅，重度裁切且显糊。
+  const last = built[built.length - 1]
+  if (last && last.s < target) {
+    const prev = built[built.length - 2]
+    last.h = prev ? prev.h : Math.min(w / target, maxH)
+    last.natural = true
+  }
+  return built
 }
 
 onMounted(async () => {
