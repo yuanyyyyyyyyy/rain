@@ -27,7 +27,7 @@ function corsHeaders(request) {
   }
   if (ALLOWED_ORIGINS.has(origin)) {
     h["access-control-allow-origin"] = origin
-    h["access-control-allow-methods"] = "GET,POST,PUT,OPTIONS"
+    h["access-control-allow-methods"] = "GET,POST,PUT,DELETE,OPTIONS"
     h["access-control-allow-headers"] = "content-type,authorization"
     h.vary = "origin"
   }
