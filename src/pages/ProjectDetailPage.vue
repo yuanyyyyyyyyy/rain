@@ -102,6 +102,25 @@
             <div class="kicker">{{ sec.kicker }}</div>
             <p class="gains">{{ sec.body }}</p>
           </section>
+
+          <!-- 报告全景：结构总览 + 完整报告外链（public/reports/ 自包含 HTML） -->
+          <section v-else-if="sec.type === 'report'" class="block">
+            <div class="kicker">{{ sec.kicker }}</div>
+            <p v-if="sec.desc" class="report-desc">{{ sec.desc }}</p>
+            <ol class="report-list">
+              <li v-for="(r, i) in sec.items || []" :key="i">
+                <span class="rno">{{ String(i + 1).padStart(2, '0') }}</span>
+                <span class="rt">
+                  {{ r.t ?? r }}
+                  <small v-if="r.d">{{ r.d }}</small>
+                </span>
+              </li>
+            </ol>
+            <a v-if="sec.href" class="report-link" :href="sec.href" target="_blank" rel="noopener">
+              {{ sec.linkLabel || '查看完整报告 ↗' }}
+            </a>
+            <p v-if="sec.note" class="mnote">{{ sec.note }}</p>
+          </section>
         </template>
       </div>
 
@@ -424,6 +443,58 @@ onUnmounted(() => {
   color: var(--c-ink-soft);
   max-width: 680px;
   white-space: pre-line; // 管理台 textarea 里的换行原样保留（任务 F）
+}
+
+// 报告全景（type: report）：编号版块清单 + 完整报告外链
+.report-desc {
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 2;
+  color: var(--c-ink-soft);
+  max-width: 680px;
+}
+.report-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--c-line);
+
+  li {
+    display: flex;
+    gap: 14px;
+    align-items: baseline;
+    padding: 9px 2px;
+    border-bottom: 1px solid var(--c-line);
+    font-size: 13px;
+  }
+  .rno {
+    font: 10px var(--font-mono);
+    letter-spacing: 0.1em;
+    color: var(--c-blue);
+    min-width: 24px;
+  }
+  .rt small {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    line-height: 1.7;
+    color: var(--c-muted);
+  }
+}
+.report-link {
+  display: inline-block;
+  margin-top: 18px;
+  border: 1px solid var(--c-blue);
+  color: var(--c-blue);
+  padding: 10px 16px;
+  font: 10px var(--font-mono);
+  letter-spacing: 0.12em;
+  transition: 0.2s;
+
+  &:hover {
+    border-color: var(--c-blue-hover);
+    box-shadow: 4px 4px 0 var(--c-blue-shadow-soft);
+  }
 }
 
 // 侧栏
