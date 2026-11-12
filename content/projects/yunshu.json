@@ -1,9 +1,9 @@
 {
-  "_headerNote" : "云枢智慧医院管理平台 — 详情页正文数据\n证据基线：zero-one-his2607/his-java j8 分支（76b48c6ed）+ Setroster-docs/压测报告.md\n所有数字均有出处；表述遵守诚实口径（MQ 链路止步于通知任务生成）",
-  "slug" : "yunshu",
-  "headline" : "微服务架构下的排班预约服务",
-  "summary" : "基于 Spring Cloud Alibaba 微服务架构的智慧医院管理平台，团队 8 人。我独立负责排班预约服务 his-j8-setroster 的后端全部代码（该模块单人提交）：日/周排班模板、号源时段与放号策略、日历例外（停诊源头）、停诊通知任务与 AI 排班助手，共 24 个 REST 接口 + 1 个 AI 接口。",
-  "meta" : [
+  "_headerNote": "云智慧医院管理平台 — 详情页正文数据\n证据基线：zero-one-his2607/his-java j8 分支（76b48c6ed）+ Setroster-docs/压测报告.md（2026-10-01/02）+ 2026-11-13 全链路复测实测\n所有数字均有出处；表述遵守诚实口径（MQ 链路止步于通知任务生成）",
+  "slug": "yunshu",
+  "headline": "微服务架构下的排班预约服务",
+  "summary": "基于 Spring Cloud Alibaba 微服务架构的智慧医院管理平台，团队 8 人。我独立负责排班预约服务 his-j8-setroster 的后端全部代码（该模块单人提交）：日/周排班模板、号源时段与放号策略、日历例外（停诊源头）、停诊通知任务与 AI 排班助手，共 24 个 REST 接口 + 1 个 AI 接口。",
+  "meta": [
     [
       "角色",
       "his-j8-setroster 后端全部代码（单人提交）"
@@ -26,133 +26,149 @@
     ],
     [
       "项目名",
-      "云枢智慧医院管理平台"
+      "云智慧医院管理平台"
     ],
     [
       "卡片周期",
       "2026.06 — 至今"
     ]
   ],
-  "sections" : [
+  "sections": [
     {
-      "type" : "arch",
-      "kicker" : "02 / ARCHITECTURE",
-      "component" : "yunshu"
+      "type": "arch",
+      "kicker": "02 / ARCHITECTURE",
+      "component": "yunshu"
     },
     {
-      "note" : "截图为真实界面实录（本地全栈实测），未做样式美化；数据为演示机构样例（张三/李四/王五、演示医院），无真实患者与医护人员信息。",
-      "type" : "shots",
-      "items" : [
+      "note": "截图为真实界面/工具输出实录（本地全栈实测），未做样式美化；数据为演示机构样例（张三/李四/王五、演示医院），无真实患者与医护人员信息。06–09 号图为真实命令输出与日志的逐字渲染（终端样式排版，文本未改动）。",
+      "type": "shots",
+      "kicker": "03 / INTERFACE",
+      "pending": false,
+      "items": [
         {
-          "src" : "screenshots/yunshu/yunshu-01.png",
-          "caption" : "排班设置 · 日排班——条件查询 + 模板列表 + 分页控件，机构过滤生效"
+          "src": "screenshots/yunshu/yunshu-01.png",
+          "caption": "排班设置 · 日排班——条件查询 + 模板列表 + 分页控件（共 7 条），机构过滤生效"
         },
         {
-          "src" : "screenshots/yunshu/yunshu-02.png",
-          "caption" : "周排班编辑——5 条周明细绑定日模板；顶部红色提示为乐观锁拦截并发保存的真实拒绝"
+          "src": "screenshots/yunshu/yunshu-02.png",
+          "caption": "周排班编辑——5 条周明细绑定日模板；顶部红色提示为乐观锁拦截并发保存的真实拒绝（数据库版本 +1 后以旧版本提交，更新 0 行被拒）"
         },
         {
-          "src" : "screenshots/yunshu/yunshu-03.png",
-          "caption" : "节假日例外——日历停诊标记 + 停诊例外行（原因可追溯到具体模板，参与放号生成）"
+          "src": "screenshots/yunshu/yunshu-03.png",
+          "caption": "节假日例外——2026-11 月历 16 日停诊标记 + 停诊例外行；单日例外按月查询修复后可见（生效区间与查询窗口求交集）"
         },
         {
-          "src" : "screenshots/yunshu/yunshu-04.png",
-          "caption" : "AI 排班助手——自然语言查询，经 Function Calling 返回数据库实时模板清单并引导多轮操作"
+          "src": "screenshots/yunshu/yunshu-04.png",
+          "caption": "AI 排班助手——Function Calling 真实查询：自然语言返回数据库实时启用的 6 条模板（名称/编码/生效日期），LLM 意图路由 → QUERY 助手挂排班工具"
         },
         {
-          "src" : "screenshots/yunshu/yunshu-05.png",
-          "caption" : "接口文档总览——Knife4j 六组 Controller 共 25 个接口（GET 9 / POST 6 / PUT 5 / DELETE 5）"
+          "src": "screenshots/yunshu/yunshu-05.png",
+          "caption": "接口文档总览——Knife4j 六组 Controller 共 25 个接口（GET 9 / POST 6 / PUT 5 / DELETE 5 = 24 REST + 1 AI）"
+        },
+        {
+          "src": "screenshots/yunshu/yunshu-06.png",
+          "caption": "压测复测实录（hey -n 2000 -c 50）——基线组稳态 99.2ms / 494 req/s / P99 194ms → 缓存组 20.0ms / 2361 req/s / P99 84ms；Redis 验证基线组零写缓存"
+        },
+        {
+          "src": "screenshots/yunshu/yunshu-07.png",
+          "caption": "周排班详情固定 3 次 SQL（mapper 日志逐字摘录）+ EXPLAIN：明细 ref idx_bkg_week_sched_tpl_item_week、IN 批量 range PRIMARY、千级分页 ref idx_bkg_week_sched_tpl_org"
+        },
+        {
+          "src": "screenshots/yunshu/yunshu-08.png",
+          "caption": "RAG 制度文档问答——「医生申请停诊需要提前多久报备？」检索《门诊排班与停诊管理办法（试行）》作答（常规停诊提前 24h 系统申请 / 临时停诊 2h 电话报备医务科）；本地 bge-m3 向量检索 Top3"
+        },
+        {
+          "src": "screenshots/yunshu/yunshu-09.png",
+          "caption": "RocketMQ 停诊通知链路接口 RT 实测——任务量 1x（3 任务/次）平均 56.6ms，扩大 10 倍（30 任务/次）平均 60.8ms；落库 165 条通知任务与消费者展开日志逐字核对"
         }
-      ],
-      "kicker" : "03 / INTERFACE",
-      "pending" : false
+      ]
     },
     {
-      "type" : "impl",
-      "items" : [
+      "type": "impl",
+      "kicker": "04 / 核心实现",
+      "items": [
         {
-          "title" : "缓存 — Cache-Aside（日排班选项）",
-          "result" : "50 并发 × 2000 请求：平均 99.3ms → 19.7ms，吞吐 496 → 2480 req/s，P99 1.468s → 0.148s。",
-          "problem" : "日排班下拉接口每次回源查库，50 并发超过 Druid 连接池上限（max-active=20）后排队，P99 拉到 1.47s。",
-          "solution" : "StringRedisTemplate + JSON 序列化的旁路缓存，key 按机构/关键字/分页参数组合；空结果缓存 60s 防穿透，非空 TTL = 3600s 基础 + 0~300s 随机偏移防雪崩；一致性采用先更库后删缓存，SCAN 按前缀清理并以 TTL 兜底；另加启动预热与压测 A/B 总开关。"
+          "title": "缓存 — Cache-Aside（日排班选项）",
+          "result": "50 并发 × 2000 请求：平均 99.3ms → 19.7ms，吞吐 496 → 2480 req/s，P99 1.468s → 0.148s；2026-11-13 同方法学复测 99.2→20.0ms / 494→2361 req/s。",
+          "problem": "日排班下拉接口每次回源查库，50 并发超过 Druid 连接池上限（max-active=20）后排队，P99 拉到 1.47s。",
+          "solution": "StringRedisTemplate + JSON 序列化的旁路缓存，key 按机构/关键字/分页参数组合；空结果缓存 60s 防穿透，非空 TTL = 3600s 基础 + 0~300s 随机偏移防雪崩；一致性采用先更库后删缓存，SCAN 按前缀清理并以 TTL 兜底；另加启动预热与压测 A/B 总开关。"
         },
         {
-          "title" : "并发 — 乐观锁（周排班模板编辑）",
-          "result" : "三段验证通过：修改成功 → 同版本再提交被拦截 → 带新版本提交成功。",
-          "problem" : "两个用户同时编辑同一周排班模板，后提交者会静默覆盖前者的修改。",
-          "solution" : "MyBatis-Plus @Version + 全局 OptimisticLockerInnerInterceptor，DTO 透传 version，edit() 显式设置后更新，更新 0 行即返回失败。"
+          "title": "并发 — 乐观锁（周排班模板编辑）",
+          "result": "三段验证通过：修改成功 → 同版本再提交被拦截 → 带新版本提交成功；UI 链路实测旧版本提交被 0 行更新拒绝（截图 02）。",
+          "problem": "两个用户同时编辑同一周排班模板，后提交者会静默覆盖前者的修改。",
+          "solution": "MyBatis-Plus @Version + 全局 OptimisticLockerInnerInterceptor，DTO 透传 version，edit() 显式设置后更新，更新 0 行即返回失败。"
         },
         {
-          "title" : "击穿防护 — Redisson 互斥重建",
-          "result" : "热态 A/B 实测：未加锁并发回源 3~18 次，加锁后收敛为稳定 1 次（c=50 / c=100 各 5–6 轮）。",
-          "problem" : "热点 key 失效瞬间，大量并发同时未命中、同时回源查库（缓存击穿）。",
-          "solution" : "Redisson RLock 与缓存键一一对应（细粒度）；tryLock(0, leaseMs) 抢锁不排队，抢到后先二次检查缓存再回源，未抢到的线程 20ms 轮询等缓存回填；释放前 isHeldByCurrentThread 防误删。"
+          "title": "击穿防护 — Redisson 互斥重建",
+          "result": "热态 A/B 实测：未加锁并发回源 3~18 次，加锁后收敛为稳定 1 次（c=50 / c=100 各 5–6 轮）。",
+          "problem": "热点 key 失效瞬间，大量并发同时未命中、同时回源查库（缓存击穿）。",
+          "solution": "Redisson RLock 与缓存键一一对应（细粒度）；tryLock(0, leaseMs) 抢锁不排队，抢到后先二次检查缓存再回源，未抢到的线程 20ms 轮询等缓存回填；释放前 isHeldByCurrentThread 防误删。"
         },
         {
-          "title" : "查询优化 — N+1 → IN 批量 + 内存组装",
-          "result" : "详情固定 3 次 SQL；千级数据分页平均 35.8ms，EXPLAIN 确认命中 idx_bkg_week_sched_tpl_org 复合索引（实测记录见 git 提交 7e4a39918）。",
-          "problem" : "周模板详情先查明细列表、再循环单查日模板名称，明细多时 SQL 次数线性膨胀。",
-          "solution" : "收集去重后的 dayTemplateIds，一次 IN 查询取回并用 Collectors.toMap 内存组装，空明细短路跳过。"
+          "title": "查询优化 — N+1 → IN 批量 + 内存组装",
+          "result": "详情固定 3 次 SQL（mapper 日志逐字核对）；千级数据分页平均 35.8ms，2026-11-13 复测 19.3ms；EXPLAIN 确认明细/IN 批量/分页三类查询全部命中索引（实测记录见 git 提交 7e4a39918）。",
+          "problem": "周模板详情先查明细列表、再循环单查日模板名称，明细多时 SQL 次数线性膨胀。",
+          "solution": "收集去重后的 dayTemplateIds，一次 IN 查询取回并用 Collectors.toMap 内存组装，空明细短路跳过。"
         },
         {
-          "title" : "异步 — RocketMQ 停诊通知",
-          "result" : "链路已跑通\"事件 → 幂等落库 → 逐天任务生成\"。诚实口径：任务状态流转到实际向患者触达的下游发送未实现，本页表述止步于通知任务生成。",
-          "problem" : "停诊（日历例外 CLOSED）要通知已预约患者，逐天 × 逐模板展开同步做会拖慢主流程；MQ 至少一次投递要求消费幂等。",
-          "solution" : "生产者 syncSend + 本地重试 3 次、afterCommit 挂事务保证本地事务与发送一致；消费者按天 × 模板展开为通知任务（上限 90 天），任务表唯一键 (exception_id, notify_date, template_id) 幂等，消费时直接 insert、DuplicateKeyException 跳过；消费异常走 RocketMQ 默认重试，超限进死信。"
+          "title": "异步 — RocketMQ 停诊通知",
+          "result": "链路已跑通\"事件 → 幂等落库 → 逐天任务生成\"；2026-11-13 实测接口 RT：任务量 1x（3 任务/次）平均 56.6ms，扩大 10 倍（30 任务/次）平均 60.8ms，RT 基本持平。诚实口径：任务状态流转到实际向患者触达的下游发送未实现，本页表述止步于通知任务生成。",
+          "problem": "停诊（日历例外 CLOSED）要通知已预约患者，逐天 × 逐模板展开同步做会拖慢主流程；MQ 至少一次投递要求消费幂等。",
+          "solution": "生产者 syncSend + 本地重试 3 次、afterCommit 挂事务保证本地事务与发送一致；消费者按天 × 模板展开为通知任务（上限 90 天），任务表唯一键 (exception_id, notify_date, template_id) 幂等，消费时直接 insert、DuplicateKeyException 跳过；消费异常走 RocketMQ 默认重试，超限进死信。"
         },
         {
-          "title" : "AI 排班助手 — 意图识别 / Function Calling / RAG",
-          "result" : "方案、代码与学习文档逐条核对一致；\"模型理解 + 规则兜底\"的边界使所有写操作都经过确定性校验。",
-          "problem" : "排班操作与规则问答需求：模型负责理解和决策，服务端负责执行，不允许大模型直接写库或做合规判定。",
-          "solution" : "第一次 LLM 调用做意图分类（QUERY / PLAN / KNOWLEDGE / OTHER）；操作意图挂 Function Calling 工具（查日排班、停诊软删、调度冲突检查、替补推荐）；知识意图走 RAG——智谱 embedding-3 + 内存向量库，Top-3 检索排班规则文档，未配 API Key 时整链路降级不启用；合规判定由纯 Java 规则引擎 RosterRuleChecker 负责（连续工作超限 / 夜班恢复不足 / 专家资质 / 休假冲突四类规则），零 LLM 参与。"
+          "title": "AI 排班助手 — 意图识别 / Function Calling / RAG",
+          "result": "方案、代码与学习文档逐条核对一致；RAG 已真实启用——制度问答引用《门诊排班与停诊管理办法（试行）》条款作答（2026-11-13 截图实录）。",
+          "problem": "排班操作与规则问答需求：模型负责理解和决策，服务端负责执行，不允许大模型直接写库或做合规判定。",
+          "solution": "第一次 LLM 调用做意图分类（QUERY / PLAN / KNOWLEDGE / OTHER）；操作意图挂 Function Calling 工具（查日排班、停诊软删、调度冲突检查、替补推荐）；知识意图走 RAG——向量端点可配置（默认智谱 embedding-3，本地演示切 Ollama bge-m3），SimpleVectorStore 内存向量库 Top-3 检索排班制度文档，未配置时整链路降级不启用；合规判定由纯 Java 规则引擎 RosterRuleChecker 负责（连续工作超限 / 夜班恢复不足 / 专家资质 / 休假冲突四类规则），零 LLM 参与。"
         }
-      ],
-      "kicker" : "04 / 核心实现"
+      ]
     },
     {
-      "note" : "测试环境：hey -n 2000 -c 50（50 并发 × 2000 请求，全部 200）；对象为 GET listDailyScheduleOptions；服务本机启动，MySQL/Redis/Nacos 位于 dev 虚拟机，Druid max-active=20。\"优化前\"指关闭缓存的稳态基线（连接池热身后第 2 轮），非冷启动首跑。出处：Setroster-docs/压测报告.md。",
-      "type" : "metrics",
-      "items" : [
+      "note": "测试环境：hey -n 2000 -c 50（50 并发 × 2000 请求，全部 200）；对象为 GET listDailyScheduleOptions；服务本机启动，MySQL/Redis/Nacos 位于 dev 虚拟机，Druid max-active=20。\"优化前\"指关闭缓存的稳态基线，非冷启动首跑。出处：Setroster-docs/压测报告.md（2026-10-01/02）。2026-11-13 同方法学复测：平均 99.2→20.0ms、吞吐 494→2361 req/s、P99 0.194s→0.084s（复测当晚的稳态 P99 明显优于 10 月报告的 1.468s——该轮含连接池冷启动极端尾延迟，复测未复现；逐字输出见截图 06 与交付文档）。",
+      "type": "metrics",
+      "kicker": "05 / 性能数据（标注测试环境）",
+      "items": [
         {
-          "delta" : "-90%",
-          "label" : "P99",
-          "value" : "1.468s → 0.148s"
+          "delta": "-90%",
+          "label": "P99",
+          "value": "1.468s → 0.148s"
         },
         {
-          "delta" : "×5.0",
-          "label" : "吞吐",
-          "value" : "496 → 2480 req/s"
+          "delta": "×5.0",
+          "label": "吞吐",
+          "value": "496 → 2480 req/s"
         },
         {
-          "delta" : "-80%",
-          "label" : "平均响应",
-          "value" : "99.3 → 19.7ms"
+          "delta": "-80%",
+          "label": "平均响应",
+          "value": "99.3 → 19.7ms"
         }
-      ],
-      "kicker" : "05 / 性能数据（标注测试环境）"
+      ]
     },
     {
-      "type" : "pits",
-      "items" : [
+      "type": "pits",
+      "kicker": "06 / 问题与解决",
+      "items": [
         {
-          "body" : "压测 P99 飙到 10.3s、200 个请求只回来 151 个。日志显示线程全部卡在锁等待：tryLock 的租约字段是毫秒值却按秒传入，等价于\"愿意等 500 秒\"。统一改为 TimeUnit.MILLISECONDS 并把字段改名 lockLeaseMs，复压恢复正常。",
-          "title" : "坑 1 · Redisson 锁时间单位 bug"
+          "title": "坑 1 · Redisson 锁时间单位 bug",
+          "body": "压测 P99 飙到 10.3s、200 个请求只回来 151 个。日志显示线程全部卡在锁等待：tryLock 的租约字段是毫秒值却按秒传入，等价于\"愿意等 500 秒\"。统一改为 TimeUnit.MILLISECONDS 并把字段改名 lockLeaseMs，复压恢复正常。"
         },
         {
-          "body" : "修复单位 bug 后 P99 仍达 10.3s。两个根因：49 个线程在锁上排队、逐个唤醒退化成串行交接；tryLock 与\"二次检查命中就 return\"在同一 try 里，return 跳过 finally 造成锁泄漏，等租约到期才释放。改为 tryLock(0, lease) 不排队、抢不到改 20ms 轮询等回填，并把\"抢锁\"与\"持锁\"拆成两段 try/finally。热态回源收敛为 1 次。",
-          "title" : "坑 2 · 锁排队退化 + 锁泄漏"
+          "title": "坑 2 · 锁排队退化 + 锁泄漏",
+          "body": "修复单位 bug 后 P99 仍达 10.3s。两个根因：49 个线程在锁上排队、逐个唤醒退化成串行交接；tryLock 与\"二次检查命中就 return\"在同一 try 里，return 跳过 finally 造成锁泄漏，等租约到期才释放。改为 tryLock(0, lease) 不排队、抢不到改 20ms 轮询等回填，并把\"抢锁\"与\"持锁\"拆成两段 try/finally。热态回源收敛为 1 次。"
         },
         {
-          "body" : "关闭预热时 50 并发 200 请求：50 次回源、49 条\"等待缓存重建超时，降级直查库\"告警、最慢 7.42s。单请求实测冷启动首回源 3.40s，超过 2s 锁窗口，抢到锁的还没查完其余线程全部超时。没有加长窗口（治标），改为启动预热 OptionsCacheWarmUpRunner 捂热连接池/语句解析/JIT：回源 50 → 1 次，告警 49 → 0，总耗时 7.48s → 1.84s。",
-          "title" : "坑 3 · 冷启动击穿 — 锁窗口救不了冷池"
+          "title": "坑 3 · 冷启动击穿 — 锁窗口救不了冷池",
+          "body": "关闭预热时 50 并发 200 请求：50 次回源、49 条\"等待缓存重建超时，降级直查库\"告警、最慢 7.42s。单请求实测冷启动首回源 3.40s，超过 2s 锁窗口，抢到锁的还没查完其余线程全部超时。没有加长窗口（治标），改为启动预热 OptionsCacheWarmUpRunner 捂热连接池/语句解析/JIT：回源 50 → 1 次，告警 49 → 0，总耗时 7.48s → 1.84s。"
         }
-      ],
-      "kicker" : "06 / 问题与解决"
+      ]
     },
     {
-      "body" : "一是压测方法论：基线必须先定义清楚（稳态 vs 冷启动），阶梯压测 + Little's Law 可以把\"吞吐上不去\"定位到连接池排队这类结构性原因，而不是盲目加缓存；二是互斥重建的工程权衡：锁的价值是把回源并发压成常数，收益大小取决于回源成本，热态便宜的场景它几乎不改变吞吐，冷启动才是致命的；三是 AI 应用的边界设计：让模型负责理解和决策、执行与合规交给确定性代码，既保住了业务正确性，也让每个环节可测试、可降级。",
-      "type" : "text",
-      "kicker" : "07 / 收获"
+      "type": "text",
+      "kicker": "07 / 收获",
+      "body": "一是压测方法论：基线必须先定义清楚（稳态 vs 冷启动），阶梯压测 + Little's Law 可以把\"吞吐上不去\"定位到连接池排队这类结构性原因，而不是盲目加缓存；二是互斥重建的工程权衡：锁的价值是把回源并发压成常数，收益大小取决于回源成本，热态便宜的场景它几乎不改变吞吐，冷启动才是致命的；三是 AI 应用的边界设计：让模型负责理解和决策、执行与合规交给确定性代码，既保住了业务正确性，也让每个环节可测试、可降级。"
     }
   ]
 }
