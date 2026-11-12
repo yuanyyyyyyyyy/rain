@@ -38,10 +38,10 @@ rain/
 ├── admin/
 │   ├── server/                # 后端：Spring Boot 3 + Security JWT + MySQL → admin/server/README.md
 │   └── ui/                    # 管理台：Vue 3 + Vite（复用 Klein Blue tokens）→ admin/ui/README.md
-└── docs/
+└── docs/                     # 内部协作文档（2026-11-12 起转本地维护，不入库）
     ├── _索引.md               # 文档总索引
-    ├── 素材/                   # 素材需求清单、素材回答、照片清单 JSON
-    ├── 规划/                   # 后台设计方案、审计修复记录
+    ├── 素材/                   # 素材需求清单、素材回答、截图交付说明
+    ├── 规划/                   # 设计方案、审计与执行记录
     └── 交接/                   # agent 交接与项目认知文档
 ```
 
@@ -92,5 +92,5 @@ cd admin/ui && npm install && npm run dev # 管理台 :5175
 
 - 分批提交，一个功能一个 commit：`feat: / chore: / docs: / fix:`
 - 敏感凭据只放 `application-local.yml`（已 gitignore），仓库内留 `.example` 模板
-- 文档进 `docs/` 并登记 `_索引.md`，命名 `主题-内容-YYYYMMDD.md`
+- 内部文档（`docs/`、`并发发布约定.md`）自 2026-11-12 起只留在本地：照常写入并登记 `_索引.md`（命名 `主题-内容-YYYYMMDD.md`），但**不再 git add / push**
 
