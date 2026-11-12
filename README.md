@@ -9,7 +9,7 @@
 | 路由 | 页面 | 状态 |
 |---|---|---|
 | `/` | 首页（Hero 几何主视觉 / Selected Works / Capabilities / Beyond Code / Contact） | ✅ |
-| `/projects/yunshu` | 云枢智慧医院管理平台 — 档案式 case study（07 节） | ✅ 完整（含 5 张界面实录） |
+| `/projects/yunshu` | 云智慧医院管理平台 — 档案式 case study（内部昵称云枢） | ✅ 完整（9 张实录+证据图，按简历口径对齐） |
 | `/projects/intelnexus` | IntelNexus 多源情报分析平台 — case study（07 节） | ✅ 2026-11-10 含界面实录截图 ×6 |
 | `/projects/forge` | Forge — Agent Harness（多入口统一 Runtime） | ✅ 上线，F1–F4/F6 截图已接入（F5 飞书对话待补） |
 | `/projects/rain` | Rain — 本站（作品集 + 自托管管理台） | ✅ 2026-11-10 上线，含界面实录截图 |
