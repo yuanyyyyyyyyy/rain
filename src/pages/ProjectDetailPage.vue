@@ -116,7 +116,7 @@
                 </span>
               </li>
             </ol>
-            <a v-if="sec.href" class="report-link" :href="sec.href" target="_blank" rel="noopener">
+            <a v-if="sec.href" class="report-link" :href="sec.href.startsWith('http') ? sec.href : BASE + sec.href.replace(/^\//, '')" target="_blank" rel="noopener">
               {{ sec.linkLabel || '查看完整报告 ↗' }}
             </a>
             <p v-if="sec.note" class="mnote">{{ sec.note }}</p>

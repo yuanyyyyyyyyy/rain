@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IntelNexus 情报搜索分析报告 · ransomware（INTEL-20261113-001）</title>
+<style>
+:root{--ink:#1c2430;--muted:#5a6675;--line:#dde3ea;--bg:#f6f8fa;--card:#ffffff;--accent:#2563eb;--accent-ink:#173a80}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.75 "Segoe UI","Microsoft YaHei","PingFang SC","Noto Sans SC",system-ui,sans-serif}
+a{color:var(--accent);text-decoration:none;word-break:break-all}
+a:hover{text-decoration:underline}
+.layout{display:flex;gap:28px;max-width:1280px;margin:0 auto;padding:32px 24px 64px}
+nav.toc{position:sticky;top:24px;align-self:flex-start;width:240px;flex:0 0 240px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 16px;font-size:13px;line-height:1.5}
+nav.toc .toc-cap{font-weight:700;letter-spacing:.12em;font-size:11px;color:var(--muted);margin-bottom:10px}
+nav.toc a{display:block;color:var(--muted);padding:5px 8px;border-radius:6px}
+nav.toc a:hover{background:#eef3fb;color:var(--accent-ink);text-decoration:none}
+main{flex:1;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:40px 48px 56px}
+h1.doc-title{font-size:26px;line-height:1.35;margin:0 0 6px;color:var(--ink)}
+.doc-sub{color:var(--muted);font-size:13px;margin:0 0 28px;padding-bottom:18px;border-bottom:1px solid var(--line)}
+h2{font-size:19px;margin:34px 0 14px;padding:10px 14px;background:#eef2f8;border-left:4px solid var(--accent);border-radius:0 8px 8px 0;scroll-margin-top:16px}
+h3{font-size:15.5px;margin:22px 0 10px;color:var(--accent-ink);scroll-margin-top:16px}
+p{margin:10px 0}
+ul{margin:8px 0 14px;padding-left:22px}
+li{margin:4px 0}
+blockquote{margin:14px 0;padding:10px 16px;background:#fff8e6;border-left:4px solid #e0a93c;border-radius:0 8px 8px 0;color:#6b5a20}
+blockquote p{margin:0}
+.tbl-wrap{overflow-x:auto;margin:14px 0 20px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f0f4f9;font-weight:700;white-space:nowrap}
+tbody tr:nth-child(even){background:#fafcfe}
+code{font:12.5px/1.6 Consolas,"JetBrains Mono",monospace;background:#f1f4f8;border:1px solid var(--line);border-radius:4px;padding:1px 5px;word-break:break-all}
+sup{color:var(--accent);font-weight:700;font-size:11px}
+.foot{margin-top:44px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+@media (max-width:900px){nav.toc{display:none}main{padding:24px 20px 40px}}
+@media print{body{background:#fff}.layout{display:block;max-width:none;padding:0}nav.toc{display:none}main{border:none;padding:0}h2{break-after:avoid}table{break-inside:auto}}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="toc"><div class="toc-cap">REPORT SECTIONS</div><a href="#sec-01">一、报告概览</a><a href="#sec-02">二、核心摘要</a><a href="#sec-03">三、事件画像</a><a href="#sec-04">四、来源分析</a><a href="#sec-05">五、关键情报</a><a href="#sec-06">六、证据链分析</a><a href="#sec-07">七、实体关系图谱</a><a href="#sec-08">八、事件演化</a><a href="#sec-09">九、舆情趋势</a><a href="#sec-10">十、影响评估</a><a href="#sec-11">十一、风险评估</a><a href="#sec-12">十二、攻击面分析</a><a href="#sec-13">十三、情报判断与后续关注</a><a href="#sec-14">十四、历史关联与变化检测</a><a href="#sec-15">十五、原始证据</a><a href="#sec-16">证据参考</a></nav>
+<main>
+<h1 class="doc-title">IntelNexus 情报搜索分析报告</h1>
+<h2 id="sec-01">一、报告概览</h2>
+<p><strong>报告编号</strong>：INTEL-20261113-001</p>
+<p><strong>分析主题</strong>：ransomware</p>
+<p><strong>搜索时间</strong>：2026-11-13 00:20</p>
+<p><strong>分析模式</strong>：威胁情报</p>
+<p><strong>分析模型</strong>：deepseek-v4-flash</p>
+<p><strong>数据来源</strong>：3 个来源</p>
+<p><strong>采集信息</strong>：23 条</p>
+<p><strong>报告生成时间</strong>：2026-11-13 00:20</p>
+<h2 id="sec-02">二、核心摘要</h2>
+<p><strong>【事实】</strong> 2025 年 3 月 5 日，ExploitDB 公开 EDB-52091，披露开源项目 Jasmin Ransomware（GitHub 仓库 codesiddhant/Jasmin-Ransomware）登录界面存在 SQL 注入认证绕过，作者为 Buğra Enis Dönmez；2025 年 3 月 22 日，同一平台公开 EDB-52140，披露该项目 Web Panel 的 download_file.php 中 file 参数未做过滤，可读取包括 database/db_conection.php 在内的任意文件，且作者明确说明该利用依赖前一 SQL 注入漏洞绕过会话校验。此外，CISA 已知被利用漏洞目录（KEV）中检索到 CVE-2024-7694（关联 TeamT5 ThreatSonar Anti-Ransomware）与 CVE-2022-27593（关联 QNAP Photo Station）两条记录。<sup>[1]</sup></p>
+<p><strong>【分析判断】</strong> 基于 ExploitDB 两份公告的技术细节，这两个漏洞的组合构成完整利用链：先绕过认证，再读取包含数据库凭据的配置文件；这反映部分开源或实验性勒索软件项目在自身管理面板的代码安全上投入不足。基于 CISA KEV 的收录性质（该目录收录已确认存在在野利用的漏洞），防护类产品与网络存储设备自身也被纳入攻击面，但其与勒索软件攻击活动的具体因果关联在本次搜索结果中缺乏描述性证据支撑。<sup>[1]</sup></p>
+<p><strong>【推测】</strong> 若攻击者将此类开源勒索软件项目的管理面板暴露在公网，则可能出现面板被用于文件窃取或作为进一步渗透的跳板的情形；但本次数据未提供实际在野利用的观测记录，上述推断不确定。</p>
+<h2 id="sec-03">三、事件画像</h2>
+<p><strong>首次发现</strong>：2018-02-02</p>
+<p><strong>最新变化</strong>：2026-08-24</p>
+<p><strong>持续时间</strong>：3126 天</p>
+<p><strong>信息来源</strong>：3 个独立来源</p>
+<p><strong>热度</strong>：█████████░ 98</p>
+<p><strong>可信度</strong>：█████░░░░░ 56%</p>
+<p><strong>当前状态</strong>：长期事件</p>
+<h2 id="sec-04">四、来源分析</h2>
+<h3>4.1 检索渠道分布</h3>
+<div class="tbl-wrap"><table>
+<thead><tr><th>检索渠道</th><th>数量</th><th>占比</th><th>角色</th></tr></thead>
+<tbody>
+<tr><td>NVD</td><td>19</td><td>83%</td><td>Primary</td></tr>
+<tr><td>CISA_KEV</td><td>2</td><td>9%</td><td>Primary</td></tr>
+<tr><td>ExploitDB</td><td>2</td><td>9%</td><td>Primary</td></tr>
+</tbody>
+</table></div>
+<blockquote>检索渠道只表示「从哪个引擎/订阅源找到」，不代表内容出版方；可信度按下方出版方计分。</blockquote>
+<blockquote>另有 3 个渠道已检索但未产出相关结果：AlienVault OTX（检索异常）, 奇安信（无相关结果）, 安全媒体(SecRSS)（无相关结果）。</blockquote>
+<h3>4.2 出版方质量评分</h3>
+<ul><li><strong>nvd.nist.gov</strong>：★★★☆☆ (62%) [Primary]</li><li><strong>exploit-db.com</strong>：★★☆☆☆ (56%) [Primary]</li><li><strong>cisa.gov</strong>：★★☆☆☆ (50%) [Secondary]</li></ul>
+<h2 id="sec-05">五、关键情报</h2>
+<blockquote>按相关度与可信度展示前 10 条（相关结果共 23 条，采集总量 23 条）</blockquote>
+<h3>001. CVE-2026-40584 (CVSS 7.5)</h3>
+<ul><li><strong>来源</strong>：NVD</li><li><strong>时间</strong>：2026-04-21T17:16:56.240</li><li><strong>可信度</strong>：59%</li><li><strong>链接</strong>：<a href="https://nvd.nist.gov/vuln/detail/cve-2026-40584" target="_blank" rel="noopener noreferrer">https://nvd.nist.gov/vuln/detail/cve-2026-40584</a></li><li><strong>关联实体</strong>：[CVE-2026-40584] [CVSS 7.5]</li></ul>
+<h3>002. CVE-2020-9452 (CVSS 7.8)</h3>
+<ul><li><strong>来源</strong>：NVD</li><li><strong>时间</strong>：2021-05-25T12:15:07.833</li><li><strong>可信度</strong>：58%</li><li><strong>链接</strong>：<a href="https://nvd.nist.gov/vuln/detail/cve-2020-9452" target="_blank" rel="noopener noreferrer">https://nvd.nist.gov/vuln/detail/cve-2020-9452</a></li><li><strong>关联实体</strong>：[CVE-2020-9452]</li></ul>
+<h3>003. EDB-52140</h3>
+<ul><li><strong>来源</strong>：ExploitDB</li><li><strong>时间</strong>：2025-04-08</li><li><strong>可信度</strong>：56%</li><li><strong>链接</strong>：<a href="https://www.exploit-db.com/exploits/52140" target="_blank" rel="noopener noreferrer">https://www.exploit-db.com/exploits/52140</a></li></ul>
+<h3>004. CVE-2025-62000 (CVSS 7.1)</h3>
+<ul><li><strong>来源</strong>：NVD</li><li><strong>时间</strong>：2025-12-18T21:15:53.800</li><li><strong>可信度</strong>：58%</li><li><strong>链接</strong>：<a href="https://nvd.nist.gov/vuln/detail/cve-2025-62000" target="_blank" rel="noopener noreferrer">https://nvd.nist.gov/vuln/detail/cve-2025-62000</a></li><li><strong>关联实体</strong>：[CVE-2025-62000]</li></ul>
+<h3>005. CVE-2026-78370</h3>
+<ul><li><strong>来源</strong>：NVD</li><li><strong>时间</strong>：2026-08-24T14:17:05.100</li><li><strong>可信度</strong>：62%</li><li><strong>链接</strong>：<a href="https://nvd.nist.gov/vuln/detail/cve-2026-78370" target="_blank" rel="noopener noreferrer">https://nvd.nist.gov/vuln/detail/cve-2026-78370</a></li></ul>
+<h3>006. CVE-2025-62001 (CVSS 8.8)</h3>
+<ul><li><strong>来源</strong>：NVD</li><li><strong>时间</strong>：2025-12-18T21:15:53.953</li><li><strong>可信度</strong>：59%</li><li><strong>链接</strong>：<a href="https://nvd.nist.gov/vuln/detail/cve-2025-62001" target="_blank" rel="noopener noreferrer">https://nvd.nist.gov/vuln/detail/cve-2025-62001</a></li><li><strong>关联实体</strong>：[CVE-2025-62001] [CVSS 8.8]</li></ul>
+<h3>007. EDB-52091</h3>
+<ul><li><strong>来源</strong>：ExploitDB</li><li><strong>时间</strong>：2025-03-21</li><li><strong>可信度</strong>：46%</li><li><strong>链接</strong>：<a href="https://www.exploit-db.com/exploits/52091" target="_blank" rel="noopener noreferrer">https://www.exploit-db.com/exploits/52091</a></li></ul>
+<h3>008. CVE-2024-30851 (CVSS 6.5)</h3>
+<ul><li><strong>来源</strong>：NVD</li><li><strong>时间</strong>：2024-05-03T17:15:07.630</li><li><strong>可信度</strong>：59%</li><li><strong>链接</strong>：<a href="https://nvd.nist.gov/vuln/detail/cve-2024-30851" target="_blank" rel="noopener noreferrer">https://nvd.nist.gov/vuln/detail/cve-2024-30851</a></li><li><strong>关联实体</strong>：[CVSS 6.5] [CVE-2024-30851]</li></ul>
+<h3>009. CVE-2025-62002 (CVSS 4.3)</h3>
+<ul><li><strong>来源</strong>：NVD</li><li><strong>时间</strong>：2025-12-18T21:15:54.093</li><li><strong>可信度</strong>：58%</li><li><strong>链接</strong>：<a href="https://nvd.nist.gov/vuln/detail/cve-2025-62002" target="_blank" rel="noopener noreferrer">https://nvd.nist.gov/vuln/detail/cve-2025-62002</a></li><li><strong>关联实体</strong>：[CVE-2025-62002] [CVSS 4.3]</li></ul>
+<h3>010. CVE-2024-7694 — TeamT5 ThreatSonar Anti-Ransomware</h3>
+<ul><li><strong>来源</strong>：CISA_KEV</li><li><strong>时间</strong>：2026-02-17</li><li><strong>可信度</strong>：49%</li><li><strong>链接</strong>：<a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search=CVE-2024-7694" target="_blank" rel="noopener noreferrer">https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search=CVE-2024-7694</a></li></ul>
+<h2 id="sec-06">六、证据链分析</h2>
+<p><strong>结论 1</strong>：Jasmin Ransomware 管理面板存在可组合利用的认证绕过与任意文件读取漏洞。</p>
+<ul><li>E1：EDB-52091 披露 login.php 可通过 <code>'=' 'or'</code> 等载荷绕过认证，2025-03-05 发布（来源：ExploitDB，来源等级：B，支持度：高）</li><li>E2：EDB-52140 披露 download_file.php 的 file 参数未过滤，PoC 可直接读取 database/db_conection.php（来源：ExploitDB，来源等级：B，支持度：高）</li><li>E3：EDB-52140 作者明确声明该文件读取利用依赖 EDB-52091 的 SQL 注入绕过会话检查（来源：ExploitDB，来源等级：B，支持度：高）<strong>综合置信度</strong>：高</li></ul>
+<p><strong>结论 2</strong>：两款安全相关产品存在已被在野利用的漏洞，被 CISA 收入 KEV。</p>
+<ul><li>E1：CVE-2024-7694 关联 TeamT5 ThreatSonar Anti-Ransomware，列入 KEV（来源：CISA KEV，来源等级：A，支持度：高）</li><li>E2：CVE-2022-27593 关联 QNAP Photo Station，列入 KEV（来源：CISA KEV，来源等级：A，支持度：高）<strong>综合置信度</strong>：高（就"被收录"这一事实而言）；对其与勒索活动的具体关联，置信度：低</li></ul>
+<p><strong>结论 3</strong>：本次搜索结果中的 NVD 条目普遍缺乏描述信息，无法判断其与勒索软件主题的关联强度。</p>
+<ul><li>E1：20 条记录中 12 条为 NVD 的 CVE 编号加 CVSS 分数，无摘要与受影响产品描述（来源：NVD，来源等级：A，支持度：中）</li><li>E2：其中 CVE-2026-40584、CVE-2026-78370 编号年份超出当前时间，疑为数据采集或编号异常（来源：NVD，来源等级：A，支持度：低）</li><li>E3：跨源比对中标注的"日期相差 44 年"实为 ExploitDB 页面 HTTP <code>Expires</code> 头（1981 年固定值）与公告日期的解析混淆，非真实冲突（来源：跨源冲突记录，来源等级：C，支持度：中）<strong>综合置信度</strong>：中</li></ul>
+<p><strong>结论 4</strong>：高 CVSS 值条目存在，但其与勒索软件的因果关系未被证据支撑。</p>
+<ul><li>E1：CVE-2021-42258 与 CVE-2017-18362 均标为 CVSS 9.8，但搜索结果未提供描述（来源：NVD，来源等级：A，支持度：低）<strong>综合置信度</strong>：低（仅可作为后续排查线索）</li></ul>
+<h3>引用来源可核验性</h3>
+<ul><li>⚠️ <strong>CISA KEV</strong>：未核验 —— 该来源未出现在本次原始证据清单中</li></ul>
+<blockquote>「未核验」表示无法从本次检索结果回溯该引用，其支持度不应作为已证实证据采信。</blockquote>
+<h3>跨源冲突</h3>
+<ul><li>⚠️ [temporal] ExploitDB 与 ExploitDB 对同一事件的日期表述相差 44 年（「xpires: Thu, 19 Nov 1981」 vs 「: N/A</li></ul>
+<h1 class="doc-title">Date: 05-03-2025」）（严重度：90%）</h1>
+<h2 id="sec-07">七、实体关系图谱</h2>
+<h3>人物（7）</h3>
+<ul><li><strong>Exploit Title</strong>（重要性：100%）</li><li><strong>Jasmin Ransomware</strong>（重要性：100%）</li><li><strong>Exploit Author</strong>（重要性：100%）</li><li><strong>Vendor Homepage</strong>（重要性：100%）</li><li><strong>Software</strong>（重要性：100%）</li><li><strong>// Read</strong>（重要性：50%）</li><li><strong>Cookie</strong>（重要性：50%）</li></ul>
+<h3>组织（5）</h3>
+<ul><li><strong>GMT</strong>（重要性：100%）</li><li><strong>SQL Injection</strong>（重要性：50%）</li><li><strong>Macintosh</strong>（重要性：50%）</li><li><strong>Intel Mac OS</strong>（重要性：50%）</li><li><strong>Accept-Encoding: gzip</strong>（重要性：50%）</li></ul>
+<h3>法律（2）</h3>
+<ul><li><strong>CVSS 6.5</strong>（重要性：100%）</li><li><strong>CVSS 6.3</strong>（重要性：100%）</li></ul>
+<h3>地缘政治实体（1）</h3>
+<ul><li><strong>xhtml+xml</strong>（重要性：50%）</li></ul>
+<h2 id="sec-08">八、事件演化</h2>
+<p><strong>2018-02-02</strong></p>
+<ul><li>CVE-2018-6318 (CVSS 7.8)（NVD）</li></ul>
+<p>↓</p>
+<p><strong>2019-02-05</strong></p>
+<ul><li>CVE-2017-18362 (CVSS 9.8)（NVD）</li></ul>
+<p>↓</p>
+<p><strong>2019-04-09</strong></p>
+<ul><li>CVE-2018-19589 (CVSS 6.5)（NVD）</li></ul>
+<p>↓</p>
+<p><strong>2021-05-25</strong></p>
+<ul><li>CVE-2020-9452 (CVSS 7.8)（NVD）</li></ul>
+<p>↓</p>
+<p><strong>2021-10-22</strong></p>
+<ul><li>CVE-2021-42258 (CVSS 9.8)（NVD）</li></ul>
+<p>↓</p>
+<p><strong>2022-07-06</strong></p>
+<ul><li>CVE-2022-23714 (CVSS 7.8)（NVD）</li></ul>
+<p>↓</p>
+<p><strong>2022-09-08</strong></p>
+<ul><li>CVE-2022-27593 — QNAP Photo Station（CISA_KEV）</li></ul>
+<p>*--- Discovery（发现期） 结束 ---*</p>
+<p>↓</p>
+<p><strong>2023-04-28</strong></p>
+<ul><li>CVE-2023-30024 (CVSS 6.6)（NVD）</li></ul>
+<p>↓</p>
+<p><strong>2024-05-03</strong></p>
+<ul><li>CVE-2024-30851 (CVSS 6.5)（NVD）</li></ul>
+<p>↓</p>
+<p><strong>2025-03-20</strong></p>
+<ul><li>CVE-2024-6863 (CVSS 6.5)（NVD）</li></ul>
+<p>↓</p>
+<p><strong>2025-03-21</strong></p>
+<ul><li>EDB-52091（ExploitDB）</li></ul>
+<p>↓</p>
+<p><strong>2025-04-08</strong></p>
+<ul><li>EDB-52140（ExploitDB）</li></ul>
+<p>↓</p>
+<p><strong>2025-06-15</strong></p>
+<ul><li>CVE-2025-6095 (CVSS 7.3)（NVD）</li></ul>
+<p>↓</p>
+<p><strong>2025-06-16</strong></p>
+<ul><li>CVE-2025-6096 (CVSS 6.3)（NVD）</li></ul>
+<p>*--- Attribution（归因期） 结束 ---*</p>
+<p>↓</p>
+<p><strong>2025-08-01</strong></p>
+<ul><li>CVE-2025-54792 (CVSS 6.8)（NVD）</li></ul>
+<p>↓</p>
+<p><strong>2025-08-07</strong></p>
+<ul><li>CVE-2025-54785 (CVSS 8.8)（NVD）</li></ul>
+<p>↓</p>
+<p><strong>2025-09-14</strong></p>
+<ul><li>CVE-2025-10387 (CVSS 6.3)（NVD）</li></ul>
+<p>↓</p>
+<p><strong>2025-12-18</strong></p>
+<ul><li>CVE-2025-62000 (CVSS 7.1)（NVD）</li><li>CVE-2025-62001 (CVSS 8.8)（NVD）</li><li>CVE-2025-62002 (CVSS 4.3)（NVD）</li></ul>
+<p>↓</p>
+<p><strong>2026-02-17</strong></p>
+<ul><li>CVE-2024-7694 — TeamT5 ThreatSonar Anti-Ransomware（CISA_KEV）</li></ul>
+<p>↓</p>
+<p><strong>2026-04-21</strong></p>
+<ul><li>CVE-2026-40584 (CVSS 7.5)（NVD）</li></ul>
+<p>↓</p>
+<p><strong>2026-08-24</strong></p>
+<ul><li>CVE-2026-78370（NVD）</li></ul>
+<p><strong>演化总结</strong>：<strong>综合判断</strong>：当前公开数据呈现的是“漏洞与利用代码披露”层面的态势，而非可归因的勒索事件。最确定的事实是 Jasmin Ransomware 的两个 Web 面板漏洞已在 2025 年 3 月形成公开利用链；最不确定的是这些 CVE 编号（尤其是缺乏描述的 NVD 条目与 2026 年编号异常项）与真实勒索活动的关联强度。<sup>[1]</sup>最值得关注的方向是 KEV 收录的两条记录所代表的“防护产品与存储设备被反向利用”路径。</p>
+<h2 id="sec-09">九、舆情趋势</h2>
+<p><strong>舆情比例</strong>：不适用。</p>
+<p><strong>样本规模</strong>：抓取记录 20 条（其中可信度评估覆盖 15 条）；经筛查，包含主观评价、评论或情绪表达的<strong>观点性样本为 0 条</strong>。</p>
+<p><strong>方法论声明</strong>：本次搜索结果全部为 NVD、CISA KEV、ExploitDB 的结构化漏洞条目与利用代码片段，不含媒体报道评论、社区讨论或厂商表态。按样本归属要求剔除无观点条目后，有效样本为 0 条，<strong>样本不足，舆情比例不具统计意义</strong>，故不给出百分比数值，亦不列示正负面观点。</p>
+<p><strong>总体舆情</strong>：无法判定（数据源为漏洞数据库，非舆论场）。</p>
+<h2 id="sec-10">十、影响评估</h2>
+<p><strong>技术影响</strong>：[★★☆☆☆] 影响面集中于单一开源项目（Jasmin Ransomware）的 Web 管理面板，是典型的注入与路径未校验问题，技术门槛低、可复用性强，但对主流企业系统的直接技术影响有限。</p>
+<p><strong>产业影响</strong>：[★★☆☆☆] 从本次数据看，尚无证据表明该漏洞被产业化勒索团伙采用；CISA KEV 中反勒索软件产品与 QNAP 设备的记录提示，安全产品与存储设备供应链仍是勒索攻击链的潜在环节。</p>
+<p><strong>用户影响</strong>：[★☆☆☆☆] 普通终端用户基本无直接暴露面；潜在受影响者为自行部署该类开源项目的技术人员与实验环境使用者。</p>
+<p><strong>影响对象矩阵</strong>：</p>
+<div class="tbl-wrap"><table>
+<thead><tr><th>对象</th><th>影响程度</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>开发者/技术社区</td><td>★★★☆☆</td><td>开源勒索软件项目的代码安全问题被公开，可能推动同类项目审计，也可能被用于教学与攻防演练。</td></tr>
+<tr><td>企业用户/采购方</td><td>★★☆☆☆</td><td>直接关联有限，但 KEV 中防护产品自身漏洞提示采购时需将安全产品纳入补丁管理范围。</td></tr>
+<tr><td>普通消费者</td><td>★☆☆☆☆</td><td>无直接暴露路径，仅在 NAS 等消费级存储设备被利用情形下间接受影响。</td></tr>
+</tbody>
+</table></div>
+<p><strong>关键判断</strong>：本轮数据的核心价值在于揭示漏洞利用代码的公开节奏，而非指向某一具体勒索事件的大规模影响。</p>
+<h2 id="sec-11">十一、风险评估</h2>
+<p><strong>程序化风险定级</strong>：高</p>
+<blockquote>定级依据：CISA KEV 已知被利用漏洞命中 2 条</blockquote>
+<p><strong>风险等级</strong>：中</p>
+<p><strong>风险矩阵</strong>：</p>
+<div class="tbl-wrap"><table>
+<thead><tr><th>风险类型</th><th>发生概率</th><th>影响程度</th><th>综合评级</th></tr></thead>
+<tbody>
+<tr><td>公网暴露的 Jasmin Ransomware 面板遭利用（认证绕过加文件读取）</td><td>中</td><td>中</td><td>中</td></tr>
+<tr><td>反勒索软件防护产品自身漏洞被利用（CVE-2024-7694，已在 KEV）</td><td>中</td><td>高</td><td>中高</td></tr>
+<tr><td>QNAP Photo Station 漏洞被纳入攻击链（CVE-2022-27593，已在 KEV）</td><td>中</td><td>高</td><td>中高</td></tr>
+<tr><td>因 CVE 描述缺失导致情报误判或漏判</td><td>高</td><td>低</td><td>中</td></tr>
+</tbody>
+</table></div>
+<p><strong>关键发现</strong>：<br>1. 两个 ExploitDB 条目构成完整攻击链，且均于 2025 年 3 月公开，公开即意味着利用门槛降低。<br>2. KEV 收录的反勒索软件产品漏洞值得特别关注：防护工具本身若被攻陷，可能削弱终端侧检测能力。<br><sup>[1]</sup>3. 本轮数据的显著短板是 NVD 条目普遍无描述，多数 CVE 无法确认与勒索软件主题的实际关联，任何基于编号的强结论都缺乏支撑。</p>
+<p><strong>建议</strong>：<br>1. 对内部或演练环境中部署的 Jasmin Ransomware 类开源项目实例做暴露面清查，避免管理面板面向公网。<br><sup>[1]</sup>2. 将 CISA KEV 中收录的两条记录纳入补丁优先级清单，核验相关产品版本与修复状态。</p>
+<h2 id="sec-12">十二、攻击面分析</h2>
+<p><strong>1. API/接口层</strong></p>
+<ul><li>风险点：Web Panel 的 download_file.php 直接使用 <code>$_GET['file']</code> 拼接进 <code>readfile()</code> 与 <code>Content-Disposition</code> 头，无路径规范化与白名单校验；login.php 的认证查询可被 SQL 注入绕过。二者组合可读取数据库连接配置文件。</li><li>影响：高</li></ul>
+<p><strong>2. 分发/传播层</strong></p>
+<ul><li>风险点：该项目以开源仓库形式托管于 GitHub（搜索结果中给出 Vendor Homepage 与 Software Link），代码可被任意克隆、修改后重新分发，缺乏分发环节的完整性校验。</li><li>影响：中</li></ul>
+<p><strong>3. 模型/技术层</strong></p>
+<ul><li>风险点：本层缺乏直接证据，因为搜索结果未涉及 AI 模型或自动化攻击工具；可确认的技术层缺陷限于认证与授权逻辑（session 校验可被注入绕过）与输入过滤缺失。</li><li>影响：中</li></ul>
+<p><strong>4. 企业/合规层</strong></p>
+<ul><li>风险点：CISA KEV 收录意味着相关漏洞存在在野利用，若企业资产涉及对应产品而未修复，可能触及合规审计与漏洞管理时限要求。</li><li>影响：中</li></ul>
+<p><strong>攻击面总结</strong>：最核心风险面在于“低门槛认证绕过加配置文件读取”这一组合，它使暴露在公网的管理面板从控制台变为凭据泄露入口。</p>
+<h2 id="sec-13">十三、情报判断与后续关注</h2>
+<p><strong>综合判断</strong>：当前公开数据呈现的是“漏洞与利用代码披露”层面的态势，而非可归因的勒索事件。最确定的事实是 Jasmin Ransomware 的两个 Web 面板漏洞已在 2025 年 3 月形成公开利用链；最不确定的是这些 CVE 编号（尤其是缺乏描述的 NVD 条目与 2026 年编号异常项）与真实勒索活动的关联强度。最值得关注的方向是 KEV 收录的两条记录所代表的“防护产品与存储设备被反向利用”路径。</p>
+<p><strong>后续关注指标</strong>：<br>1. ExploitDB 与 GitHub 上 Jasmin Ransomware 相关仓库的更新与 fork 活跃度变化。<br>2. CISA KEV 目录中与勒索软件、反勒索软件产品相关的条目新增情况。<br>3. NVD 上本轮无描述 CVE 的详情补全，特别是 CVSS ≥ 9.0 的条目是否被补充为勒索关联。<sup>[3]</sup></p>
+<p><strong>建议观察窗口</strong>：30 天</p>
+<h2 id="sec-14">十四、历史关联与变化检测</h2>
+<p><strong>历史搜索次数</strong>：8 次</p>
+<p><strong>距上次搜索</strong>：22 天</p>
+<p><strong>新增发现</strong>：</p>
+<ul><li>CVE-2020-9452 (CVSS 7.8)</li><li>EDB-52140</li><li>CVE-2025-62000 (CVSS 7.1)</li><li>CVE-2026-78370</li></ul>
+<h2 id="sec-15">十五、原始证据</h2>
+<p>[1] <strong>EDB-52140</strong></p>
+<ul><li>来源：exploit-db.com（ExploitDB）</li><li>URL：<code>https://www.exploit-db.com/exploits/52140</code></li><li>状态：已抓取全文</li></ul>
+<p>[2] <strong>CVE-2025-62000 (CVSS 7.1)</strong></p>
+<ul><li>来源：nvd.nist.gov（NVD）</li><li>URL：<code>https://nvd.nist.gov/vuln/detail/cve-2025-62000</code></li><li>状态：已抓取全文</li></ul>
+<p>[3] <strong>CVE-2026-40584 (CVSS 7.5)</strong></p>
+<ul><li>来源：nvd.nist.gov（NVD）</li><li>URL：<code>https://nvd.nist.gov/vuln/detail/cve-2026-40584</code></li><li>状态：已抓取全文</li></ul>
+<p>[4] <strong>CVE-2020-9452 (CVSS 7.8)</strong></p>
+<ul><li>来源：nvd.nist.gov（NVD）</li><li>URL：<code>https://nvd.nist.gov/vuln/detail/cve-2020-9452</code></li><li>状态：已抓取全文</li></ul>
+<p>[5] <strong>CVE-2026-78370</strong></p>
+<ul><li>来源：nvd.nist.gov（NVD）</li><li>URL：<code>https://nvd.nist.gov/vuln/detail/cve-2026-78370</code></li><li>状态：已抓取全文</li></ul>
+<p>[6] <strong>CVE-2025-62001 (CVSS 8.8)</strong></p>
+<ul><li>来源：nvd.nist.gov（NVD）</li><li>URL：<code>https://nvd.nist.gov/vuln/detail/cve-2025-62001</code></li><li>状态：已抓取全文</li></ul>
+<p>[7] <strong>CVE-2025-62002 (CVSS 4.3)</strong></p>
+<ul><li>来源：nvd.nist.gov（NVD）</li><li>URL：<code>https://nvd.nist.gov/vuln/detail/cve-2025-62002</code></li><li>状态：已抓取全文</li></ul>
+<p>[8] <strong>CVE-2024-30851 (CVSS 6.5)</strong></p>
+<ul><li>来源：nvd.nist.gov（NVD）</li><li>URL：<code>https://nvd.nist.gov/vuln/detail/cve-2024-30851</code></li><li>状态：已抓取全文</li></ul>
+<p>[9] <strong>EDB-52091</strong></p>
+<ul><li>来源：exploit-db.com（ExploitDB）</li><li>URL：<code>https://www.exploit-db.com/exploits/52091</code></li><li>状态：已抓取全文</li></ul>
+<p>[10] <strong>CVE-2025-6096 (CVSS 6.3)</strong></p>
+<ul><li>来源：nvd.nist.gov（NVD）</li><li>URL：<code>https://nvd.nist.gov/vuln/detail/cve-2025-6096</code></li><li>状态：已抓取全文</li></ul>
+<p>[11] <strong>CVE-2022-23714 (CVSS 7.8)</strong></p>
+<ul><li>来源：nvd.nist.gov（NVD）</li><li>URL：<code>https://nvd.nist.gov/vuln/detail/cve-2022-23714</code></li><li>状态：已抓取全文</li></ul>
+<p>[12] <strong>CVE-2025-10387 (CVSS 6.3)</strong></p>
+<ul><li>来源：nvd.nist.gov（NVD）</li><li>URL：<code>https://nvd.nist.gov/vuln/detail/cve-2025-10387</code></li><li>状态：已抓取全文</li></ul>
+<p>[13] <strong>CVE-2025-6095 (CVSS 7.3)</strong></p>
+<ul><li>来源：nvd.nist.gov（NVD）</li><li>URL：<code>https://nvd.nist.gov/vuln/detail/cve-2025-6095</code></li><li>状态：已抓取全文</li></ul>
+<p>[14] <strong>CVE-2024-7694 — TeamT5 ThreatSonar Anti-Ransomware</strong></p>
+<ul><li>来源：cisa.gov（CISA_KEV）</li><li>URL：<code>https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search=CVE-2024-7694</code></li><li>状态：已抓取全文</li></ul>
+<p>[15] <strong>CVE-2024-6863 (CVSS 6.5)</strong></p>
+<ul><li>来源：nvd.nist.gov（NVD）</li><li>URL：<code>https://nvd.nist.gov/vuln/detail/cve-2024-6863</code></li><li>状态：已抓取全文</li></ul>
+<p>[16] <strong>CVE-2023-30024 (CVSS 6.6)</strong></p>
+<ul><li>来源：nvd.nist.gov（NVD）</li><li>URL：<code>https://nvd.nist.gov/vuln/detail/cve-2023-30024</code></li><li>状态：已抓取全文</li></ul>
+<p>[17] <strong>CVE-2021-42258 (CVSS 9.8)</strong></p>
+<ul><li>来源：nvd.nist.gov（NVD）</li><li>URL：<code>https://nvd.nist.gov/vuln/detail/cve-2021-42258</code></li><li>状态：已抓取全文</li></ul>
+<p>[18] <strong>CVE-2017-18362 (CVSS 9.8)</strong></p>
+<ul><li>来源：nvd.nist.gov（NVD）</li><li>URL：<code>https://nvd.nist.gov/vuln/detail/cve-2017-18362</code></li><li>状态：已抓取全文</li></ul>
+<p>[19] <strong>CVE-2025-54792 (CVSS 6.8)</strong></p>
+<ul><li>来源：nvd.nist.gov（NVD）</li><li>URL：<code>https://nvd.nist.gov/vuln/detail/cve-2025-54792</code></li><li>状态：已抓取全文</li></ul>
+<p>[20] <strong>CVE-2018-19589 (CVSS 6.5)</strong></p>
+<ul><li>来源：nvd.nist.gov（NVD）</li><li>URL：<code>https://nvd.nist.gov/vuln/detail/CVE-2018-19589</code></li><li>状态：仅元数据</li></ul>
+<p>[21] <strong>CVE-2025-54785 (CVSS 8.8)</strong></p>
+<ul><li>来源：nvd.nist.gov（NVD）</li><li>URL：<code>https://nvd.nist.gov/vuln/detail/CVE-2025-54785</code></li><li>状态：仅元数据</li></ul>
+<p>[22] <strong>CVE-2018-6318 (CVSS 7.8)</strong></p>
+<ul><li>来源：nvd.nist.gov（NVD）</li><li>URL：<code>https://nvd.nist.gov/vuln/detail/CVE-2018-6318</code></li><li>状态：仅元数据</li></ul>
+<h2 id="sec-16">证据参考</h2>
+<p>[1] <strong>Cisa</strong>（引用 8 次） · 置信度 57% · <a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search=CVE-2024-7694" target="_blank" rel="noopener noreferrer">查看原文</a><br>[2] <strong>Cisa</strong> · 置信度 76% · <a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search=CVE-2022-27593" target="_blank" rel="noopener noreferrer">查看原文</a><br>[3] <strong>Nvd</strong> · 置信度 62% · <a href="https://nvd.nist.gov/vuln/detail/cve-2017-18362" target="_blank" rel="noopener noreferrer">查看原文</a></p>
+<p class="foot">本文件为 IntelNexus 平台自动生成的情报搜索分析报告之自包含导出副本（报告编号 INTEL-20261113-001，主题 ransomware，生成于 2026-11-13 00:20，分析模型 deepseek-v4-flash），与作品集 /projects/intelnexus 页面截图同源同数据。文中链接为公开来源证据（漏洞库 / 新闻 / 技术社区），点击后跳转原网页。</p>
+</main>
+</div>
+</body>
+</html>
