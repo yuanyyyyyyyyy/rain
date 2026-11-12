@@ -27,7 +27,7 @@
   ],
   "sections" : [
     {
-      "note" : "12 张由 Shimmer 项目 agent 按真实界面截取（含工程证据图）；网站侧图注已按实际画面核对。",
+      "note" : "21 张由 Shimmer 项目 agent 按真实界面截取（含工程证据图）；网站侧图注已按实际画面核对。",
       "type" : "shots",
       "items" : [
         {
@@ -77,6 +77,42 @@
         {
           "src" : "screenshots/shimmer/shimmer-12.png",
           "caption" : "移动端响应式布局"
+        },
+        {
+          "src" : "screenshots/shimmer/shimmer-13.png",
+          "caption" : "时间轴——年份拍摄统计，轴线两侧按日期回溯全年照片"
+        },
+        {
+          "src" : "screenshots/shimmer/shimmer-14.png",
+          "caption" : "年度回顾——年度统计与 AI 生成回顾文字，月度趋势/热门标签/地点足迹"
+        },
+        {
+          "src" : "screenshots/shimmer/shimmer-15.png",
+          "caption" : "暗房·聚光灯——手电筒交互，光圈驻留扩大揭示照片"
+        },
+        {
+          "src" : "screenshots/shimmer/shimmer-16.png",
+          "caption" : "暗房·显影——擦除白色显影层逐步显影，进度实时可见"
+        },
+        {
+          "src" : "screenshots/shimmer/shimmer-17.png",
+          "caption" : "暗房·光绘——彩色光绘笔拖画出光迹，显影与绘画一体"
+        },
+        {
+          "src" : "screenshots/shimmer/shimmer-18.png",
+          "caption" : "暗房·接触印相——放大镜悬停检查照片细节"
+        },
+        {
+          "src" : "screenshots/shimmer/shimmer-19.png",
+          "caption" : "分享卡片·电影海报模板——四模板选择与实时预览"
+        },
+        {
+          "src" : "screenshots/shimmer/shimmer-20.png",
+          "caption" : "分享卡片·杂志风模板——卡片实时预览"
+        },
+        {
+          "src" : "screenshots/shimmer/shimmer-21.png",
+          "caption" : "隐藏相册——独立密码验证入口"
         }
       ],
       "kicker" : "02 / 界面实录",
