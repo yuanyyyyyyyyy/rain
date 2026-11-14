@@ -1,9 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- rain favicon：Klein Blue v2 品牌标（线框方块 + Y + 右上角标）。
-       2026-11-14 修正：白色底板不再满幅铺满画布（上一版满幅白底在标签页里外白溢出），
-       改为底板贴合图形外扩约 2px、四周 2px 透明安全边距，图形占底板比例放大，符合图标设计原则。 -->
-  <rect x="2" y="2" width="28" height="28" rx="8" fill="#ffffff"/>
-  <rect x="5" y="7" width="21" height="21" fill="none" stroke="#002FA7" stroke-width="2"/>
-  <path d="M10.5 13 L15.5 17.8 L20.5 13 M15.5 17.8 V23" fill="none" stroke="#002FA7" stroke-width="2"/>
-  <rect x="22.5" y="4.5" width="6" height="6" fill="#002FA7"/>
+  <!-- rain favicon：Klein Blue v2 品牌标（2026-11-14 v4：无底板透明版）
+       站长定稿：蓝框周围不留任何白边/白底，图形直接落在透明画布上；Y 与线框收细（stroke 1.5）。
+       ⚠️ 已知物理约束：克莱因蓝在深色标签栏背景下对比度低（预览页 favicon-preview.html 有深/浅对照）。 -->
+  <rect x="7" y="9" width="17" height="17" fill="none" stroke="#002FA7" stroke-width="1.5"/>
+  <path d="M12.2 12.8 L15.85 16.6 L19.5 12.8 M15.85 16.6 V20.8" fill="none" stroke="#002FA7" stroke-width="1.5"/>
+  <rect x="21.75" y="6.25" width="4.5" height="4.5" fill="#002FA7"/>
 </svg>
