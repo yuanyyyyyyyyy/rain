@@ -54,7 +54,7 @@ npm run build      # 产物在 dist/（纯静态）
 npm run preview    # 本地预览构建产物
 ```
 
-线上部署：**Cloudflare Pages** → https://yuan-archive.pages.dev（`npm run build` 后 `npx wrangler pages deploy dist --project-name yuan-archive`；base=/）。旧 GitHub Pages 源保留至停用，Actions 工作流已去掉 push 触发（2026-11-14）。
+线上部署：**Cloudflare Pages** → https://yuan-archive.pages.dev，**push main 自动构建部署**（`.github/workflows/deploy-pages.yml`：护栏校验 → 构建 → wrangler 直推；Secrets 为最小权限 Pages:Edit token）。管理台「04 发布」→ push → 自动上线。手动兜底：`npm run build` 后 `npx wrangler pages deploy dist --project-name yuan-archive`。旧 GitHub Pages 已停用（2026-11-14）。
 
 后台（可选，内容管理用）：
 
