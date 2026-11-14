@@ -1,0 +1,40 @@
+name: Deploy to Cloudflare Pages
+
+# 2026-11-14 起站点主部署链路：push main → 构建 → wrangler 部署 Pages 项目 yuan-archive。
+# 管理台「04 发布」→ 后端 commit+push → 本工作流 → yuan-archive.pages.dev 自动更新（闭环恢复）。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # 防回退护栏（2026-11-10 事故教训）：宁可部署失败报警，不能把旧版静默发布上线
+      - name: Guard against stale tree
+        run: |
+          set -e
+          grep -q "48vw" src/pages/PhotographyPage.vue || { echo "::error::摄影页组件被回退（缺 srcset/sizes），拒绝部署"; exit 1; }
+          grep -q "shotThumb" src/pages/ProjectDetailPage.vue || { echo "::error::详情页组件被回退（缺截图缩略图逻辑），拒绝部署"; exit 1; }
+          grep -q "yuan-archive.pages.dev" index.html || { echo "::error::站点域名被回退为旧 GitHub Pages 地址，拒绝部署"; exit 1; }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=yuan-archive --branch=main
