@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- rain favicon：Klein Blue v2 品牌标（2026-11-14 v5：透明底细线·放大版）
-       v4 图形仅占画布 64% 显得小；v5 撑到 88%（四周 2px 透明安全边距），
-       线宽保持 1.5——绝对线宽不变、相对更细；Y 与角标随比例放大。 -->
+  <!-- rain favicon：Klein Blue v2 品牌标（2026-11-14 v6：Y 缩至主页 mark 比例）
+       站长对照主页标定稿：框/角标不变，Y 从内框高度 ~50% 缩到 ~40%（手臂展 6.9），
+       居中留白充分，与 SiteHeader .mark 的字形比例一致。 -->
   <rect x="2.75" y="4.25" width="25" height="25" fill="none" stroke="#002FA7" stroke-width="1.5"/>
-  <path d="M9.6 11.2 L15.25 17.4 L20.9 11.2 M15.25 17.4 V23.6" fill="none" stroke="#002FA7" stroke-width="1.5"/>
+  <path d="M11.8 11.2 L15.25 15.7 L18.7 11.2 M15.25 15.7 V21.2" fill="none" stroke="#002FA7" stroke-width="1.5"/>
   <rect x="25.25" y="1.75" width="5" height="5" fill="#002FA7"/>
 </svg>
