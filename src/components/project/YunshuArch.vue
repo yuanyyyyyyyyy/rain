@@ -25,7 +25,7 @@
         <rect x="60" y="170" width="380" height="180" fill="#EAF0FF" stroke="#002FA7" stroke-width="1.4" />
         <rect x="60" y="170" width="42" height="3" fill="#002FA7" />
         <text x="76" y="196" font-size="12" font-weight="700" fill="#002FA7">his-j8-setroster — 本人负责</text>
-        <text x="76" y="212" font-size="9" fill="#777D82">排班主数据服务 · 单人提交 · 24 REST + 1 AI</text>
+        <text x="76" y="212" font-size="9" fill="#777D82">排班主数据服务 · 单人提交 · 18 REST + 1 AI</text>
         <g font-size="10" fill="#202327">
           <rect x="76" y="228" width="104" height="30" fill="#fff" stroke="#4167C5" stroke-width=".9" />
           <text x="86" y="246">日/周排班模板</text>
