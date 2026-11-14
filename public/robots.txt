@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://yuanyyyyyyyyy.github.io/rain/sitemap.xml
+Sitemap: https://yuan-archive.pages.dev/sitemap.xml

@@ -12,7 +12,8 @@
  * 非浏览器调用（curl、CI 探针）不携带 Origin，不受影响。
  */
 const ALLOWED_ORIGINS = new Set([
-  "https://yuanyyyyyyyyy.github.io",
+  "https://yuan-archive.pages.dev", // 2026-11-14 起的主部署（Cloudflare Pages）
+  "https://yuanyyyyyyyyy.github.io", // 旧 GitHub Pages 源，站点停用前保留兼容
   "http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:5176",
   "http://127.0.0.1:5173", "http://127.0.0.1:5174", "http://127.0.0.1:5175", "http://127.0.0.1:5176",
 ])

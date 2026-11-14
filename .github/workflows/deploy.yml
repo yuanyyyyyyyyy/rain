@@ -1,8 +1,8 @@
 name: Deploy to GitHub Pages
 
+# 2026-11-14 起站点主部署改为 Cloudflare Pages（yuan-archive.pages.dev），
+# 本工作流去掉 push 触发、仅保留手动 dispatch，避免旧 GitHub Pages 站被并发更新造成双站漂移。
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:

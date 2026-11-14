@@ -60,7 +60,7 @@ const router = createRouter({
 })
 
 // ---- 每路由 SEO：title / description / canonical / og 同步（默认值取 index.html） ----
-const SITE_ORIGIN = 'https://yuanyyyyyyyyy.github.io'
+const SITE_ORIGIN = 'https://yuan-archive.pages.dev'
 const DEFAULT_TITLE = 'YUAN — Personal Archive'
 const DEFAULT_DESC = '陈雨 — 软件工程专业 2027 届。关注 Java 后端开发、AI 应用与系统工程。个人作品集与项目档案。'
 
