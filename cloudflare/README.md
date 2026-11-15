@@ -29,15 +29,17 @@ npx wrangler deploy
 npx wrangler d1 migrations apply rain-collector --remote
 ```
 
-## AI 分身（2026-11-15 P0）
+## AI 分身（2026-11-15 P0 / P1 同日）
 
-前台右下角悬浮对话（`src/components/agent/AgentDock.vue`）→ Worker 端点 `POST /agent/chat`（实现在 `agent.js`）。要点：
+前台右下角悬浮对话（`src/components/agent/AgentDock.vue`）→ Worker 端点 `POST /agent/chat`（实现在 `agent.js` + `vendor/runWithTools.js`）。要点：
 
-- **模型**：Cloudflare Workers AI（`wrangler.toml` 的 `[ai]` binding = "AI"），无需任何 secret/密钥；免费层按 neurons 计量
-- **配置**（`[vars]`）：`AGENT_ON = "1"`（总开关，被刷时置 `"0"` 后 `wrangler deploy` 一键下线，对外 404）、`AGENT_MODEL`（默认 `@cf/meta/llama-3.3-70b-instruct-fp8-fast`）
+- **模型**：Cloudflare Workers AI（`wrangler.toml` 的 `[ai]` binding = "AI"），无需任何 secret/密钥；免费层按 neurons 计量（**10,000/天，实测单次短答 ~8 neurons、工具轮 ~3 倍**，打满后端点会友好提示明日再来）
+- **配置**（`[vars]`）：`AGENT_ON = "1"`（总开关，被刷时置 `"0"` 后 `wrangler deploy` 一键下线，对外 404）、`AGENT_MODEL`（默认 `@cf/meta/llama-3.3-70b-instruct-fp8-fast`）、可选 `AGENT_KNOWLEDGE_BASE`（本地联调覆盖知识源）
+- **工具循环（P1）**：`get_project`（按需拉项目全文，6000 字符帽防 24k 上下文溢出）/ `search_site` / `submit_message`（服务端不执行，发 confirm 帧 → 前端确认卡 → 走既有 `/messages`）。**工具由代码层意图门控决定是否挂载**（`PROJECT_DETAIL_RE`/`MESSAGE_INTENT_RE`）——llama-3.3-70b 的工具自决纪律不可靠，实测无门控时寒暄/越狱/offer 类问题也误调工具。循环器是 vendor 化的 runWithTools（去 zod/yaml 依赖），处理 llama-3.3 流式 tool_calls 双份上报（官方 issue #2482）
 - **知识源**：Worker 运行时 fetch `yuan-archive.pages.dev/content/*.json`（deploy-pages.yml 构建时拷入 dist；管理台发布后自动同步，isolate 内存缓存 10 分钟，取不到时续用旧缓存/降级）
-- **记忆**：L1 会话内（D1 `agent_messages` 最近 12 条拼上下文，sessionStorage 承载会话）；L2 跨会话访客画像（`agent_visitor_notes`，P1 启用蒸馏）
+- **记忆**：L1 会话内（D1 `agent_messages` 最近 12 条拼上下文，sessionStorage 承载会话）；L2 跨会话访客画像（`agent_visitor_notes`，每 2 轮蒸馏一次），`DELETE /agent/memory?visitor=…` 清除（前端「记忆」按钮）
 - **防滥用**：全局断路器 30 次/分/isolate → per-IP 8 次/分（内存）→ per-IP 50 条/日（D1）→ 单会话 30 轮；四层全超才伤体验，正常访客无感
+- **评测**：`node tools/agent-eval.mjs [代理地址]`——10 问回归人设/档案锚定/边界/排版（verify- 会话不落库）
 - **上线步骤**：`npx wrangler d1 migrations apply rain-collector --remote`（0003 三张表）→ `npx wrangler deploy`；前端随 Pages 自动发布
 
 ## 接入前台（让公网访客的埋点/表单生效）
@@ -91,7 +93,8 @@ curl -X POST http://localhost:8787/api/t -H "content-type: application/json" -d 
 | POST | `/t` | 公开 | 前台埋点 {path, referrer}（同 ip+path+分钟去重；同 ip 每分钟限 20 个不同 path） |
 | POST | `/messages` | 公开 | 联系表单（同 IP 60s 限频 429；邮箱格式校验） |
 | POST | `/resume/hit` | 公开 | 简历下载计数 beacon（同 ip+分钟去重；前台 Hero 按钮 click 时上报） |
-| POST | `/agent/chat` | 公开 | AI 分身对话，SSE 流式 {sessionId, visitorId?, message}（断路器/per-IP/会话轮数四层限流；实现在 agent.js） |
+| POST | `/agent/chat` | 公开 | AI 分身对话，SSE 流式 {sessionId, visitorId?, message}（意图门控工具循环 + 两层记忆；断路器/per-IP/会话轮数四层限流；实现在 agent.js + vendor/runWithTools.js） |
+| DELETE | `/agent/memory?visitor=…` | 公开 | 清除该访客的 L2 跨会话画像（前端「记忆」按钮；visitor 为浏览器本地 UUID） |
 | GET | `/stats/summary` | Bearer | PV/UV/14 天趋势/Top5/Top referrers/简历下载数（北京时间口径） |
 | GET | `/messages` | Bearer | 收件箱列表（含 read / archived） |
 | PUT | `/messages/read-all` | Bearer | 全部标记已读 |

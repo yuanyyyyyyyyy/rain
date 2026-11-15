@@ -241,6 +241,14 @@ export default {
         return handleAgentChat(request, env, ctx, { json, corsHeaders, sha256hex })
       }
 
+      // ---- AI 分身 L2 记忆清除（公开，P1）：visitor 为浏览器本地 UUID（不可猜），只能清自己的 ----
+      if (request.method === "DELETE" && url.pathname === "/agent/memory") {
+        const vid = (url.searchParams.get("visitor") || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64)
+        if (!vid) return json(request, { error: "缺少 visitor" }, 400)
+        await env.DB.prepare("DELETE FROM agent_visitor_notes WHERE visitor_id = ?").bind(vid).run()
+        return json(request, { ok: true })
+      }
+
       // ---- 以下为管理台读接口（Bearer ADMIN_TOKEN + 失败限流）----
       if (url.pathname.startsWith("/stats") || url.pathname.startsWith("/messages")) {
         if (!(await authorized(request, env))) {
