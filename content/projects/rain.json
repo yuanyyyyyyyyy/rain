@@ -61,7 +61,7 @@
       "type" : "metrics",
       "items" : [
         {
-          "delta" : "云枢 / IntelNexus / Shimmer",
+          "delta" : "云翼 / IntelNexus / Shimmer",
           "label" : "Case Study",
           "value" : "3 × 07 节"
         },
@@ -100,7 +100,7 @@
         },
         {
           "src" : "screenshots/rain/rain-05.png",
-          "caption" : "详情页档案式结构（云枢 case study）"
+          "caption" : "详情页档案式结构（云翼 case study）"
         },
         {
           "src" : "screenshots/rain/rain-06.png",
