@@ -32,6 +32,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      # AI 分身知识源（2026-11-15）：content/*.json 打进静态产物，Worker 运行时
+      # fetch https://yuan-archive.pages.dev/content/*.json（内存缓存 10 分钟），
+      # 管理台发布 → 本工作流 → 分身知识自动同步（端到端 1.5–3 分钟）。
+      - name: Copy content JSON into dist (agent knowledge source)
+        run: cp -r content dist/content
       - name: Deploy
         uses: cloudflare/wrangler-action@v3
         with:

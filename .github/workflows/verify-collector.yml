@@ -34,6 +34,18 @@ jobs:
             -H "content-type: application/json" \
             -d '{"name":"actions-verify","email":"verify@actions.dev","body":"E2E from GitHub Actions"}')
           echo "message: $CODE"; test "$CODE" = "200"
+      # AI 分身探针（2026-11-15 P0）：sessionId 带 verify- 前缀 → Worker 跳过落库，不污染真实数据。
+      # 失败常见原因：Worker 未部署最新版 / wrangler.toml 缺 [ai] binding / migration 0003 未应用
+      # （会话限流查表 500）。消耗少量 Workers AI 免费 neurons（~1 次对话）。
+      - name: Agent chat (SSE stream)
+        run: |
+          OUT=$(curl -sN --max-time 30 -X POST \
+            https://rain-collector.yuanyyyyyyyyy.workers.dev/api/agent/chat \
+            -H "content-type: application/json" \
+            -d '{"sessionId":"verify-agent-e2e","message":"用一句话介绍你自己"}')
+          echo "$OUT" | head -c 300; echo
+          echo "$OUT" | grep -q '^data:' || { echo "::error::agent SSE 未输出 data 帧"; exit 1; }
+          echo "$OUT" | grep -q '"done":true' || { echo "::error::agent 流未正常结束"; exit 1; }
       - name: Summary (authed)
         env:
           TOKEN: ${{ secrets.COLLECTOR_TOKEN }}

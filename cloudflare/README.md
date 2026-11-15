@@ -29,6 +29,17 @@ npx wrangler deploy
 npx wrangler d1 migrations apply rain-collector --remote
 ```
 
+## AI 分身（2026-11-15 P0）
+
+前台右下角悬浮对话（`src/components/agent/AgentDock.vue`）→ Worker 端点 `POST /agent/chat`（实现在 `agent.js`）。要点：
+
+- **模型**：Cloudflare Workers AI（`wrangler.toml` 的 `[ai]` binding = "AI"），无需任何 secret/密钥；免费层按 neurons 计量
+- **配置**（`[vars]`）：`AGENT_ON = "1"`（总开关，被刷时置 `"0"` 后 `wrangler deploy` 一键下线，对外 404）、`AGENT_MODEL`（默认 `@cf/meta/llama-3.3-70b-instruct-fp8-fast`）
+- **知识源**：Worker 运行时 fetch `yuan-archive.pages.dev/content/*.json`（deploy-pages.yml 构建时拷入 dist；管理台发布后自动同步，isolate 内存缓存 10 分钟，取不到时续用旧缓存/降级）
+- **记忆**：L1 会话内（D1 `agent_messages` 最近 12 条拼上下文，sessionStorage 承载会话）；L2 跨会话访客画像（`agent_visitor_notes`，P1 启用蒸馏）
+- **防滥用**：全局断路器 30 次/分/isolate → per-IP 8 次/分（内存）→ per-IP 50 条/日（D1）→ 单会话 30 轮；四层全超才伤体验，正常访客无感
+- **上线步骤**：`npx wrangler d1 migrations apply rain-collector --remote`（0003 三张表）→ `npx wrangler deploy`；前端随 Pages 自动发布
+
 ## 接入前台（让公网访客的埋点/表单生效）
 
 编辑 `src/data/site.js`：
@@ -80,6 +91,7 @@ curl -X POST http://localhost:8787/api/t -H "content-type: application/json" -d 
 | POST | `/t` | 公开 | 前台埋点 {path, referrer}（同 ip+path+分钟去重；同 ip 每分钟限 20 个不同 path） |
 | POST | `/messages` | 公开 | 联系表单（同 IP 60s 限频 429；邮箱格式校验） |
 | POST | `/resume/hit` | 公开 | 简历下载计数 beacon（同 ip+分钟去重；前台 Hero 按钮 click 时上报） |
+| POST | `/agent/chat` | 公开 | AI 分身对话，SSE 流式 {sessionId, visitorId?, message}（断路器/per-IP/会话轮数四层限流；实现在 agent.js） |
 | GET | `/stats/summary` | Bearer | PV/UV/14 天趋势/Top5/Top referrers/简历下载数（北京时间口径） |
 | GET | `/messages` | Bearer | 收件箱列表（含 read / archived） |
 | PUT | `/messages/read-all` | Bearer | 全部标记已读 |
@@ -91,5 +103,6 @@ curl -X POST http://localhost:8787/api/t -H "content-type: application/json" -d 
 ## 成本与限额（免费层）
 
 - Workers：100,000 请求/天（个人作品集远用不完）
+- Workers AI：免费层每日 neurons 额度（用 AI 分身才消耗；全局断路器 30 次/分/isolate 兜底，实际用量见 CF 控制台 Workers AI 页）
 - D1：5GB 存储 + 500 万行读/天
 - 无信用卡要求

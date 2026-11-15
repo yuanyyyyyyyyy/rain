@@ -1,10 +1,13 @@
 /**
  * rain collector — Cloudflare Worker（免费层）
- * 前台埋点 + 联系表单 + 简历下载计数的公网接收端；管理台经 Bearer ADMIN_TOKEN 读统计与收件箱。
+ * 前台埋点 + 联系表单 + 简历下载计数 + AI 分身对话的公网接收端；管理台经 Bearer ADMIN_TOKEN 读统计与收件箱。
  * 存储：D1（绑定名 DB）。密钥：secret ADMIN_TOKEN（wrangler secret put ADMIN_TOKEN）。
  * 留言通知：secret BREVO_API_KEY + var OWNER_EMAIL（未配置则只入库不发信，任务 D）。
+ * AI 分身：[ai] binding AI + vars AGENT_ON/AGENT_MODEL（实现在 agent.js，无需 secret）。
  * 部署见同目录 README.md。
  */
+
+import { handleAgentChat } from "./agent.js"
 
 /**
  * CORS 白名单（2026-11-10 安全审计：原 ACAO:* 连管理接口一起放开）。
@@ -230,6 +233,12 @@ export default {
           "INSERT OR IGNORE INTO downloads (ip_hash, minute_bucket) VALUES (?, ?)"
         ).bind(ipHash, bjMinute()).run()
         return new Response(null, { status: 204, headers: corsHeaders(request) })
+      }
+
+      // ---- AI 分身对话（公开，2026-11-15 P0）：限流/记忆/知识/流式实现在 agent.js；
+      //      helpers 经参数注入（agent.js 反向用本文件的 json/corsHeaders/sha256hex，避免循环 import）----
+      if (request.method === "POST" && url.pathname === "/agent/chat") {
+        return handleAgentChat(request, env, ctx, { json, corsHeaders, sha256hex })
       }
 
       // ---- 以下为管理台读接口（Bearer ADMIN_TOKEN + 失败限流）----

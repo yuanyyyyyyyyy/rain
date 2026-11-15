@@ -16,6 +16,13 @@ database_name = "rain-collector"
 database_id = "81713b53-b3ac-4fad-96fd-1be1390e5fab"
 migrations_dir = "migrations"
 
+# Workers AI 绑定（2026-11-15 AI 分身）：无需密钥，免费层按 neurons 计量（每日额度见 CF 控制台）。
+# 端点见 agent.js；被刷时置 [vars] AGENT_ON = "0" 后 wrangler deploy 一键下线（对外 404）。
+[ai]
+binding = "AI"
+
 # 留言通知收件地址（非密钥，明文 var）；发件人 = 同一邮箱，需在 Brevo 后台验证一次
 [vars]
 OWNER_EMAIL = "m13237097902@163.com"
+AGENT_ON = "1"
+AGENT_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"

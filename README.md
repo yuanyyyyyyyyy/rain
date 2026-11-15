@@ -29,12 +29,13 @@ rain/
 │   ├── components/
 │   │   ├── layout/            # SiteHeader / SiteFooter
 │   │   ├── home/              # Hero / Projects / Capabilities / Beyond / Contact
+│   │   ├── agent/             # AgentDock（AI 分身悬浮对话，配置在 src/data/agentConfig.js）
 │   │   └── project/           # 架构图 SVG（云枢 / IntelNexus 管线）
 │   └── pages/                 # Home / ProjectDetail（通用分节渲染器）/ About / Photography
 ├── public/photos/             # 网页版照片（长边 1600px / q80，原图另存）
-├── cloudflare/                # 公网收集端：Cloudflare Worker + D1（埋点/表单/简历计数）→ cloudflare/README.md
+├── cloudflare/                # 公网收集端：Cloudflare Worker + D1（埋点/表单/简历计数/AI 分身）→ cloudflare/README.md
 ├── tools/                     # sync-via-api.py（被墙时经 GitHub API 重放推送）→ tools/README.md
-├── .github/workflows/         # deploy.yml（GitHub Pages 自动部署）+ verify-collector.yml（Worker E2E）
+├── .github/workflows/         # deploy-pages.yml（CF Pages 自动部署）+ verify-collector.yml（Worker E2E）
 ├── admin/
 │   ├── server/                # 后端：Spring Boot 3 + Security JWT + MySQL → admin/server/README.md
 │   └── ui/                    # 管理台：Vue 3 + Vite（复用 Klein Blue tokens）→ admin/ui/README.md
@@ -68,6 +69,7 @@ cd admin/ui && npm install && npm run dev # 管理台 :5175
 ## 技术栈
 
 - **前台**：Vue 3.5 + Vite 6 + Vue Router 4 + Sass，无 UI 组件库（保持线条风格可控）；字体自托管（@fontsource）
+- **AI 分身**：右下角悬浮对话（`AgentDock.vue`）→ Worker `/api/agent/chat` SSE 流式 → Cloudflare Workers AI（`agent.js`）；知识源 = 线上 `content/*.json`（发布后自动同步），会话记忆存 D1 → `cloudflare/README.md`
 - **摄影页**：对齐行排版（justified rows，flex-grow = 宽高比）、懒加载、自研 Lightbox（键盘翻页）
 - **后台**：Spring Boot 3.3.5 + Spring Security + JPA + MySQL 8 / Vue 3 管理台
 - **公网收集端**：Cloudflare Worker + D1（埋点 / 联系表单 / 简历下载计数，`/api/` 前缀兼容 Spring 契约）→ `cloudflare/`
