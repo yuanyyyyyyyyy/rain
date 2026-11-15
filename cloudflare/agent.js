@@ -267,10 +267,16 @@ export async function handleAgentChat(request, env, ctx, { json, corsHeaders, sh
     { role: "user", content: message },
   ]
 
-  // 调模型（流式）；错误在流开启前 → 普通 JSON 错误
+  // 调模型（流式）；错误在流开启前 → 普通 JSON 错误。
+  // temperature 0.4（2026-11-15 线上实测）：默认温度下 70b 指令遵循方差大，问项目时频繁滑向泛泛介绍；降温提升档案锚定
   let aiStream
   try {
-    const res = await env.AI.run(env.AGENT_MODEL || DEFAULT_MODEL, { messages, stream: true, max_tokens: 600 })
+    const res = await env.AI.run(env.AGENT_MODEL || DEFAULT_MODEL, {
+      messages,
+      stream: true,
+      max_tokens: 600,
+      temperature: 0.4,
+    })
     aiStream = res
   } catch (e) {
     console.error("agent ai run error:", e)
