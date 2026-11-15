@@ -157,7 +157,8 @@ async function* aiDeltas(aiStream) {
       if (payload === "[DONE]") return
       try {
         const j = JSON.parse(payload)
-        const text = j.response ?? j.choices?.[0]?.delta?.content ?? ""
+        // 数字 token 时上游 content 可能为 JSON 数字（2026-11-15 线上实测 {"delta":95}），统一转字符串
+        const text = String(j.response ?? j.choices?.[0]?.delta?.content ?? "")
         if (text) yield text
       } catch {
         // 非 JSON 行忽略（流式偶发分片跨行已由缓冲处理）
