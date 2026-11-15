@@ -25,7 +25,7 @@
         <div class="kicker2">02 / 技术兴趣</div>
         <p>Java 后端工程、AI 应用开发（LLM / RAG / Function Calling / Agent Runtime）、系统集成与自动化。</p>
         <p>
-          这些兴趣都落在具体项目里：云枢的缓存与并发压测、IntelNexus 的多源情报分析与 RAG 链路、
+          这些兴趣都落在具体项目里：云翼的缓存与并发压测、IntelNexus 的多源情报分析与 RAG 链路、
           Forge 的统一 Agent Runtime 与评测体系，以及这个网站自己的内容管理后台——
           文件上传、JWT 鉴权与自动化发布。
         </p>

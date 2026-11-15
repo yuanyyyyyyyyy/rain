@@ -82,9 +82,6 @@ async function loadKnowledge(baseOverride) {
   return knowledgeCache
 }
 
-// 项目内部昵称（口径同根 README）：访客常用昵称提问，补进档案避免模型当「未知项目」道歉
-const PROJECT_ALIASES = { yunshu: "云枢" }
-
 function buildKnowledgeBlock(site, projects) {
   const lines = []
   if (site?.profile) {
@@ -106,10 +103,7 @@ function buildKnowledgeBlock(site, projects) {
   if (Array.isArray(projects) && projects.length) {
     lines.push("", "## 项目（按此顺序与事实介绍，不编造档案外细节）")
     for (const pr of projects) {
-      lines.push(
-        ``,
-        `[${pr.no || pr.slug}] ${pr.title}（slug: ${pr.slug}）${PROJECT_ALIASES[pr.slug] ? `（内部昵称：${PROJECT_ALIASES[pr.slug]}，访客用昵称提问时即指此项目）` : ""}${pr.period ? " " + pr.period : ""}`,
-      )
+      lines.push(``, `[${pr.no || pr.slug}] ${pr.title}（slug: ${pr.slug}）${pr.period ? " " + pr.period : ""}`)
       if (pr.summary) lines.push(`简介：${pr.summary}`)
       if (Array.isArray(pr.tags) && pr.tags.length) lines.push(`技术栈：${pr.tags.join("、")}`)
       if (Array.isArray(pr.metrics) && pr.metrics.length)
@@ -128,6 +122,9 @@ function buildSystemPrompt(knowledge, visitorNotes) {
     // 排版（2026-11-15 站长反馈：整段墙不可读）：短段落 + 编号列表，前端 pre-wrap 渲染
     "排版：用空行分成 2–4 个短段落，条目信息用「1. 2. 3.」编号列表；单段不超过 3 行；",
     "总长一般 150 字左右，介绍具体项目时可到 250 字，除非访客明确要求展开。",
+    // 2026-11-15 线上实测：模型问项目时偶发用欢迎语滑向自我介绍，此条强制对准档案
+    "被问及某个项目/能力时，直接给出该项目在档案中的内容（简介、她负责的部分、技术栈、关键指标），",
+    "不要用欢迎语开场，也不要停留在站点整体介绍。",
     "",
     "【边界与安全】",
     "- 只基于【站点档案】回答；档案没有的事实（如具体成绩、公司、薪资期望）不要编造，",

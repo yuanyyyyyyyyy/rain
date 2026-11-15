@@ -9,7 +9,7 @@
     </div>
 
     <div class="projects">
-      <!-- 旗舰卡：云枢，横跨两栏 -->
+      <!-- 旗舰卡：云翼，横跨两栏 -->
       <RouterLink class="project flagship" :to="`/projects/${flagship.slug}`">
         <div class="ptop">
           <span>PROJECT / {{ flagship.no }}</span>

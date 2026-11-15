@@ -3,7 +3,7 @@
        改主题时需与本组件一并核查；CSS 域一律走 var() -->
   <figure class="arch">
     <div class="arch-label">FIG. 001 — SYSTEM ARCHITECTURE / his-j8-setroster</div>
-    <svg viewBox="0 0 920 600" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="云枢平台微服务架构图">
+    <svg viewBox="0 0 920 600" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="云翼平台微服务架构图">
       <!-- 坐标辅助线 -->
       <g stroke="#aab8d8" stroke-width=".6" stroke-dasharray="3 5" opacity=".7">
         <path d="M20 300 H900" /><path d="M460 40 V560" />

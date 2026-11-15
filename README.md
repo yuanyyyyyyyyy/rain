@@ -9,7 +9,7 @@
 | 路由 | 页面 | 状态 |
 |---|---|---|
 | `/` | 首页（Hero 几何主视觉 / Selected Works / Capabilities / Beyond Code / Contact） | ✅ |
-| `/projects/yunshu` | 云翼智慧医院管理平台 — 档案式 case study（内部昵称云枢） | ✅ 完整（9 张实录+证据图，按简历口径对齐） |
+| `/projects/yunshu` | 云翼智慧医院管理平台 — 档案式 case study（只有一个名字：云翼，2026-11-15 站长澄清） | ✅ 完整（9 张实录+证据图，按简历口径对齐） |
 | `/projects/intelnexus` | IntelNexus 多源情报分析平台 — case study（07 节） | ✅ 2026-11-10 含界面实录截图 ×6 |
 | `/projects/forge` | Forge — Agent Harness（多入口统一 Runtime） | ✅ 上线，F1–F4/F6 截图已接入（F5 飞书对话待补） |
 | `/projects/rain` | Rain — 本站（作品集 + 自托管管理台） | ✅ 2026-11-10 上线，含界面实录截图 |
@@ -30,7 +30,7 @@ rain/
 │   │   ├── layout/            # SiteHeader / SiteFooter
 │   │   ├── home/              # Hero / Projects / Capabilities / Beyond / Contact
 │   │   ├── agent/             # AgentDock（AI 分身悬浮对话，配置在 src/data/agentConfig.js）
-│   │   └── project/           # 架构图 SVG（云枢 / IntelNexus 管线）
+│   │   └── project/           # 架构图 SVG（云翼 / IntelNexus 管线）
 │   └── pages/                 # Home / ProjectDetail（通用分节渲染器）/ About / Photography
 ├── public/photos/             # 网页版照片（长边 1600px / q80，原图另存）
 ├── cloudflare/                # 公网收集端：Cloudflare Worker + D1（埋点/表单/简历计数/AI 分身）→ cloudflare/README.md
