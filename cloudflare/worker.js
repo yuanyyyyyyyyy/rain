@@ -38,6 +38,15 @@ function corsHeaders(request) {
 /** 每日转发上限：防止刷表单烧穿 Brevo 免费配额（300 封/天，留余量） */
 const NOTIFY_DAILY_CAP = 20
 
+// 埋点全局断路器（2026-11-15 加固）：单 isolate 每分钟埋点请求总量上限，
+// 在触碰 D1 之前拦截——防分布式多 IP 刷子合流烧穿免费层 D1 写额度（10 万行/天）。
+// 正常访客一次路由切换才 1 条埋点，200/min 远超有机流量；isolate 内存不共享，
+// 多 isolate 时各闸独立——是防洪闸不是精确配额，与 authFails 同款取舍。
+const BEACON_BREAKER_WINDOW_MS = 60_000
+const BEACON_BREAKER_LIMIT = 200
+let beaconWindow = 0
+let beaconCount = 0
+
 function json(request, body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: corsHeaders(request) })
 }
@@ -148,6 +157,15 @@ export default {
 
       // ---- 前台埋点（公开）----
       if (request.method === "POST" && url.pathname === "/t") {
+        // 全局断路器：先于 body 解析与 D1 查询，超限直接 429（前端 fetch 静默失败，无感）
+        const nowWindow = Math.floor(Date.now() / BEACON_BREAKER_WINDOW_MS)
+        if (beaconWindow !== nowWindow) {
+          beaconWindow = nowWindow
+          beaconCount = 0
+        }
+        beaconCount += 1
+        if (beaconCount > BEACON_BREAKER_LIMIT)
+          return json(request, { error: "too many requests" }, 429)
         const body = await request.json().catch(() => ({}))
         const path = String(body.path || "/").split("?")[0].slice(0, 200)
         const referrer = String(body.referrer || "").slice(0, 200) || null
