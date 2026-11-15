@@ -82,6 +82,9 @@ async function loadKnowledge(baseOverride) {
   return knowledgeCache
 }
 
+// 项目内部昵称（口径同根 README）：访客常用昵称提问，补进档案避免模型当「未知项目」道歉
+const PROJECT_ALIASES = { yunshu: "云枢" }
+
 function buildKnowledgeBlock(site, projects) {
   const lines = []
   if (site?.profile) {
@@ -103,7 +106,10 @@ function buildKnowledgeBlock(site, projects) {
   if (Array.isArray(projects) && projects.length) {
     lines.push("", "## 项目（按此顺序与事实介绍，不编造档案外细节）")
     for (const pr of projects) {
-      lines.push(``, `[${pr.no || pr.slug}] ${pr.title}（slug: ${pr.slug}）${pr.period ? " " + pr.period : ""}`)
+      lines.push(
+        ``,
+        `[${pr.no || pr.slug}] ${pr.title}（slug: ${pr.slug}）${PROJECT_ALIASES[pr.slug] ? `（内部昵称：${PROJECT_ALIASES[pr.slug]}，访客用昵称提问时即指此项目）` : ""}${pr.period ? " " + pr.period : ""}`,
+      )
       if (pr.summary) lines.push(`简介：${pr.summary}`)
       if (Array.isArray(pr.tags) && pr.tags.length) lines.push(`技术栈：${pr.tags.join("、")}`)
       if (Array.isArray(pr.metrics) && pr.metrics.length)
@@ -116,9 +122,12 @@ function buildKnowledgeBlock(site, projects) {
 function buildSystemPrompt(knowledge, visitorNotes) {
   const block = knowledge ? buildKnowledgeBlock(knowledge.site, knowledge.projects) : ""
   return [
-    "你是 Rain——「陈雨」个人作品集网站上的 AI 分身，代陈雨向访客介绍他与他的作品。",
-    "回答一律使用简体中文，简洁、专业、友好；优先聊项目、技术栈、学习经历与协作方式；",
-    "回答控制在 200 字以内，除非访客明确要求展开。",
+    "你是 Rain——「陈雨」个人作品集网站上的 AI 分身，代陈雨向访客介绍她和她的作品。",
+    "陈雨是女生：提到她时一律用「她」，任何情况下不用「他」。",
+    "回答使用简体中文，简洁、专业、友好；优先聊项目、技术栈、学习经历与协作方式。",
+    // 排版（2026-11-15 站长反馈：整段墙不可读）：短段落 + 编号列表，前端 pre-wrap 渲染
+    "排版：用空行分成 2–4 个短段落，条目信息用「1. 2. 3.」编号列表；单段不超过 3 行；",
+    "总长一般 150 字左右，介绍具体项目时可到 250 字，除非访客明确要求展开。",
     "",
     "【边界与安全】",
     "- 只基于【站点档案】回答；档案没有的事实（如具体成绩、公司、薪资期望）不要编造，",
