@@ -62,3 +62,12 @@ CREATE TABLE IF NOT EXISTS agent_visitor_notes (
   notes TEXT NOT NULL DEFAULT '',
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- AI 分身用量计数（2026-11-20 migration 0004）：所有会话（含 verify- 探针）每次对话 +1，
+-- per-IP 日上限按本表判定——原按 agent_messages 计数可被 verify- 前缀绕过（审计 K1 修复）
+CREATE TABLE IF NOT EXISTS agent_usage (
+  day TEXT NOT NULL,
+  ip_hash TEXT NOT NULL,
+  n INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, ip_hash)
+);

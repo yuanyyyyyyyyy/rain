@@ -407,14 +407,18 @@ export async function handleAgentChat(request, env, ctx, { json, corsHeaders, sh
   const message = cleanString(body.message, MESSAGE_MAX)
   if (!sessionId || !message) return json(request, { error: "请填写完整" }, 400)
 
-  // ③ per-IP 每日上限（D1 计数，仅 user 消息；verify- 探针不计入真实游客体验）
-  if (!sessionId.startsWith("verify-")) {
-    const dayCount = await env.DB.prepare(
-      "SELECT COUNT(*) n FROM agent_messages WHERE ip_hash = ? AND role = 'user' AND created_at > datetime('now', '-1 day')"
-    ).bind(ipHash).first()
-    if ((dayCount?.n ?? 0) >= AGENT_IP_DAILY)
-      return json(request, { error: "今日对话已达上限，欢迎明天再来或直接邮件联系" }, 429)
-  }
+  // ③ per-IP 日上限（2026-11-20 审计 K1 修复）：用量计数独立于会话落库——verify- 探针/
+  // 伪造会话原先不落 agent_messages 即不计，存在隐形烧 neurons 的滥用面（D1 零真实流量
+  // 但额度连续多日耗尽）。所有会话（含 verify-）一律 upsert 计数
+  const usageDay = new Date().toISOString().slice(0, 10)
+  await env.DB.prepare(
+    `INSERT INTO agent_usage (day, ip_hash, n) VALUES (?, ?, 1)
+     ON CONFLICT(day, ip_hash) DO UPDATE SET n = n + 1`
+  ).bind(usageDay, ipHash).run()
+  const usageRow = await env.DB.prepare("SELECT n FROM agent_usage WHERE day = ? AND ip_hash = ?")
+    .bind(usageDay, ipHash).first()
+  if ((usageRow?.n ?? 0) > AGENT_IP_DAILY)
+    return json(request, { error: "今日对话已达上限，欢迎明天再来或直接邮件联系" }, 429)
 
   // ④ 单会话轮数帽（按已落库 user 消息数计；当前这条尚未落库，故实际放行 31 条）
   const turnCount = await env.DB.prepare(
