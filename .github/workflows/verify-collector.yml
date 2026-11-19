@@ -46,6 +46,12 @@ jobs:
           echo "$OUT" | head -c 300; echo
           echo "$OUT" | grep -q '^data:' || { echo "::error::agent SSE 未输出 data 帧"; exit 1; }
           echo "$OUT" | grep -q '"done":true' || { echo "::error::agent 流未正常结束"; exit 1; }
+      # 清除评测访客的 L2 画像（200 = 路由与三表 schema 正常；幂等 DELETE，无副作用残留）
+      - name: Agent memory clear (DELETE)
+        run: |
+          CODE=$(curl -s --max-time 15 -o /dev/null -w "%{http_code}" -X DELETE \
+            "https://rain-collector.yuanyyyyyyyyy.workers.dev/api/agent/memory?visitor=verify-eval-visitor")
+          echo "memory clear: $CODE"; test "$CODE" = "200"
       - name: Summary (authed)
         env:
           TOKEN: ${{ secrets.COLLECTOR_TOKEN }}

@@ -16,18 +16,20 @@ const PROXY = process.argv[2] || ""
 const BASE = process.argv[3] || "https://rain-collector.yuanyyyyyyyyy.workers.dev"
 const TIMEOUT = 90
 
-/** curl POST-SSE 并聚合 delta 文本（代理可选） */
+/** curl POST-SSE 并聚合 delta 文本（代理可选）。
+ *  body 走 stdin（Node 管道恒 UTF-8）——Windows 下中文放命令行会被 GBK 损坏
+ *  （交接文档踩坑 #15，2026-11-16 评测全挂的根因），stdin 完全绕开。 */
 function chat(message) {
   const sessionId = `verify-eval-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   const args = [
     "-sN", "--max-time", String(TIMEOUT), "-X", "POST",
     `${BASE}/api/agent/chat`,
     "-H", "content-type: application/json",
-    "-d", JSON.stringify({ sessionId, visitorId: "verify-eval-visitor", message }),
+    "-d", "@-",
   ]
   if (PROXY) args.splice(0, 0, "-x", PROXY)
   return new Promise((resolve, reject) => {
-    execFile("curl", args, { maxBuffer: 10 * 1024 * 1024, timeout: TIMEOUT * 1000 }, (err, stdout) => {
+    const child = execFile("curl", args, { maxBuffer: 10 * 1024 * 1024, timeout: TIMEOUT * 1000 }, (err, stdout) => {
       if (err) return reject(err)
       let quotaOut = false
       const text = stdout
@@ -47,6 +49,8 @@ function chat(message) {
         .join("")
       resolve({ text, quotaOut })
     })
+    child.stdin.write(JSON.stringify({ sessionId, visitorId: "verify-eval-visitor", message }))
+    child.stdin.end()
   })
 }
 
